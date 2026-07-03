@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-arabic), system-ui, sans-serif;
+  /* Talaqi design tokens (README §5) */
+  --color-navy: #1b3568;
+  --color-navy-hover: #24437f;
+  --color-navy-deep: #14213a;
+  --color-teal: #14969e;
+  --color-teal-dark: #0e7a81;
+  --color-teal-tint: #e8f5f6;
+  --color-teal-border: #c6e7e9;
+  --color-teal-light: #7fe3e9;
+  --color-gold: #c6a15b;
+  --color-gold-text: #8a6d33;
+  --color-gold-tint: #f7f0e3;
+  --color-gold-tint-2: #fdf9f0;
+  --color-gold-border: #efe2c6;
+  --color-ink: #1a2438;
+  --color-body: #2c3a54;
+  --color-body-2: #4a5a76;
+  --color-muted: #7684a0;
+  --color-faint: #93a1b8;
+  --color-page: #f6f8fb;
+  --color-line: #e4e9f1;
+  --color-line-2: #eef1f6;
+  --color-chip: #f0f3f8;
+  --color-chip-navy: #eef3fb;
+  --color-success: #1f7a4d;
+  --color-success-bg: #e9f6ef;
+  --color-danger: #b0433a;
+  --color-danger-bg: #fbedeb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes tq-blink {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes tq-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+}
+@keyframes tq-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes tq-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f6f8fb;
+}
+
+body {
+  font-family: var(--font-plex-arabic), system-ui, sans-serif;
+  color: #1a2438;
+  font-size: 15px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+}
+
+::placeholder {
+  color: #93a1b8;
 }
