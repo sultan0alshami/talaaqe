@@ -49,7 +49,7 @@ export function HomeScreen({
       >
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>
-            {isAr ? `مرحبًا ${firstName} 👋` : `Welcome, ${firstName} 👋`}
+            {isAr ? `هلا ${firstName} 👋` : `Welcome, ${firstName} 👋`}
           </h1>
           <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.welcomeSub}</p>
         </div>

@@ -209,7 +209,7 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
                 ? "هذا البريد الإلكتروني مسجّل مسبقًا"
                 : "This email is already registered"
               : isAr
-                ? "تعذر إنشاء الحساب — تحقق من البيانات وحاول مجددًا"
+                ? "ما قدرنا ننشئ الحساب — تأكد من بياناتك وجرّب مرة ثانية"
                 : "Could not create the account — check your details and try again"}
           </div>
         )}

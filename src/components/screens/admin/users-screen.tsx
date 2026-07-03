@@ -41,9 +41,9 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
         body: JSON.stringify({ active: !u.active }),
       });
       if (res.ok) router.refresh();
-      else showToast(isAr ? "تعذر تحديث حالة المستخدم" : "Couldn't update the user's status");
+      else showToast(isAr ? "ما قدرنا نحدّث حالة المستخدم" : "Couldn't update the user's status");
     } catch {
-      showToast(isAr ? "تعذر الاتصال بالخادم" : "Couldn't reach the server");
+      showToast(isAr ? "ما قدرنا نتصل بالخادم" : "Couldn't reach the server");
     } finally {
       setBusy(null);
     }

@@ -212,7 +212,7 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
             ))}
             {p.skills.length === 0 && (
               <span style={{ fontSize: 13, color: "#7684A0" }}>
-                {isAr ? "لم تُضف مهارات بعد" : "No skills added yet"}
+                {isAr ? "ما أضفت مهارات لين الحين" : "No skills added yet"}
               </span>
             )}
           </div>
@@ -242,7 +242,7 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {p.portfolio.length === 0 && (
               <div style={{ fontSize: 13.5, color: "#7684A0" }}>
-                {isAr ? "لا توجد أعمال سابقة بعد" : "No portfolio items yet"}
+                {isAr ? "ما عندك أعمال سابقة لين الحين" : "No portfolio items yet"}
               </div>
             )}
             {p.portfolio.map((pf) => (

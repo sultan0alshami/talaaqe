@@ -10,7 +10,7 @@ import { GenerationModal } from "@/components/ui/generation-modal";
 import type { ChatChip, ChatMessage } from "@/lib/domain";
 
 const LIVE_FALLBACK = {
-  ar: "تعذر الاتصال بالذكاء الحي حاليًا — يمكنك متابعة المحادثة التجريبية.",
+  ar: "ما قدرنا نتصل بالذكاء الحي الحين — تقدر تكمّل بالمحادثة التجريبية.",
   en: "Live AI is unavailable right now — you can continue with the demo conversation.",
 };
 
@@ -130,8 +130,10 @@ export function ChatScreen({
   const started = !!projectId || messages.some((m) => m.role === "user");
   const showStarters = !started && !liveMode && !typing;
   const last = messages[messages.length - 1];
+  // Selectable answer options for the AI's latest question — shown in both
+  // scripted and live modes (AskUserQuestion-style).
   const quickChips: ChatChip[] =
-    !liveMode && !typing && !ready && last?.role === "assistant" && last.chips ? last.chips : [];
+    !typing && !ready && last?.role === "assistant" && last.chips ? last.chips : [];
   const showGenerate = ready && !hasBrief && !typing;
 
   const send = useCallback(
@@ -214,7 +216,7 @@ export function ChatScreen({
         setGenerating(false);
         showToast(
           isAr
-            ? "تعذر توليد الملخص التنفيذي حاليًا — حاول مرة أخرى."
+            ? "ما قدرنا نجهّز الملخص التنفيذي الحين — جرّب مرة ثانية."
             : "Couldn't generate the brief right now — please try again."
         );
       });
@@ -376,17 +378,56 @@ export function ChatScreen({
         )}
 
         {quickChips.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
-            {quickChips.map((c, i) => (
-              <button
-                key={i}
-                onClick={() => void send(isAr ? c.ar : c.en)}
-                className="hover:bg-[#E8F5F6] hover:border-[#14969E]"
-                style={chipStyle}
-              >
-                {isAr ? c.ar : c.en}
-              </button>
-            ))}
+          <div
+            style={{
+              marginTop: 4,
+              maxWidth: "88%",
+              alignSelf: "flex-start",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#93A1B8", letterSpacing: ".02em" }}>
+              {t.pickAnswer}
+            </div>
+            {quickChips.map((c, i) => {
+              const label = isAr ? c.ar : c.en;
+              return (
+                <button
+                  key={i}
+                  onClick={() => void send(label)}
+                  className="hover:border-[#14969E]! hover:bg-[#F2FBFB]"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    textAlign: "start",
+                    background: "#fff",
+                    border: "1.5px solid #D6E6E8",
+                    borderRadius: 12,
+                    padding: "12px 15px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1B3568",
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(20,40,80,.04)",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      border: "2px solid #14969E",
+                      flexShrink: 0,
+                      display: "inline-block",
+                    }}
+                  />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 

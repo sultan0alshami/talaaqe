@@ -137,7 +137,7 @@ export function LoginScreen({ next }: { next?: string }) {
         </div>
         {error && (
           <div style={{ fontSize: 12.5, color: "#B0433A", marginBottom: 8 }}>
-            {isAr ? "بيانات الدخول غير صحيحة" : "Invalid credentials"}
+            {isAr ? "بيانات الدخول مو صحيحة" : "Invalid credentials"}
           </div>
         )}
         <div style={{ textAlign: "end", marginBottom: 18 }}>

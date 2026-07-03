@@ -59,7 +59,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
       setDeclining(null);
       router.refresh();
     } else {
-      showToast(isAr ? "تعذّر إرسال الاعتذار — حاول مجددًا" : "Couldn't submit — please try again");
+      showToast(isAr ? "ما قدرنا نرسل الاعتذار — جرّب مرة ثانية" : "Couldn't submit — please try again");
     }
     setBusy((b) => ({ ...b, [matchId]: false }));
   };
@@ -76,7 +76,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {rows.length === 0 && (
           <div style={{ fontSize: 13.5, color: "#7684A0" }}>
-            {isAr ? "لا توجد طلبات عروض واردة حاليًا" : "No incoming proposal requests right now"}
+            {isAr ? "ما عندك طلبات عروض واردة الحين" : "No incoming proposal requests right now"}
           </div>
         )}
         {rows.map((rq) => (

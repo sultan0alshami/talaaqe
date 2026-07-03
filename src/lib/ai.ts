@@ -56,36 +56,53 @@ export type ChatTurnResult = {
   chips?: { ar: string; en: string }[];
 };
 
-const chatSystem = (lang: Lang, questionsAsked: number) => `You are the AI procurement consultant of "Talaqi" (تلاقي), a Saudi platform that turns a client's service need into a documented project brief.
+const chatSystem = (lang: Lang, questionsAsked: number) => `You are "مساعد تلاقي" — the AI procurement consultant of Talaqi (تلاقي), a Saudi platform that turns a client's service need into a documented project brief.
 Rules:
-- Reply in ${lang === "ar" ? "Modern Standard Arabic (الفصحى المعاصرة)" : "English"} — the client's language.
-- Be professional and warm, concise: at most 3 short lines of prose.
-- PLAIN TEXT ONLY — no markdown, no asterisks, no bullet points, no headings.
+- Reply in ${
+  lang === "ar"
+    ? "a warm, natural Saudi Arabic dialect (لهجة سعودية ودودة ومهنية) — the way Saudis actually talk: friendly and approachable but still professional. Use everyday Saudi words (مثل: وش، تبي، ودّك، الحين، عطني، زين، تمام، أبشر) instead of stiff formal Fus'ha"
+    : "friendly, natural English"
+} — always match the client's language.
+- Be warm and concise: at most 3 short lines of prose. PLAIN TEXT ONLY — no markdown, asterisks, bullets, or headings.
 - Ask exactly ONE focused clarifying question per turn. You have asked ${questionsAsked} of a maximum of 5 questions so far.
 - Relevant angles: product/service specifics, brand assets, integrations (payments: mada/Apple Pay/STC Pay; local shipping carriers), budget range in SAR, launch timing.
-- When requirements are sufficiently covered OR you have asked 5 questions, do NOT ask another question — instead state (in the client's language) that you have the full picture and are ready to generate the Project Brief.
+- When requirements are sufficiently covered OR you have asked 5 questions, do NOT ask another question — instead tell the client (in their language; Saudi dialect for Arabic) that the picture is clear and you're ready to build the Project Brief.
 After your visible reply, output a line containing only ===JSON=== followed by a single JSON object (no markdown fence):
-{"serviceType":string,"businessContext":string,"objective":string,"deliverables":string[],"budget":string,"timeline":string,"technicalRequirements":string[],"designPreferences":string,"targetAudience":string,"requiredSkills":string[],"riskFactors":string[],"missing":string[],"readyForBrief":boolean}
-Fill it cumulatively from the whole conversation; put still-unknown essentials in "missing". Set "readyForBrief" true only when missing is trivial or 5 questions were asked.`;
+{"serviceType":string,"businessContext":string,"objective":string,"deliverables":string[],"budget":string,"timeline":string,"technicalRequirements":string[],"designPreferences":string,"targetAudience":string,"requiredSkills":string[],"riskFactors":string[],"missing":string[],"options":string[],"readyForBrief":boolean}
+- "options": 2 to 4 SHORT, concrete, mutually-distinct suggested answers to the question you JUST asked, in the client's language (Saudi dialect for Arabic), so they can tap one instead of typing. Each under ~6 words. Use an empty array when readyForBrief is true (no question was asked).
+Fill the rest cumulatively from the whole conversation; put still-unknown essentials in "missing". Set "readyForBrief" true only when missing is trivial or 5 questions were asked.`;
 
-function parseChatOutput(text: string): { reply: string; extracted: ExtractedRequirements; ready: boolean } {
+function parseChatOutput(text: string): {
+  reply: string;
+  extracted: ExtractedRequirements;
+  ready: boolean;
+  options: string[];
+} {
   const idx = text.indexOf("===JSON===");
-  if (idx === -1) return { reply: text.trim(), extracted: {}, ready: false };
+  if (idx === -1) return { reply: text.trim(), extracted: {}, ready: false, options: [] };
   const reply = text.slice(0, idx).trim();
   let extracted: ExtractedRequirements = {};
   let ready = false;
+  let options: string[] = [];
   try {
     const raw = text.slice(idx + "===JSON===".length).trim();
     const start = raw.indexOf("{");
     const end = raw.lastIndexOf("}");
-    const parsed = JSON.parse(raw.slice(start, end + 1)) as ExtractedRequirements & { readyForBrief?: boolean };
+    const parsed = JSON.parse(raw.slice(start, end + 1)) as ExtractedRequirements & {
+      readyForBrief?: boolean;
+      options?: unknown;
+    };
     ready = !!parsed.readyForBrief;
+    options = Array.isArray(parsed.options)
+      ? parsed.options.filter((o): o is string => typeof o === "string" && o.trim().length > 0).slice(0, 4)
+      : [];
     delete (parsed as Record<string, unknown>).readyForBrief;
+    delete (parsed as Record<string, unknown>).options;
     extracted = parsed;
   } catch {
     // Keep the reply; extraction is best-effort.
   }
-  return { reply, extracted, ready };
+  return { reply, extracted, ready, options };
 }
 
 /** Scripted fallback: replay the perfume-store interview from the prototype. */
@@ -140,9 +157,18 @@ export async function chatTurn(opts: {
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("\n");
-    const { reply, extracted, ready } = parseChatOutput(text);
+    const { reply, extracted, ready, options } = parseChatOutput(text);
     // Hard stop at 5 questions regardless of model judgment.
-    return { replyAr: reply, replyEn: reply, extracted, ready: ready || questionsAsked + 1 >= 5, mode: "live" };
+    const done = ready || questionsAsked + 1 >= 5;
+    return {
+      replyAr: reply,
+      replyEn: reply,
+      extracted,
+      ready: done,
+      mode: "live",
+      // Answer options for the question just asked (AskUserQuestion-style chips).
+      chips: done || options.length === 0 ? undefined : options.map((o) => ({ ar: o, en: o })),
+    };
   } catch (e) {
     console.error("[ai] chat turn failed, falling back to script", e);
     return scriptedChatTurn(questionsAsked);

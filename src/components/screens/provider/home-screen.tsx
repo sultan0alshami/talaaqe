@@ -57,9 +57,9 @@ export function ProviderHomeScreen({
   const acceptRate = responded > 0 ? `${Math.round(((acceptedCount + proposalSentCount) / responded) * 100)}%` : "—";
 
   const firstName = (pick(nameAr, nameEn) || "").trim().split(/\s+/)[0] || "";
-  const welcome = isAr ? `مرحبًا ${firstName} 👋` : `Welcome, ${firstName} 👋`;
+  const welcome = isAr ? `هلا ${firstName} 👋` : `Welcome, ${firstName} 👋`;
   const welcomeSub = isAr
-    ? `لديك ${fmtNum(matched)} فرص جديدة متوافقة مع تخصصك`
+    ? `عندك ${fmtNum(matched)} فرص جديدة تناسب تخصصك`
     : `You have ${fmtNum(matched)} new opportunities matched to your specialty`;
 
   const stats: { label: string; v: string; color: string }[] = [
@@ -99,7 +99,7 @@ export function ProviderHomeScreen({
       setDeclining(null);
       router.refresh();
     } else {
-      showToast(isAr ? "تعذّر إرسال الاعتذار — حاول مجددًا" : "Couldn't submit — please try again");
+      showToast(isAr ? "ما قدرنا نرسل الاعتذار — جرّب مرة ثانية" : "Couldn't submit — please try again");
     }
     setBusy((b) => ({ ...b, [matchId]: false }));
   };
@@ -132,7 +132,7 @@ export function ProviderHomeScreen({
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {ops.length === 0 && (
           <div style={{ fontSize: 13.5, color: "#7684A0" }}>
-            {isAr ? "لا توجد فرص متوافقة حاليًا — سيصلك إشعار عند ترشيحك لمشروع جديد" : "No matched opportunities right now — you will be notified when a new project matches you"}
+            {isAr ? "ما عندك فرص متوافقة الحين — بيوصلك إشعار أول ما تترشّح لمشروع جديد" : "No matched opportunities right now — you will be notified when a new project matches you"}
           </div>
         )}
         {ops.map((op) => {
