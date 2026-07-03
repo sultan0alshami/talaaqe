@@ -37,10 +37,11 @@ export default async function ClientMatchesPage({
     : null;
 
   if (!project || project.matches.length === 0) {
-    return <MatchesScreen matches={[]} projectId={null} titleAr="" titleEn="" />;
+    return <MatchesScreen key="empty" matches={[]} projectId={null} titleAr="" titleEn="" />;
   }
   return (
     <MatchesScreen
+      key={project.id} // remount so per-project optimistic state resets
       matches={project.matches.map(toMatchDTO)}
       projectId={project.id}
       titleAr={project.titleAr}

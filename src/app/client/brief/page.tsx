@@ -28,7 +28,14 @@ export default async function ClientBriefPage({
     : null;
 
   if (!project?.brief) {
-    return <BriefScreen brief={null} projectId={null} />;
+    return <BriefScreen key="empty" brief={null} projectId={null} />;
   }
-  return <BriefScreen brief={toBriefDTO(project.brief)} projectId={project.id} />;
+  // Keyed by brief version too, so a regeneration resets edit-mode state.
+  return (
+    <BriefScreen
+      key={`${project.id}:${project.brief.version}`}
+      brief={toBriefDTO(project.brief)}
+      projectId={project.id}
+    />
+  );
 }

@@ -4,6 +4,7 @@ import { Role, VerifiedStatus, ProviderType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { setSessionCookie } from "@/lib/auth";
 import { handler, ok, fail, parseBody } from "@/lib/api";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   role: z.enum(["client", "provider"]),
@@ -20,8 +21,17 @@ const schema = z.object({
 export const POST = handler(async (req: Request) => {
   const body = await parseBody(req, schema);
 
+  const rl = rateLimit(`signup:${getClientIp(req)}`, 5);
+  if (!rl.ok) return fail(429, "Too many attempts", { retryAfterSec: rl.retryAfterSec });
+
   const existing = await prisma.user.findUnique({ where: { email: body.email } });
   if (existing) return fail(409, "Email already registered");
+
+  // Validate the provider specialty so a stale id yields a 400, not a P2003 500.
+  if (body.categoryId) {
+    const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
+    if (!category) return fail(400, "Unknown category");
+  }
 
   const passwordHash = await bcrypt.hash(body.password, 10);
   const role = body.role === "client" ? Role.CLIENT : Role.PROVIDER;

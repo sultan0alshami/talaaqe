@@ -47,9 +47,25 @@ export function fmtAgo(d: Date | string, lang: Lang): string {
   const date = typeof d === "string" ? new Date(d) : d;
   const mins = Math.max(1, Math.round((Date.now() - date.getTime()) / 60_000));
   const isAr = lang === "ar";
-  if (mins < 60) return isAr ? `قبل ${mins} دقيقة` : `${mins} minutes ago`;
+  if (mins < 60) {
+    if (isAr) {
+      if (mins === 1) return "قبل دقيقة";
+      if (mins === 2) return "قبل دقيقتين";
+      if (mins <= 10) return `قبل ${mins} دقائق`;
+      return `قبل ${mins} دقيقة`;
+    }
+    return mins === 1 ? "1 minute ago" : `${mins} minutes ago`;
+  }
   const hours = Math.round(mins / 60);
-  if (hours < 24) return isAr ? `قبل ${hours} ساعات` : `${hours} hours ago`;
+  if (hours < 24) {
+    if (isAr) {
+      if (hours === 1) return "قبل ساعة";
+      if (hours === 2) return "قبل ساعتين";
+      if (hours <= 10) return `قبل ${hours} ساعات`;
+      return `قبل ${hours} ساعة`;
+    }
+    return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+  }
   if (hours < 48) return isAr ? "أمس" : "Yesterday";
   return fmtDate(date);
 }

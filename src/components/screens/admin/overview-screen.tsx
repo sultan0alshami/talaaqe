@@ -1,7 +1,7 @@
 "use client";
 // Admin overview (provider-admin spec §4): stat rows, top-categories chart,
 // pending provider approvals with real approve/reject mutations.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { fmtDate, fmtNum, fmtWhen } from "@/lib/format";
@@ -80,8 +80,11 @@ export function OverviewScreen({
     { label: t.aMatchRate, v: `${matchRate}%`, bg: "#EEF3FB", bd: "#D5DDE9", lc: "#1B3568", vc: "#1B3568" },
   ];
   const maxCat = Math.max(...topCats.map((c) => c.v), 1);
-  // "Last updated" line rebuilt live: keep the dict prefix, swap the frozen time.
-  const lastUpdated = `${t.adminSub.split(":")[0]}: ${fmtWhen(new Date(), lang)}`;
+  // "Last updated" — clock read only after mount so SSR and hydration render
+  // the same placeholder (avoids a guaranteed hydration mismatch).
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => setNow(new Date()), []);
+  const lastUpdated = `${t.adminSub.split(":")[0]}: ${now ? fmtWhen(now, lang) : "—"}`;
 
   return (
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>

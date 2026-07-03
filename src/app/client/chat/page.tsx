@@ -25,6 +25,7 @@ export default async function ClientChatPage({
     if (project?.conversation) {
       return (
         <ChatScreen
+          key={project.id} // remount when the conversation target changes
           aiEnabled={aiEnabled}
           initialProjectId={project.id}
           initialMessages={messagesOf(project.conversation.messages)}
@@ -38,6 +39,7 @@ export default async function ClientChatPage({
 
   return (
     <ChatScreen
+      key="new" // "New project" always starts a fresh chat instance
       aiEnabled={aiEnabled}
       initialProjectId={null}
       initialMessages={[]}

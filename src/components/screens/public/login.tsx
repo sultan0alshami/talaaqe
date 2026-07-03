@@ -51,7 +51,11 @@ export function LoginScreen({ next }: { next?: string }) {
     if (!res.ok) throw new Error("login failed");
     const data = await res.json();
     const dest = DEST[data.user?.role as string] ?? "/client";
-    router.push(next && next.startsWith("/") ? next : dest);
+    // Same-origin only: "//evil.com" and "/\evil.com" pass startsWith("/")
+    // but resolve off-site (open redirect).
+    const safeNext =
+      next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : null;
+    router.push(safeNext ?? dest);
   };
 
   const submit = async () => {

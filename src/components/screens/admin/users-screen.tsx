@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n, type Dict } from "@/lib/i18n";
+import { useToast } from "@/components/ui/toast";
 import { fmtDate } from "@/lib/format";
 
 type UserRow = {
@@ -27,18 +28,22 @@ const GRID = "2.2fr 1fr 1fr 1fr auto";
 
 export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: string }) {
   const { t, isAr, pick } = useI18n();
+  const { showToast } = useToast();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
   const toggleActive = async (u: UserRow) => {
     setBusy(u.id);
     try {
-      await fetch(`/api/admin/users/${u.id}`, {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: !u.active }),
       });
-      router.refresh();
+      if (res.ok) router.refresh();
+      else showToast(isAr ? "تعذر تحديث حالة المستخدم" : "Couldn't update the user's status");
+    } catch {
+      showToast(isAr ? "تعذر الاتصال بالخادم" : "Couldn't reach the server");
     } finally {
       setBusy(null);
     }

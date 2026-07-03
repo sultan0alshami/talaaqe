@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { handler, ok, parseBody, requireRole } from "@/lib/api";
+import { handler, ok, parseBody, requireRole, ApiError } from "@/lib/api";
 import { getOwnProvider } from "@/lib/ownership";
 import { PROVIDER_TYPE_LABELS } from "@/lib/domain";
 
@@ -63,6 +63,13 @@ export const PATCH = handler(async (req: Request) => {
   const body = await parseBody(req, patchSchema);
   const p = await getOwnProvider(session.userId);
 
+  // Cross-field price check, including partial updates against stored values.
+  const nextMin = body.priceMin ?? p.priceRangeMin;
+  const nextMax = body.priceMax ?? p.priceRangeMax;
+  if (nextMin != null && nextMax != null && nextMin > nextMax) {
+    throw new ApiError(400, "priceMin must be ≤ priceMax");
+  }
+
   await prisma.provider.update({
     where: { id: p.id },
     data: {
@@ -80,31 +87,40 @@ export const PATCH = handler(async (req: Request) => {
   });
 
   if (body.skills) {
-    // Replace the skill set; unknown skill names are created under the
-    // provider's primary category (or the first category as fallback).
-    const fallbackCat =
-      p.categories[0]?.categoryId ?? (await prisma.category.findFirstOrThrow({ orderBy: { sortOrder: "asc" } })).id;
-    await prisma.providerSkill.deleteMany({ where: { providerId: p.id } });
-    for (const name of [...new Set(body.skills)]) {
-      const skill =
-        (await prisma.skill.findUnique({ where: { name } })) ??
-        (await prisma.skill.create({ data: { name, categoryId: fallbackCat } }));
-      await prisma.providerSkill.create({ data: { providerId: p.id, skillId: skill.id } });
+    // Skills are an admin-curated global taxonomy — reject unknown names
+    // instead of letting providers create rows (POST /api/admin/skills owns that).
+    const names = [...new Set(body.skills)];
+    const found = await prisma.skill.findMany({ where: { name: { in: names } } });
+    if (found.length !== names.length) {
+      const known = new Set(found.map((s) => s.name));
+      throw new ApiError(400, `Unknown skills: ${names.filter((n) => !known.has(n)).join(", ")}`);
     }
+    await prisma.$transaction([
+      prisma.providerSkill.deleteMany({ where: { providerId: p.id } }),
+      prisma.providerSkill.createMany({ data: found.map((s) => ({ providerId: p.id, skillId: s.id })) }),
+    ]);
   }
   if (body.categoryIds) {
-    await prisma.providerCategory.deleteMany({ where: { providerId: p.id } });
-    for (const categoryId of [...new Set(body.categoryIds)]) {
-      await prisma.providerCategory.create({ data: { providerId: p.id, categoryId } });
-    }
+    const ids = [...new Set(body.categoryIds)];
+    const found = await prisma.category.findMany({ where: { id: { in: ids } }, select: { id: true } });
+    if (found.length !== ids.length) throw new ApiError(400, "Unknown categoryId");
+    await prisma.$transaction([
+      prisma.providerCategory.deleteMany({ where: { providerId: p.id } }),
+      prisma.providerCategory.createMany({ data: ids.map((categoryId) => ({ providerId: p.id, categoryId })) }),
+    ]);
   }
   if (body.portfolio) {
-    await prisma.portfolioItem.deleteMany({ where: { providerId: p.id } });
-    for (const item of body.portfolio) {
-      await prisma.portfolioItem.create({
-        data: { providerId: p.id, title: item.title, titleEn: item.titleEn, url: item.url },
-      });
-    }
+    await prisma.$transaction([
+      prisma.portfolioItem.deleteMany({ where: { providerId: p.id } }),
+      prisma.portfolioItem.createMany({
+        data: body.portfolio.map((item) => ({
+          providerId: p.id,
+          title: item.title,
+          titleEn: item.titleEn,
+          url: item.url,
+        })),
+      }),
+    ]);
   }
   return ok({ ok: true });
 });

@@ -15,7 +15,18 @@ export const POST = handler(async (_req: Request, { params }: { params: Promise<
   if (!brief) throw new ApiError(404, "Brief not generated yet");
 
   await prisma.brief.update({ where: { projectId: id }, data: { approvedByClient: true } });
-  await prisma.project.update({ where: { id }, data: { status: ProjectStatus.BRIEF_APPROVED } });
+  // Guarded write: re-approval must never rewind a project that already
+  // advanced past PROVIDERS_RECOMMENDED (e.g. proposals requested).
+  const EARLY = [
+    ProjectStatus.DRAFT,
+    ProjectStatus.BRIEF_GENERATED,
+    ProjectStatus.BRIEF_APPROVED,
+    ProjectStatus.PROVIDERS_RECOMMENDED,
+  ];
+  await prisma.project.updateMany({
+    where: { id, status: { in: EARLY } },
+    data: { status: ProjectStatus.BRIEF_APPROVED },
+  });
   await logActivity(id, "brief_approved", "اعتمد العميل الملخص التنفيذي", "Client approved the Project Brief");
 
   // ── Matching engine (README §9) over APPROVED providers ──────────
@@ -71,7 +82,10 @@ export const POST = handler(async (_req: Request, { params }: { params: Promise<
     });
   }
 
-  await prisma.project.update({ where: { id }, data: { status: ProjectStatus.PROVIDERS_RECOMMENDED } });
+  await prisma.project.updateMany({
+    where: { id, status: { in: EARLY } },
+    data: { status: ProjectStatus.PROVIDERS_RECOMMENDED },
+  });
   const total = await prisma.match.count({ where: { projectId: id } });
   await logActivity(
     id,

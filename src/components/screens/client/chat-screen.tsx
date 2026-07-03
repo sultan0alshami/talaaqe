@@ -166,15 +166,21 @@ export function ChatScreen({
         }
       } catch {
         setTyping(false);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", ar: LIVE_FALLBACK.ar, en: LIVE_FALLBACK.en, ts: Date.now() },
-        ]);
+        // The failed message was never persisted: drop the optimistic bubble
+        // (the next successful send replaces messages with the server copy,
+        // which doesn't contain it), restore it to the draft for retry, and
+        // surface the fallback notice as a toast instead of a phantom bubble.
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          return lastMsg?.role === "user" && lastMsg.ar === text ? prev.slice(0, -1) : prev;
+        });
+        setDraft(text);
+        showToast(isAr ? LIVE_FALLBACK.ar : LIVE_FALLBACK.en);
       } finally {
         sendingRef.current = false;
       }
     },
-    [typing, generating, projectId, liveMode, lang]
+    [typing, generating, projectId, liveMode, lang, isAr, showToast]
   );
 
   const sendDraft = () => {
@@ -204,7 +210,14 @@ export function ChatScreen({
         if (!res.ok) throw new Error("brief failed");
         setBriefDone(true);
       })
-      .catch(() => setGenerating(false));
+      .catch(() => {
+        setGenerating(false);
+        showToast(
+          isAr
+            ? "تعذر توليد الملخص التنفيذي حاليًا — حاول مرة أخرى."
+            : "Couldn't generate the brief right now — please try again."
+        );
+      });
   };
 
   const msgText = (m: ChatMessage) => (isAr ? m.ar : m.en);

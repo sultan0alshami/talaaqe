@@ -23,11 +23,11 @@ export function MatchesScreen({
   const { showToast } = useToast();
   const router = useRouter();
 
-  const [requested, setRequested] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      matches.map((m) => [m.id, m.status === "PROPOSAL_REQUESTED" || m.status === "PROPOSAL_SENT"])
-    )
-  );
+  // Derived from props at render time (stays correct across prop changes);
+  // `override` only records this session's optimistic requests.
+  const [override, setOverride] = useState<Record<string, boolean>>({});
+  const isRequested = (m: MatchDTO) =>
+    override[m.id] ?? (m.status === "PROPOSAL_REQUESTED" || m.status === "PROPOSAL_SENT");
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
   // ── Empty state (spec §5.11 pattern) ────────────────────────────
@@ -65,18 +65,18 @@ export function MatchesScreen({
     );
   }
 
-  const request = async (id: string) => {
-    if (pending[id] || requested[id]) return;
-    setPending((p) => ({ ...p, [id]: true }));
-    setRequested((r) => ({ ...r, [id]: true })); // optimistic flip
+  const request = async (m: MatchDTO) => {
+    if (pending[m.id] || isRequested(m)) return;
+    setPending((p) => ({ ...p, [m.id]: true }));
+    setOverride((r) => ({ ...r, [m.id]: true })); // optimistic flip
     showToast(t.proposalSent);
     try {
-      const res = await fetch(`/api/matches/${id}/request-proposal`, { method: "POST" });
-      if (!res.ok) setRequested((r) => ({ ...r, [id]: false }));
+      const res = await fetch(`/api/matches/${m.id}/request-proposal`, { method: "POST" });
+      if (!res.ok) setOverride((r) => ({ ...r, [m.id]: false }));
     } catch {
-      setRequested((r) => ({ ...r, [id]: false }));
+      setOverride((r) => ({ ...r, [m.id]: false }));
     } finally {
-      setPending((p) => ({ ...p, [id]: false }));
+      setPending((p) => ({ ...p, [m.id]: false }));
     }
   };
 
@@ -117,7 +117,7 @@ export function MatchesScreen({
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {matches.map((m) => {
           const p = m.provider;
-          const isRequested = !!requested[m.id];
+          const requestedNow = isRequested(m);
           return (
             <div
               key={m.id}
@@ -237,9 +237,9 @@ export function MatchesScreen({
 
               {/* Column C — actions */}
               <div style={{ display: "flex", flexDirection: "column", gap: 9, minWidth: 140 }}>
-                {!isRequested ? (
+                {!requestedNow ? (
                   <button
-                    onClick={() => void request(m.id)}
+                    onClick={() => void request(m)}
                     disabled={!!pending[m.id]}
                     className="hover:bg-[#24437F]"
                     style={{
