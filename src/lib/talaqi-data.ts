@@ -315,6 +315,7 @@ export const I18N = {
     chatHello: "هلا فيك في تلاقي 👋 أنا مستشارك الذكي للشراء والتنفيذ. اوصف لي اللي تبيه بلغتك العادية، وأنا أحوّله إلى مشروع واضح جاهز للتنفيذ.",
     generateBrief: "توليد الملخص التنفيذي", generating: "نجهّز لك الملخص التنفيذي…",
     genStep1: "تحليل المتطلبات المستخرجة", genStep2: "بناء نطاق العمل والمخرجات", genStep3: "تقدير الميزانية والمدة الزمنية", genStep4: "تحديد معايير التقييم والمراحل",
+    genFinalizing: "لحظة، نحط اللمسات الأخيرة…", genDone: "تم! ملخصك التنفيذي جاهز ✓", genDoneSub: "جهّزنا لك ملخص واضح بكل التفاصيل", genViewNow: "اعرض الملخص الحين",
     liveNote: "وضع الذكاء الحي: تكلّم على راحتك والمساعد يرد عليك مباشرة",
     // brief
     briefKicker: "الملخص التنفيذي للمشروع", briefReady: "جاهز للاعتماد", briefEdit: "تعديل", briefSaveEdit: "حفظ التعديلات",
@@ -526,6 +527,7 @@ export const I18N = {
     chatHello: "Welcome to Talaqi 👋 I'm your AI procurement consultant. Describe your need in plain language and I'll turn it into a clear, executable project.",
     generateBrief: "Generate Project Brief", generating: "Generating your Project Brief…",
     genStep1: "Analyzing extracted requirements", genStep2: "Building scope of work & deliverables", genStep3: "Estimating budget & timeline", genStep4: "Defining evaluation criteria & milestones",
+    genFinalizing: "One moment — adding the final touches…", genDone: "Done! Your brief is ready ✓", genDoneSub: "We've prepared a clear, detailed brief for you", genViewNow: "View brief now",
     liveNote: "Live AI mode: chat freely — the assistant replies in real time",
     briefKicker: "Project Brief", briefReady: "Ready for approval", briefEdit: "Edit", briefSaveEdit: "Save changes",
     briefApprove: "Approve & view recommendations", briefBack: "Back to chat",
