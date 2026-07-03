@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/ui/toast";
+import { ReasonModal } from "@/components/ui/reason-modal";
 import { fmtBudget, fmtNum } from "@/lib/format";
 import type { OpportunityDTO } from "@/lib/domain";
 
@@ -46,6 +47,7 @@ export function ProviderHomeScreen({
   const router = useRouter();
   const [override, setOverride] = useState<Record<string, OpportunityDTO["status"]>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [declining, setDeclining] = useState<string | null>(null); // matchId awaiting a reason
 
   const ops = opportunities.map((o) => ({ ...o, status: override[o.matchId] ?? o.status }));
   const matched = ops.filter((o) => o.status === "RECOMMENDED").length;
@@ -67,21 +69,37 @@ export function ProviderHomeScreen({
     { label: t.pStatResponse, v: acceptRate, color: "#1B3568" },
   ];
 
-  const act = async (matchId: string, action: "accept" | "decline") => {
-    const next = action === "accept" ? "ACCEPTED" : "DECLINED";
+  const accept = async (matchId: string) => {
     setBusy((b) => ({ ...b, [matchId]: true }));
-    // Optimistic (behaviors §6.3 — irreversible in the prototype).
-    setOverride((o) => ({ ...o, [matchId]: next }));
-    if (action === "accept") showToast(t.accepted);
-    const res = await fetch(`/api/provider/opportunities/${matchId}/${action}`, { method: "POST" }).catch(() => null);
+    setOverride((o) => ({ ...o, [matchId]: "ACCEPTED" })); // optimistic
+    showToast(t.accepted);
+    const res = await fetch(`/api/provider/opportunities/${matchId}/accept`, { method: "POST" }).catch(() => null);
     if (!res || !res.ok) {
-      // Revert on failure.
       setOverride((o) => {
         const { [matchId]: _drop, ...rest } = o;
         return rest;
       });
     } else {
       router.refresh();
+    }
+    setBusy((b) => ({ ...b, [matchId]: false }));
+  };
+
+  const confirmDecline = async (reason: string) => {
+    const matchId = declining;
+    if (!matchId) return;
+    setBusy((b) => ({ ...b, [matchId]: true }));
+    const res = await fetch(`/api/provider/opportunities/${matchId}/decline`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }).catch(() => null);
+    if (res && res.ok) {
+      setOverride((o) => ({ ...o, [matchId]: "DECLINED" }));
+      setDeclining(null);
+      router.refresh();
+    } else {
+      showToast(isAr ? "تعذّر إرسال الاعتذار — حاول مجددًا" : "Couldn't submit — please try again");
     }
     setBusy((b) => ({ ...b, [matchId]: false }));
   };
@@ -176,7 +194,7 @@ export function ProviderHomeScreen({
                 {op.status === "RECOMMENDED" && (
                   <>
                     <button
-                      onClick={() => act(op.matchId, "accept")}
+                      onClick={() => accept(op.matchId)}
                       disabled={!!busy[op.matchId]}
                       className="hover:bg-[#14969E]!"
                       style={{
@@ -194,7 +212,7 @@ export function ProviderHomeScreen({
                       {t.accept}
                     </button>
                     <button
-                      onClick={() => act(op.matchId, "decline")}
+                      onClick={() => setDeclining(op.matchId)}
                       disabled={!!busy[op.matchId]}
                       className="hover:border-[#B0433A]! hover:text-[#B0433A]!"
                       style={{
@@ -224,6 +242,18 @@ export function ProviderHomeScreen({
           );
         })}
       </div>
+
+      <ReasonModal
+        open={!!declining}
+        title={t.declineTitle}
+        sub={t.declineSub}
+        placeholder={t.declinePlaceholder}
+        confirmLabel={t.declineConfirm}
+        cancelLabel={t.declineCancel}
+        busy={!!declining && !!busy[declining]}
+        onConfirm={confirmDecline}
+        onCancel={() => setDeclining(null)}
+      />
     </div>
   );
 }

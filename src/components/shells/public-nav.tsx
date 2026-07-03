@@ -72,15 +72,16 @@ export function PublicNav() {
           <span style={{ fontWeight: 700, fontSize: 19, color: "#1B3568", lineHeight: 1.2 }}>{t.brand}</span>
         </Link>
         <div style={{ display: "flex", gap: 4, marginInlineStart: "auto", alignItems: "center" }}>
+          {/* Product & audience first, then subscriptions, then company. */}
           <button onClick={() => anchor("tq-how")} className="hover:bg-[#F0F3F8]" style={{ ...ghost, fontWeight: 500, color: "#3D4C68" }}>
             {t.navHow}
           </button>
           {navLink("/for-clients", t.navClients)}
           {navLink("/for-providers", t.navProviders)}
-          {navLink("/about", t.navAbout)}
           <button onClick={() => anchor("tq-pricing")} className="hover:bg-[#F0F3F8]" style={{ ...ghost, fontWeight: 500, color: "#3D4C68" }}>
             {t.navPricing}
           </button>
+          {navLink("/about", t.navAbout)}
           {navLink("/contact", t.navContact)}
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>

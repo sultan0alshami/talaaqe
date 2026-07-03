@@ -237,7 +237,7 @@ export const I18N = {
     dir: "rtl", langBtn: "EN",
     brand: "تلاقي", tagline: "ذكاء يربطك بالخبرة المناسبة",
     // nav
-    navHow: "كيف يعمل", navFeatures: "المميزات", navCats: "التصنيفات", navPricing: "الأسعار", login: "تسجيل الدخول", startCta: "ابدأ مشروعك الآن", joinCta: "انضم كمقدم خدمة",
+    navHow: "كيف يعمل", navFeatures: "المميزات", navCats: "التصنيفات", navPricing: "الاشتراكات", login: "تسجيل الدخول", startCta: "سجّل الآن", joinCta: "انضم كمقدم خدمة",
     // hero
     heroBadge: "منصة الذكاء الاصطناعي للشراء والتنفيذ — Talaqi AI",
     heroTitle1: "صف احتياجك فقط،", heroTitle2: "والذكاء الاصطناعي يتولى الباقي",
@@ -446,11 +446,20 @@ export const I18N = {
     revMrr: "الإيراد الشهري المتكرر", revSubs: "اشتراكات مدفوعة", revGrowth: "نمو شهري",
     // categories page
     skillsT: "المهارات", addCatBtn: "+ تصنيف", addSkillBtn2: "+ مهارة",
+    // decline-with-reason modal (provider)
+    declineTitle: "سبب الاعتذار عن الفرصة", declineSub: "سيساعدنا سببك على تحسين جودة الترشيحات القادمة",
+    declinePlaceholder: "اكتب سبب اعتذارك بإيجاز… (مثال: خارج نطاق تخصصي، الجدول الزمني لا يناسبني، الميزانية غير مناسبة)",
+    declineConfirm: "تأكيد الاعتذار", declineCancel: "إلغاء", declineReasonRequired: "يرجى كتابة سبب الاعتذار",
+    // visitor chatbot
+    botTitle: "مساعد تلاقي", botSub: "اسألني عن المنصة", botOpen: "افتح المساعد الذكي",
+    botGreeting: "أهلًا بك 👋 أنا مساعد تلاقي. اسألني عن كيفية عمل المنصة، الاشتراكات، أو كيف تبدأ كعميل أو مقدم خدمة.",
+    botPlaceholder: "اكتب سؤالك هنا…", botSend: "إرسال", botError: "تعذّر الرد الآن — حاول مرة أخرى بعد قليل.",
+    botStarters: ["كيف يعمل تلاقي؟", "ما هي باقات الاشتراك؟", "كيف أبدأ كمقدم خدمة؟"],
   },
   en: {
     dir: "ltr", langBtn: "عربي",
     brand: "Talaqi", tagline: "Intelligence that connects you to the right expertise",
-    navHow: "How it works", navFeatures: "Features", navCats: "Categories", navPricing: "Pricing", login: "Log in", startCta: "Start your project", joinCta: "Join as a provider",
+    navHow: "How it works", navFeatures: "Features", navCats: "Categories", navPricing: "Subscriptions", login: "Log in", startCta: "Sign up now", joinCta: "Join as a provider",
     heroBadge: "AI Procurement & Execution Platform — تلاقي",
     heroTitle1: "Just describe your need —", heroTitle2: "AI handles the rest",
     heroSub: "Talaqi turns your service needs into clear, executable projects, then matches you with the most suitable provider — no searching, no comparing, no guesswork.",
@@ -629,5 +638,14 @@ export const I18N = {
     anDistT: "Match score distribution", anWeeklyT: "Projects this week", anRevT: "Revenue & activity",
     revMrr: "Monthly recurring revenue", revSubs: "Paid subscriptions", revGrowth: "Monthly growth",
     skillsT: "Skills", addCatBtn: "+ Category", addSkillBtn2: "+ Skill",
+    // decline-with-reason modal (provider)
+    declineTitle: "Reason for declining", declineSub: "Your reason helps us improve future recommendations",
+    declinePlaceholder: "Briefly, why are you declining? (e.g. outside my specialty, timeline doesn't fit, budget too low)",
+    declineConfirm: "Confirm decline", declineCancel: "Cancel", declineReasonRequired: "Please provide a reason",
+    // visitor chatbot
+    botTitle: "Talaqi Assistant", botSub: "Ask me about the platform", botOpen: "Open the assistant",
+    botGreeting: "Hi 👋 I'm the Talaqi assistant. Ask me how the platform works, about subscriptions, or how to start as a client or provider.",
+    botPlaceholder: "Type your question…", botSend: "Send", botError: "Couldn't respond right now — please try again shortly.",
+    botStarters: ["How does Talaqi work?", "What are the subscription plans?", "How do I start as a provider?"],
   },
 };

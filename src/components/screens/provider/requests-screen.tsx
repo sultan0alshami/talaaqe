@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/components/ui/toast";
+import { ReasonModal } from "@/components/ui/reason-modal";
 import { fmtAgo, fmtBudget } from "@/lib/format";
 import type { OpportunityDTO } from "@/lib/domain";
 
@@ -22,21 +23,15 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
   const router = useRouter();
   const [override, setOverride] = useState<Record<string, OpportunityDTO["status"]>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [declining, setDeclining] = useState<string | null>(null); // matchId awaiting a reason
 
   const rows = requests.map((r) => ({ ...r, status: override[r.matchId] ?? r.status }));
 
-  const act = async (matchId: string, action: "send" | "decline") => {
-    // The requests decline endpoint is served by the opportunities decline
-    // route (it accepts PROPOSAL_REQUESTED); declined rows disappear on refresh.
-    const url =
-      action === "send"
-        ? `/api/provider/requests/${matchId}/send-proposal`
-        : `/api/provider/opportunities/${matchId}/decline`;
-    const next = action === "send" ? "PROPOSAL_SENT" : "DECLINED";
+  const send = async (matchId: string) => {
     setBusy((b) => ({ ...b, [matchId]: true }));
-    setOverride((o) => ({ ...o, [matchId]: next }));
-    if (action === "send") showToast(t.reqSentLbl);
-    const res = await fetch(url, { method: "POST" }).catch(() => null);
+    setOverride((o) => ({ ...o, [matchId]: "PROPOSAL_SENT" }));
+    showToast(t.reqSentLbl);
+    const res = await fetch(`/api/provider/requests/${matchId}/send-proposal`, { method: "POST" }).catch(() => null);
     if (!res || !res.ok) {
       setOverride((o) => {
         const { [matchId]: _drop, ...rest } = o;
@@ -44,6 +39,27 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
       });
     } else {
       router.refresh();
+    }
+    setBusy((b) => ({ ...b, [matchId]: false }));
+  };
+
+  // A reason is required; the opportunities decline route also accepts
+  // PROPOSAL_REQUESTED matches.
+  const confirmDecline = async (reason: string) => {
+    const matchId = declining;
+    if (!matchId) return;
+    setBusy((b) => ({ ...b, [matchId]: true }));
+    const res = await fetch(`/api/provider/opportunities/${matchId}/decline`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }).catch(() => null);
+    if (res && res.ok) {
+      setOverride((o) => ({ ...o, [matchId]: "DECLINED" }));
+      setDeclining(null);
+      router.refresh();
+    } else {
+      showToast(isAr ? "تعذّر إرسال الاعتذار — حاول مجددًا" : "Couldn't submit — please try again");
     }
     setBusy((b) => ({ ...b, [matchId]: false }));
   };
@@ -120,7 +136,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
               {rq.status === "PROPOSAL_REQUESTED" && (
                 <>
                   <button
-                    onClick={() => act(rq.matchId, "send")}
+                    onClick={() => send(rq.matchId)}
                     disabled={!!busy[rq.matchId]}
                     className="hover:bg-[#24437F]!"
                     style={{
@@ -138,7 +154,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                     {t.reqSend}
                   </button>
                   <button
-                    onClick={() => act(rq.matchId, "decline")}
+                    onClick={() => setDeclining(rq.matchId)}
                     disabled={!!busy[rq.matchId]}
                     className="hover:border-[#B0433A]! hover:text-[#B0433A]!"
                     style={{
@@ -167,6 +183,18 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
           </div>
         ))}
       </div>
+
+      <ReasonModal
+        open={!!declining}
+        title={t.declineTitle}
+        sub={t.declineSub}
+        placeholder={t.declinePlaceholder}
+        confirmLabel={t.declineConfirm}
+        cancelLabel={t.declineCancel}
+        busy={!!declining && !!busy[declining]}
+        onConfirm={confirmDecline}
+        onCancel={() => setDeclining(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { PublicNav } from "@/components/shells/public-nav";
 import { PublicFooter } from "@/components/shells/public-footer";
+import { ChatWidget } from "@/components/chatbot/chat-widget";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,6 +8,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <PublicNav />
       <div style={{ flex: 1 }}>{children}</div>
       <PublicFooter />
+      <ChatWidget />
     </div>
   );
 }

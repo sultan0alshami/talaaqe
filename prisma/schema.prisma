@@ -208,6 +208,7 @@ model Match {
   reasonEn       String
   scoreBreakdown Json        // per-criterion subscores per README §9
   status         MatchStatus @default(RECOMMENDED)
+  declineReason  String?     // required reason a provider gives when declining
   noteAr         String?     // gold note shown on provider opportunity card
   noteEn         String?
   createdAt      DateTime    @default(now())
