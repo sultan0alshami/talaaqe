@@ -7,16 +7,26 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 
-const ghost: React.CSSProperties = {
-  background: "none",
-  border: "none",
+// Each nav choice is a bordered pill so it reads as a distinct selection;
+// hover lifts it with a teal border, tint and soft shadow.
+const itemBase: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 14,
-  padding: "8px 10px",
-  borderRadius: 8,
+  padding: "8px 16px",
+  borderRadius: 999,
   textDecoration: "none",
   display: "inline-block",
+  transition: "border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease",
 };
+const itemStyle = (active: boolean): React.CSSProperties => ({
+  ...itemBase,
+  border: `1px solid ${active ? "#C7D6EC" : "#E9EDF4"}`,
+  background: active ? "#EEF3FB" : "#fff",
+  color: active ? "#1B3568" : "#3D4C68",
+  fontWeight: active ? 700 : 500,
+});
+const itemHover =
+  "hover:border-[#14969E]! hover:bg-[#F2FBFB]! hover:text-[#0E7A81]! hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(20,150,158,0.14)]";
 
 export function PublicNav() {
   const { t, toggleLang } = useI18n();
@@ -35,12 +45,7 @@ export function PublicNav() {
   const navLink = (href: string, label: string) => {
     const active = pathname === href;
     return (
-      <Link
-        key={href}
-        href={href}
-        className="hover:bg-[#F0F3F8]"
-        style={{ ...ghost, fontWeight: active ? 700 : 500, color: active ? "#1B3568" : "#3D4C68" }}
-      >
+      <Link key={href} href={href} className={itemHover} style={itemStyle(active)}>
         {label}
       </Link>
     );
@@ -71,14 +76,14 @@ export function PublicNav() {
           <Image src="/assets/logo-mark.png" alt="Talaqi" width={36} height={35} style={{ objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 19, color: "#1B3568", lineHeight: 1.2 }}>{t.brand}</span>
         </Link>
-        <div style={{ display: "flex", gap: 4, marginInlineStart: "auto", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 7, marginInlineStart: "auto", alignItems: "center" }}>
           {/* Product & audience first, then subscriptions, then company. */}
-          <button onClick={() => anchor("tq-how")} className="hover:bg-[#F0F3F8]" style={{ ...ghost, fontWeight: 500, color: "#3D4C68" }}>
+          <button onClick={() => anchor("tq-how")} className={itemHover} style={itemStyle(false)}>
             {t.navHow}
           </button>
           {navLink("/for-clients", t.navClients)}
           {navLink("/for-providers", t.navProviders)}
-          <button onClick={() => anchor("tq-pricing")} className="hover:bg-[#F0F3F8]" style={{ ...ghost, fontWeight: 500, color: "#3D4C68" }}>
+          <button onClick={() => anchor("tq-pricing")} className={itemHover} style={itemStyle(false)}>
             {t.navPricing}
           </button>
           {navLink("/about", t.navAbout)}
@@ -101,7 +106,17 @@ export function PublicNav() {
           >
             {t.langBtn}
           </button>
-          <Link href="/login" style={{ ...ghost, fontSize: 14, fontWeight: 600, color: "#1B3568", padding: "8px 12px" }}>
+          <Link
+            href="/login"
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#1B3568",
+              padding: "8px 12px",
+              textDecoration: "none",
+              display: "inline-block",
+            }}
+          >
             {t.login}
           </Link>
           <Link
