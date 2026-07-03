@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { cookies } from "next/headers";
-import { I18nProvider, LANG_COOKIE, type Lang } from "@/lib/i18n";
+import { I18nProvider } from "@/lib/i18n";
+import { LANG_COOKIE, type Lang } from "@/lib/lang";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 

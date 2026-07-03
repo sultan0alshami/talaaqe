@@ -222,7 +222,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>{briefTitle}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ background: "rgba(255,255,255,.16)", borderRadius: 999, padding: "3px 12px", fontSize: 12 }}>
-                  {t.bBudget}: 4,000–8,000
+                  {t.bBudget}: <span dir="ltr">4,000–8,000</span>
                 </span>
                 <span style={{ background: "rgba(255,255,255,.16)", borderRadius: 999, padding: "3px 12px", fontSize: 12 }}>
                   {heroTimeline}

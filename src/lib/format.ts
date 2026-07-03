@@ -5,10 +5,11 @@ export function fmtNum(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-/** "4,000–8,000" or "—" when unknown. */
+/** "4,000–8,000" or "—" when unknown. Wrapped in an LTR bidi isolate so the
+ * range reads min→max inside RTL text too. */
 export function fmtBudget(min: number | null | undefined, max: number | null | undefined): string {
   if (min == null || max == null) return "—";
-  return `${fmtNum(min)}–${fmtNum(max)}`;
+  return `⁦${fmtNum(min)}–${fmtNum(max)}⁩`;
 }
 
 /** "2026/06/28" style used across tables in the prototype. */

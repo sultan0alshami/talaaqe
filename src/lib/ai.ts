@@ -60,6 +60,7 @@ const chatSystem = (lang: Lang, questionsAsked: number) => `You are the AI procu
 Rules:
 - Reply in ${lang === "ar" ? "Modern Standard Arabic (الفصحى المعاصرة)" : "English"} — the client's language.
 - Be professional and warm, concise: at most 3 short lines of prose.
+- PLAIN TEXT ONLY — no markdown, no asterisks, no bullet points, no headings.
 - Ask exactly ONE focused clarifying question per turn. You have asked ${questionsAsked} of a maximum of 5 questions so far.
 - Relevant angles: product/service specifics, brand assets, integrations (payments: mada/Apple Pay/STC Pay; local shipping carriers), budget range in SAR, launch timing.
 - When requirements are sufficiently covered OR you have asked 5 questions, do NOT ask another question — instead state (in the client's language) that you have the full picture and are ready to generate the Project Brief.
@@ -179,22 +180,13 @@ export const briefGenSchema = z.object({
 export type BriefGen = z.infer<typeof briefGenSchema>;
 
 const briefSystem = `You generate the 13-item Project Brief for "Talaqi" (تلاقي), an AI procurement platform for the Saudi/GCC market.
-You receive a client conversation and extracted requirements. Produce a complete, professional, BILINGUAL brief (Modern Standard Arabic + English).
+You receive a client conversation and extracted requirements. Produce a complete, professional, BILINGUAL brief (Modern Standard Arabic + English) by calling the emit_brief tool exactly once.
 Constraints:
 - budgetMin/budgetMax MUST be a realistic SAR range grounded in the budget the client stated (never contradict it; if none stated, estimate from market norms and note it in missing questions).
 - timeline must be a realistic range consistent with scope (e.g. "3 – 5 أسابيع" / "3–5 weeks").
 - complexity ∈ low|medium|high with complexityPct (0-100) matching it (low≈25, medium≈55, high≈80).
 - scope items are ordered, concrete and measurable; skills are short skill names in English (they render as chips).
-- Arabic must be professional Fus'ha, not a literal translation.
-Output ONLY a JSON object matching exactly this TypeScript shape, with no markdown fences and no commentary:
-{"titleAr":string,"titleEn":string,"summaryAr":string,"summaryEn":string,"objectiveAr":string,"objectiveEn":string,"scopeAr":string[],"scopeEn":string[],"deliverablesAr":string[],"deliverablesEn":string[],"requiredSkills":string[],"budgetMin":number,"budgetMax":number,"timelineAr":string,"timelineEn":string,"complexity":"low"|"medium"|"high","complexityPct":number,"missingAr":string[],"missingEn":string[],"providerTypeAr":string,"providerTypeEn":string,"criteriaAr":string[],"criteriaEn":string[],"milestones":[{"tAr":string,"tEn":string,"dAr":string,"dEn":string}]}`;
-
-function extractJson(text: string): unknown {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) throw new Error("no JSON object found");
-  return JSON.parse(text.slice(start, end + 1));
-}
+- Arabic must be professional Fus'ha, not a literal translation. Plain text in every field — no markdown.`;
 
 /** Scripted fallback brief: the prototype's perfume-store BRIEF. */
 export function scriptedBrief(): BriefGen {
@@ -245,7 +237,14 @@ export async function generateBrief(opts: {
   const transcript = history
     .map((m) => `${m.role === "user" ? "CLIENT" : "CONSULTANT"}: ${lang === "ar" ? m.ar : m.en}`)
     .join("\n");
-  const userContent = `Original need: ${description}\n\nConversation:\n${transcript}\n\nExtracted requirements JSON:\n${JSON.stringify(extracted, null, 2)}\n\nGenerate the brief JSON now.`;
+  const userContent = `Original need: ${description}\n\nConversation:\n${transcript}\n\nExtracted requirements JSON:\n${JSON.stringify(extracted, null, 2)}\n\nCall emit_brief with the complete brief now.`;
+
+  // Forced tool use guarantees schema-valid JSON output.
+  const briefTool: Anthropic.Tool = {
+    name: "emit_brief",
+    description: "Persist the generated 13-item bilingual project brief.",
+    input_schema: z.toJSONSchema(briefGenSchema) as Anthropic.Tool.InputSchema,
+  };
 
   const attempt = async (feedback?: string): Promise<BriefGen> => {
     const res = await client().messages.create({
@@ -253,18 +252,20 @@ export async function generateBrief(opts: {
       max_tokens: 4000,
       system: briefSystem,
       messages: [
-        { role: "user", content: feedback ? `${userContent}\n\nYour previous output was invalid: ${feedback}. Return corrected JSON only.` : userContent },
-        { role: "assistant", content: "{" },
+        {
+          role: "user",
+          content: feedback
+            ? `${userContent}\n\nYour previous tool call was invalid: ${feedback}. Call emit_brief again with corrected input.`
+            : userContent,
+        },
       ],
+      tools: [briefTool],
+      tool_choice: { type: "tool", name: "emit_brief" },
     });
     await logUsage(userId, projectId, "brief", BRIEF_MODEL, res.usage);
-    const text =
-      "{" +
-      res.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("");
-    const parsed = briefGenSchema.safeParse(extractJson(text));
+    const toolUse = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    if (!toolUse) throw new ValidationRetry("no emit_brief tool call in response");
+    const parsed = briefGenSchema.safeParse(toolUse.input);
     if (!parsed.success) throw new ValidationRetry(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
     return parsed.data;
   };

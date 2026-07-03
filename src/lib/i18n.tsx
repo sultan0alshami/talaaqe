@@ -4,11 +4,11 @@
 // provider owns it afterwards and flips <html lang/dir> live.
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { I18N } from "./talaqi-data";
+import { LANG_COOKIE, type Lang } from "./lang";
 
-export type Lang = "ar" | "en";
+export type { Lang };
+export { LANG_COOKIE };
 export type Dict = typeof I18N.ar;
-
-export const LANG_COOKIE = "talaqi_lang";
 
 type I18nContextValue = {
   lang: Lang;
