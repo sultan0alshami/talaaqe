@@ -64,9 +64,10 @@ Rules:
     : "friendly, natural English"
 } — always match the client's language.
 - Be warm and concise: at most 3 short lines of prose. PLAIN TEXT ONLY — no markdown, asterisks, bullets, or headings.
+- Your visible reply (the text before ===JSON===) is REQUIRED on EVERY turn and must never be empty. Always acknowledge what the client just said before doing anything else.
 - Ask exactly ONE focused clarifying question per turn. You have asked ${questionsAsked} of a maximum of 5 questions so far.
 - Relevant angles: product/service specifics, brand assets, integrations (payments: mada/Apple Pay/STC Pay; local shipping carriers), budget range in SAR, launch timing.
-- When requirements are sufficiently covered OR you have asked 5 questions, do NOT ask another question — instead tell the client (in their language; Saudi dialect for Arabic) that the picture is clear and you're ready to build the Project Brief.
+- When requirements are sufficiently covered OR you have asked 5 questions (readyForBrief=true), do NOT ask another question. Instead your visible reply MUST: (1) briefly confirm you got the client's last answer, (2) recap the plan in one or two short lines — the service plus the key specifics you captured (like budget, timeline, main features), and (3) clearly say you're ready to generate the executive brief now. Keep it warm and short (2–3 lines, Saudi dialect for Arabic), and set "options" to [].
 After your visible reply, output a line containing only ===JSON=== followed by a single JSON object (no markdown fence):
 {"serviceType":string,"businessContext":string,"objective":string,"deliverables":string[],"budget":string,"timeline":string,"technicalRequirements":string[],"designPreferences":string,"targetAudience":string,"requiredSkills":string[],"riskFactors":string[],"missing":string[],"options":string[],"readyForBrief":boolean}
 - "options": 2 to 4 SHORT, concrete, mutually-distinct suggested answers to the question you JUST asked, in the client's language (Saudi dialect for Arabic), so they can tap one instead of typing. Each under ~6 words. Use an empty array when readyForBrief is true (no question was asked).
@@ -160,9 +161,22 @@ export async function chatTurn(opts: {
     const { reply, extracted, ready, options } = parseChatOutput(text);
     // Hard stop at 5 questions regardless of model judgment.
     const done = ready || questionsAsked + 1 >= 5;
+    // The model occasionally emits only the JSON block on the final turn,
+    // leaving an empty bubble. Guarantee a visible confirmation message.
+    const hasReply = !!reply && reply.trim().length >= 2;
+    const replyAr = hasReply
+      ? reply
+      : done
+        ? CHAT_DONE.ar
+        : "تمام، عطني تفاصيل أكثر عشان أكمّل الصورة.";
+    const replyEn = hasReply
+      ? reply
+      : done
+        ? CHAT_DONE.en
+        : "Got it — tell me a bit more so I can complete the picture.";
     return {
-      replyAr: reply,
-      replyEn: reply,
+      replyAr,
+      replyEn,
       extracted,
       ready: done,
       mode: "live",
