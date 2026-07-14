@@ -21,7 +21,9 @@ export const GET = handler(async () => {
 });
 
 const createSchema = z.object({
-  description: z.string().min(4).max(2000),
+  // A short opener ("هلا") is a legitimate way to start — the AI greets back
+  // and asks what they need. Don't reject it.
+  description: z.string().trim().min(1).max(2000),
   mode: z.enum(["live", "scripted"]).default("scripted"),
   lang: z.enum(["ar", "en"]).default("ar"),
 });

@@ -148,6 +148,10 @@ export function ChatScreen({
       // Typing indicator stays ≥1000ms (1100ms for the very first reply);
       // the API call runs concurrently — reveal at max(apiDone, delay).
       const minDelay = new Promise<void>((res) => setTimeout(res, isFirst ? 1100 : 1000));
+      // Only a genuine network/server failure means "the live AI is
+      // unreachable" — a 4xx is our own request being rejected, so report it
+      // honestly instead of blaming the AI.
+      let status: number | null = null;
       try {
         const req = fetch(isFirst ? "/api/projects" : `/api/projects/${projectId}/chat`, {
           method: "POST",
@@ -157,7 +161,8 @@ export function ChatScreen({
           ),
         });
         const [res] = await Promise.all([req, minDelay]);
-        const data = await res.json();
+        status = res.status;
+        const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error(data?.error ?? "chat failed");
         setTyping(false);
         setMessages(data.messages as ChatMessage[]);
@@ -170,14 +175,25 @@ export function ChatScreen({
         setTyping(false);
         // The failed message was never persisted: drop the optimistic bubble
         // (the next successful send replaces messages with the server copy,
-        // which doesn't contain it), restore it to the draft for retry, and
-        // surface the fallback notice as a toast instead of a phantom bubble.
+        // which doesn't contain it) and restore it to the draft for retry.
         setMessages((prev) => {
           const lastMsg = prev[prev.length - 1];
           return lastMsg?.role === "user" && lastMsg.ar === text ? prev.slice(0, -1) : prev;
         });
         setDraft(text);
-        showToast(isAr ? LIVE_FALLBACK.ar : LIVE_FALLBACK.en);
+        if (status === 429) {
+          showToast(
+            isAr
+              ? "أرسلت رسايل كثيرة بسرعة — انتظر شوي وجرّب مرة ثانية."
+              : "Too many messages too quickly — wait a moment and try again."
+          );
+        } else if (status !== null && status >= 400 && status < 500) {
+          showToast(
+            isAr ? "ما قدرنا نرسل رسالتك — جرّب مرة ثانية." : "We couldn't send your message — please try again."
+          );
+        } else {
+          showToast(isAr ? LIVE_FALLBACK.ar : LIVE_FALLBACK.en);
+        }
       } finally {
         sendingRef.current = false;
       }
