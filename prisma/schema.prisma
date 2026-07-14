@@ -1,0 +1,293 @@
+// Talaqi — AI Procurement & Execution Platform
+// Data model per design_handoff_talaqi_backend/README.md §6.
+// Human-facing text is stored as paired Ar/En columns so the instant
+// AR↔EN toggle can re-render persisted content without a refetch.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+enum ProviderType {
+  FREELANCER
+  COMPANY
+  AGENCY
+  CONSULTANT
+}
+
+enum ProjectStatus {
+  DRAFT
+  BRIEF_GENERATED
+  BRIEF_APPROVED
+  PROVIDERS_RECOMMENDED
+  PROPOSAL_REQUESTED
+  PROVIDER_SELECTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MatchStatus {
+  RECOMMENDED
+  PROPOSAL_REQUESTED
+  PROPOSAL_SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum Complexity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum VerifiedStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  nameEn       String?
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  companyName  String?
+  language     String   @default("ar") // "ar" | "en"
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  client       Client?
+  provider     Provider?
+  aiUsage      AiUsageLog[]
+}
+
+model Client {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationType String? // individual | startup | sme | company | government
+  sector           String?
+  location         String?
+  projects         Project[]
+}
+
+model Provider {
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerType   ProviderType
+  roleTitleAr    String? // e.g. "مطور متاجر إلكترونية"
+  roleTitleEn    String?
+  bio            String?
+  experienceYears Int           @default(0)
+  priceRangeMin  Int?
+  priceRangeMax  Int?
+  availability   String?        // now | 1_week | 2_weeks | 1_month
+  rating         Float          @default(0)
+  verifiedStatus VerifiedStatus @default(PENDING)
+  location       String?        // city key
+  locationAr     String?
+  locationEn     String?
+  languages      String[]       // ["ar","en"]
+  avatarColor    String?        // brand tile color from prototype
+  avatarInitial  String?
+  categories     ProviderCategory[]
+  skills         ProviderSkill[]
+  portfolio      PortfolioItem[]
+  matches        Match[]
+  createdAt      DateTime       @default(now())
+}
+
+model PortfolioItem {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  title      String
+  titleEn    String?
+  url        String?
+  imageUrl   String?
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  titleAr        String
+  titleEn        String
+  description    String        // raw client need, e.g. "أحتاج متجر إلكتروني لبيع العطور"
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  status         ProjectStatus @default(DRAFT)
+  budgetMin      Int?
+  budgetMax      Int?
+  timelineAr     String?
+  timelineEn     String?
+  complexity     Complexity?
+  requiredSkills String[]
+  brief          Brief?
+  conversation   Conversation?
+  matches        Match[]
+  activity       ActivityLog[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// The 13-item AI output — versioned. Client edits set editedByClient
+// without a new version; regeneration increments version.
+model Brief {
+  id                 String     @id @default(cuid())
+  projectId          String     @unique
+  project            Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version            Int        @default(1)
+  titleAr            String
+  titleEn            String
+  summaryAr          String
+  summaryEn          String
+  objectiveAr        String
+  objectiveEn        String
+  scopeAr            String[]   // ordered scope items
+  scopeEn            String[]
+  deliverablesAr     String[]
+  deliverablesEn     String[]
+  requiredSkills     String[]   // skill names render LTR in both locales
+  budgetMin          Int
+  budgetMax          Int
+  currency           String     @default("SAR")
+  timelineAr         String
+  timelineEn         String
+  complexity         Complexity
+  complexityPct      Int        @default(50) // 0–100 for the UI bar
+  missingAr          String[]   // open questions
+  missingEn          String[]
+  providerTypeAr     String     // recommended provider type
+  providerTypeEn     String
+  criteriaAr         String[]   // evaluation criteria
+  criteriaEn         String[]
+  milestones         Json       // [{tAr,tEn,dAr,dEn}]
+  qualityScore       Int?       // admin review metric 0–100
+  approvedByClient   Boolean    @default(false)
+  editedByClient     Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model Conversation {
+  id                    String   @id @default(cuid())
+  projectId             String   @unique
+  project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId              String
+  messages              Json     // [{role:"assistant"|"user", ar, en, chips?:[{ar,en}], ts}]
+  extractedRequirements Json     // structured extraction per README §8
+  questionsAsked        Int      @default(0)
+  readyForBrief         Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Match {
+  id             String      @id @default(cuid())
+  projectId      String
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  providerId     String
+  provider       Provider    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  matchScore     Int         // 0–100
+  reasonAr       String
+  reasonEn       String
+  scoreBreakdown Json        // per-criterion subscores per README §9
+  status         MatchStatus @default(RECOMMENDED)
+  declineReason  String?     // required reason a provider gives when declining
+  noteAr         String?     // gold note shown on provider opportunity card
+  noteEn         String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([projectId, providerId])
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  nameAr      String
+  nameEn      String
+  description String?
+  demoCount   Int     @default(0) // marketing count shown on the landing grid
+  sortOrder   Int     @default(0)
+  skills      Skill[]
+  providers   ProviderCategory[]
+  projects    Project[]
+}
+
+model Skill {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  providers  ProviderSkill[]
+}
+
+model ProviderCategory {
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([providerId, categoryId])
+}
+
+model ProviderSkill {
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  skillId    String
+  skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([providerId, skillId])
+}
+
+// Every project status transition appends here (README §10).
+model ActivityLog {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String   // created | chat_started | brief_generated | brief_edited | brief_approved | providers_recommended | proposal_requested | proposal_sent | opportunity_accepted | opportunity_declined | status_changed
+  textAr    String
+  textEn    String
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+// Admin-editable runtime configuration (key-value). Currently used for AI
+// provider selection: "ai.provider" plus per-provider "ai.<id>.apiKey"
+// (AES-GCM encrypted), "ai.<id>.chatModel" and "ai.<id>.briefModel".
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// AI endpoints log token usage per README §8.
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId    String?
+  flow         String   // chat | brief
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
