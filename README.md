@@ -25,23 +25,22 @@ npm run seed                #             — load demo data
 npm run dev                 #             — http://localhost:3000
 ```
 
-### Demo accounts (password: `talaqi123`)
+### Demo accounts
 
-| Role | Email | What you'll see |
-|---|---|---|
-| Client | `ahmed@oudalkhaleej.sa` | Perfume-store project with brief, 6 ranked matches, activity log |
-| Provider | `abdullah.dev@gmail.com` | 3 matched opportunities + proposal requests |
-| Admin | `ops@talaqi.sa` | Platform overview, 4 pending provider approvals, briefs review, analytics |
-
-The login page also has one-click demo access buttons for all three.
+The seed creates a client, a provider and an admin. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD` and
+`SEED_DEMO_PASSWORD` in `.env` before running it — no credentials are hard-coded.
 
 ### Switching the database to Supabase
 
 Replace `DATABASE_URL` in `.env` with your Supabase Postgres connection string, then:
 
 ```bash
-npx prisma migrate deploy && npm run seed
+npx prisma migrate deploy
 ```
+
+> **`npm run seed` is a development-only, destructive script.** It deletes every row in all 14
+> tables before inserting demo data, and it refuses to run unless `SEED_ALLOW_WIPE=1` is set and
+> `NODE_ENV` is not `production`. Never point it at a database you care about.
 
 ## The demo flow (acceptance script)
 

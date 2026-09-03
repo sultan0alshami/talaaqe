@@ -14,7 +14,9 @@ export type Session = {
 
 function secret() {
   const s = process.env.AUTH_SECRET;
-  if (!s) throw new Error("AUTH_SECRET is not set");
+  if (!s || s.length < 32) {
+    throw new Error("AUTH_SECRET must be set to at least 32 characters");
+  }
   return new TextEncoder().encode(s);
 }
 

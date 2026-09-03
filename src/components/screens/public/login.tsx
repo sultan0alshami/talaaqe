@@ -1,20 +1,12 @@
 "use client";
 // Public Login page (public-screens spec §7, prototype lines 455–493).
-// Real auth via POST /api/auth/login; demo quick-access uses the seeded accounts.
+// Real auth via POST /api/auth/login.
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 
 const DEST: Record<string, string> = { CLIENT: "/client", PROVIDER: "/provider", ADMIN: "/admin" };
-
-const DEMO_ACCOUNTS = {
-  client: "ahmed@oudalkhaleej.sa",
-  provider: "abdullah.dev@gmail.com",
-  admin: "ops@talaqi.sa",
-} as const;
-
-type DemoRole = keyof typeof DEMO_ACCOUNTS;
 
 const labelStyle: React.CSSProperties = {
   fontSize: 13,
@@ -40,7 +32,6 @@ export function LoginScreen({ next }: { next?: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [demoBusy, setDemoBusy] = useState<DemoRole | null>(null);
 
   const doLogin = async (loginEmail: string, loginPassword: string) => {
     const res = await fetch("/api/auth/login", {
@@ -59,7 +50,7 @@ export function LoginScreen({ next }: { next?: string }) {
   };
 
   const submit = async () => {
-    if (busy || demoBusy) return;
+    if (busy) return;
     setError(false);
     setBusy(true);
     try {
@@ -69,20 +60,6 @@ export function LoginScreen({ next }: { next?: string }) {
       setBusy(false);
     }
   };
-
-  const demoLogin = async (role: DemoRole) => {
-    if (busy || demoBusy) return;
-    setError(false);
-    setDemoBusy(role);
-    try {
-      await doLogin(DEMO_ACCOUNTS[role], "talaqi123");
-    } catch {
-      setError(true);
-      setDemoBusy(null);
-    }
-  };
-
-  const anyBusy = busy || demoBusy !== null;
 
   return (
     <div
@@ -145,14 +122,14 @@ export function LoginScreen({ next }: { next?: string }) {
         </div>
         <button
           onClick={submit}
-          disabled={anyBusy}
+          disabled={busy}
           className="hover:bg-[#24437F]!"
           style={{
             width: "100%",
             background: "#1B3568",
             color: "#fff",
             border: "none",
-            cursor: anyBusy ? "default" : "pointer",
+            cursor: busy ? "default" : "pointer",
             fontSize: 15,
             fontWeight: 700,
             padding: 13,
@@ -163,69 +140,6 @@ export function LoginScreen({ next }: { next?: string }) {
         >
           {busy ? "…" : t.loginBtn}
         </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1, height: 1, background: "#EEF1F6" }} />
-          <span style={{ fontSize: 12, color: "#93A1B8", whiteSpace: "nowrap" }}>{t.loginDemo}</span>
-          <div style={{ flex: 1, height: 1, background: "#EEF1F6" }} />
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
-          <button
-            onClick={() => demoLogin("client")}
-            disabled={anyBusy}
-            className="hover:bg-[#E4E9F1]!"
-            style={{
-              background: "#F0F3F8",
-              color: "#1B3568",
-              border: "none",
-              cursor: anyBusy ? "default" : "pointer",
-              fontSize: 12.5,
-              fontWeight: 600,
-              padding: "10px 6px",
-              borderRadius: 9,
-              opacity: demoBusy === "client" ? 0.6 : 1,
-            }}
-          >
-            {demoBusy === "client" ? "…" : t.demoClient}
-          </button>
-          <button
-            onClick={() => demoLogin("provider")}
-            disabled={anyBusy}
-            className="hover:bg-[#D5EEEF]!"
-            style={{
-              background: "#E8F5F6",
-              color: "#0E7A81",
-              border: "none",
-              cursor: anyBusy ? "default" : "pointer",
-              fontSize: 12.5,
-              fontWeight: 600,
-              padding: "10px 6px",
-              borderRadius: 9,
-              opacity: demoBusy === "provider" ? 0.6 : 1,
-            }}
-          >
-            {demoBusy === "provider" ? "…" : t.demoProvider}
-          </button>
-          <button
-            onClick={() => demoLogin("admin")}
-            disabled={anyBusy}
-            className="hover:bg-[#F0E5CC]!"
-            style={{
-              background: "#F7F0E3",
-              color: "#8A6D33",
-              border: "none",
-              cursor: anyBusy ? "default" : "pointer",
-              fontSize: 12.5,
-              fontWeight: 600,
-              padding: "10px 6px",
-              borderRadius: 9,
-              opacity: demoBusy === "admin" ? 0.6 : 1,
-            }}
-          >
-            {demoBusy === "admin" ? "…" : t.demoAdmin}
-          </button>
-        </div>
 
         <div style={{ textAlign: "center", fontSize: 13, color: "#7684A0" }}>
           {t.noAccount}{" "}

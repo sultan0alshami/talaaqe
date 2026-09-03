@@ -21,7 +21,9 @@ import {
 import { scoreProvider, type MatchableBrief, type MatchableProvider } from "../src/lib/matching";
 
 const prisma = new PrismaClient();
-export const DEMO_PASSWORD = "talaqi123";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+export const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "demo-only-not-a-secret";
 
 const d = (s: string) => new Date(s.replace(/\//g, "-") + "T09:00:00+03:00");
 const minAgo = (m: number) => new Date(Date.now() - m * 60_000);
@@ -66,6 +68,14 @@ const PROVIDER_JOINED: Record<number, string> = {
 };
 
 async function main() {
+  if (process.env.SEED_ALLOW_WIPE !== "1" || process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Refusing to seed: this deletes every table. Set SEED_ALLOW_WIPE=1 and keep NODE_ENV out of production.",
+    );
+  }
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    throw new Error("Set ADMIN_EMAIL and ADMIN_PASSWORD before seeding — no admin credentials are hard-coded.");
+  }
   console.log("Clearing existing data…");
   await prisma.$transaction([
     prisma.aiUsageLog.deleteMany(),
@@ -265,8 +275,9 @@ async function main() {
   });
   await prisma.user.create({
     data: {
-      name: "فريق تلاقي", nameEn: "Talaqi Team", email: "ops@talaqi.sa",
-      passwordHash, role: Role.ADMIN, createdAt: d("2025/09/01"),
+      name: "فريق تلاقي", nameEn: "Talaqi Team", email: ADMIN_EMAIL,
+      passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10),
+      role: Role.ADMIN, createdAt: d("2025/09/01"),
     },
   });
   void USERS; // USERS table content is realized by the accounts above
