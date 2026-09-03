@@ -73,7 +73,7 @@ export function PublicNav() {
         }}
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <Image src="/assets/logo-mark.png" alt="Talaqi" width={36} height={35} style={{ objectFit: "contain" }} />
+          <Image src="/assets/logo-mark.png" alt="Talaqi" width={36} height={35} style={{ width: 36, height: 35, objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 19, color: "#1B3568", lineHeight: 1.2 }}>{t.brand}</span>
         </Link>
         <div style={{ display: "flex", gap: 7, marginInlineStart: "auto", alignItems: "center" }}>

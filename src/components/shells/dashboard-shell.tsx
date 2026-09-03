@@ -55,7 +55,7 @@ export function DashboardShell({
       <div style={{ background: "#fff", borderBottom: "1px solid #E4E9F1", position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ padding: "10px 20px", display: "flex", alignItems: "center", gap: 18 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
-            <Image src="/assets/logo-mark.png" alt="Talaqi" width={30} height={29} style={{ objectFit: "contain" }} />
+            <Image src="/assets/logo-mark.png" alt="Talaqi" width={30} height={29} priority style={{ width: 30, height: 29, objectFit: "contain" }} />
             <span style={{ fontWeight: 700, fontSize: 17, color: "#1B3568" }}>{t.brand}</span>
           </Link>
           <span

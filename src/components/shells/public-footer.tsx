@@ -37,7 +37,7 @@ export function PublicFooter() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <span style={{ background: "#fff", borderRadius: 10, padding: 5, display: "inline-flex" }}>
-              <Image src="/assets/logo-mark.png" alt="Talaqi" width={28} height={27} style={{ objectFit: "contain", display: "block" }} />
+              <Image src="/assets/logo-mark.png" alt="Talaqi" width={28} height={27} style={{ width: 28, height: 27, objectFit: "contain", display: "block" }} />
             </span>
             <span style={{ fontWeight: 700, fontSize: 18 }}>{t.brand}</span>
           </div>

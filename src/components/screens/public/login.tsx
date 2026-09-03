@@ -106,7 +106,7 @@ export function LoginScreen({ next }: { next?: string }) {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 26 }}>
-          <Image src="/assets/logo-mark.png" alt="Talaqi" width={52} height={51} style={{ objectFit: "contain", marginBottom: 12, display: "inline-block" }} />
+          <Image src="/assets/logo-mark.png" alt="Talaqi" width={52} height={51} priority style={{ width: 52, height: 51, objectFit: "contain", marginBottom: 12, display: "inline-block" }} />
           <div style={{ fontSize: 22, fontWeight: 700 }}>{t.loginTitle}</div>
           <div style={{ fontSize: 14, color: "#7684A0" }}>{t.loginSub}</div>
         </div>

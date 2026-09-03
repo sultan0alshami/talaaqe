@@ -69,7 +69,7 @@ export function AboutScreen() {
         }}
       >
         <div style={{ background: "#fff", borderRadius: 14, padding: 10, flexShrink: 0 }}>
-          <Image src="/assets/logo-mark.png" alt="" width={44} height={43} style={{ objectFit: "contain", display: "block" }} />
+          <Image src="/assets/logo-mark.png" alt="" width={44} height={43} style={{ width: 44, height: 43, objectFit: "contain", display: "block" }} />
         </div>
         <p style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.9, margin: 0, flex: 1, minWidth: 280 }}>
           {t.positioning}
