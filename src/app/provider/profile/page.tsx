@@ -1,10 +1,10 @@
 // Provider profile — server page (spec provider-admin §2).
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProviderProfileScreen, type ProviderProfileProps } from "@/components/screens/provider/profile-screen";
 
 export default async function ProviderProfilePage() {
-  const session = (await getSession())!; // proxy.ts guarantees PROVIDER
+  const session = await requirePageSession("CREATOR");
   const p = await prisma.provider.findUnique({
     where: { userId: session.userId },
     include: {

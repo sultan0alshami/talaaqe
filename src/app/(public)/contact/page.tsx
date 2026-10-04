@@ -1,5 +1,8 @@
-import { ContactScreen } from "@/components/screens/public/contact";
+import type { Metadata } from "next";
+import { InformationPage } from "@/components/infame/information-page";
 
-export default async function ContactPage() {
-  return <ContactScreen />;
+export const metadata: Metadata = { title: "التواصل · Contact" };
+
+export default function ContactPage() {
+  return <InformationPage kind="contact" />;
 }

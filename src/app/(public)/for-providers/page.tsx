@@ -1,5 +1,5 @@
-import { ForProvidersScreen } from "@/components/screens/public/for-providers";
+import { redirect } from "next/navigation";
 
-export default async function ForProvidersPage() {
-  return <ForProvidersScreen />;
+export default function ForProvidersPage() {
+  redirect("/for-creators");
 }

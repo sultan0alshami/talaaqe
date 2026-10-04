@@ -91,7 +91,6 @@ export function ChatScreen({
   aiEnabled,
   initialProjectId,
   initialMessages,
-  initialQuestionsAsked: _initialQuestionsAsked,
   initialReady,
   hasBrief,
 }: {

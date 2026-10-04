@@ -10,7 +10,7 @@ import { logActivity } from "@/lib/activity";
 const schema = z.object({ reason: z.string().trim().min(3).max(500) });
 
 export const POST = handler(async (req: Request, { params }: { params: Promise<{ matchId: string }> }) => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const { matchId } = await params;
   const { reason } = await parseBody(req, schema);
   const provider = await getOwnProvider(session.userId);

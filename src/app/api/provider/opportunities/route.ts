@@ -6,7 +6,7 @@ import { opportunityInclude, toOpportunityDTO } from "@/lib/dto";
 
 // Matched opportunities: recommendations + the provider's accept/decline states.
 export const GET = handler(async () => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const provider = await getOwnProvider(session.userId);
   const matches = await prisma.match.findMany({
     where: {

@@ -1,72 +1,34 @@
-# تلاقي | Talaqi — AI Procurement & Execution Platform
+# Infame / إنفيم
 
-> **Describe → AI Understands → AI Creates Project Brief → AI Matches → Execute**
+Arabic-first influencer collaboration platform being adapted from Talaqee, with worldwide Arab creator/brand onboarding and deeper Saudi موثوق support. Free V1; parties pay each other directly. Infame records payment declarations and never moves money.
 
-Talaqi is a bilingual (Arabic-first RTL / English) SaaS platform for the Saudi/GCC market. It is **not** a freelance marketplace — it is an **AI Procurement & Execution Platform**: a client describes a service need in plain language, the AI asks up to 5 clarifying questions, generates a structured 13-item Project Brief, the client edits/approves it, and a deterministic matching engine recommends the best-fit service providers with a match score and a human-readable reason.
+Creator portfolio → brand-approved campaign brief → deterministic explained shortlist → offer/counter → two-party agreement → delivery → sealed mutual ratings.
 
-*"تلاقي هو نظام تشغيل ذكي للخدمات المهنية، يبدأ من فهم احتياج العميل وينتهي بترشيح أنسب مقدم خدمة."*
+This checkout retains Talaqee history from b001002526c7952da97268c75dbeb9ae21414d9b on isolated infame/mvp. The original Talaqee main/tag/working tree are preserved. The inherited Next/React/Prisma/PostgreSQL/Anthropic infrastructure is reused deliberately, not replaced by a new scaffold.
 
-## Stack
-
-- **Next.js 16** (App Router, Turbopack) + TypeScript + React 19 + Tailwind v4
-- **PostgreSQL + Prisma 6** (local zero-install Postgres for dev; drop-in Supabase swap)
-- **Auth**: email/password + JWT sessions (httpOnly cookie, role claim `CLIENT | PROVIDER | ADMIN`), `proxy.ts` route guards
-- **AI**: Anthropic API, server-side only — `claude-haiku-4-5` for chat clarification turns, `claude-sonnet-4-6` for brief generation (zod-validated JSON, one retry, scripted demo fallback when no key)
-- **i18n**: Arabic default (`dir="rtl"`), instant AR↔EN toggle with no reload, complete ~300-key dictionary, CSS logical properties throughout
-
-## Quick start
+Development foundation is implemented and reviewed; Infame domain/product phases are in progress. Current checks/status and unresolved external acceptance are in [docs/PROGRESS.md](docs/PROGRESS.md). This is not a launch-ready claim.
 
 ```bash
-npm install
-cp .env.example .env        # fill AUTH_SECRET; add ANTHROPIC_API_KEY for live AI
-npm run db                  # terminal 1 — local PostgreSQL (embedded binaries, no install)
-npx prisma migrate dev      # terminal 2 — create schema
-npm run seed                #             — load demo data
-npm run dev                 #             — http://localhost:3000
+npm ci
+npx prisma generate
+npm run setup:local
+npm run db
+# In another terminal:
+npm run db:prepare
+npm run db:prepare:test
+npm run db:prepare:e2e
+npm run dev
+npm run check
+npm run test:e2e
 ```
 
-### Demo accounts
+Use Node24/npm12 and the lockfile. Setup generates ignored credentials and separate task-bound dev/test/E2E databases on loopback; never copy source .env/data or use Talaqee5544. Seeds are small, synthetic and idempotent. Startup never resets data.
 
-The seed creates a client, a provider and an admin. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD` and
-`SEED_DEMO_PASSWORD` in `.env` before running it — no credentials are hard-coded.
+- [Development and safe reset](docs/DEVELOPMENT.md)
+- [Prepared Cloud install/start/publication workflow](docs/CLOUD_SETUP.md)
+- [Source audit/reuse inventory](docs/REUSE_INVENTORY.md)
+- [Shared contracts](docs/CONTRACTS.md), [decisions](docs/DECISIONS.md), [ownership](docs/OWNERSHIP.md)
+- [Dependency-ordered plans](docs/plans), [full handoffs](docs/handoff)
+- [Founder/provider/legal dependencies](docs/FOUNDER_DEPENDENCIES.md)
 
-### Switching the database to Supabase
-
-Replace `DATABASE_URL` in `.env` with your Supabase Postgres connection string, then:
-
-```bash
-npx prisma migrate deploy
-```
-
-> **`npm run seed` is a development-only, destructive script.** It deletes every row in all 14
-> tables before inserting demo data, and it refuses to run unless `SEED_ALLOW_WIPE=1` is set and
-> `NODE_ENV` is not `production`. Never point it at a database you care about.
-
-## The demo flow (acceptance script)
-
-1. Sign up as a client (Arabic UI) → describe **"أحتاج متجر إلكتروني لبيع العطور"**
-2. The AI asks ≤5 focused questions (live Haiku, or the scripted interview without an API key)
-3. Generate the Project Brief — 13 fields, bilingual, with budget/timeline/complexity/milestones
-4. Edit the budget → approve → the matching engine ranks approved providers across 7 weighted criteria (skills 30%, category 15%, budget fit 15%, experience/availability/rating/portfolio 10% each), keeps the top 6 scoring ≥60
-5. Request a proposal → the provider sees it, accepts/sends a proposal → every step lands in the project activity log
-6. The admin reviews metrics and generated briefs; the language toggle flips the entire app AR↔EN with correct RTL/LTR
-
-## Project structure
-
-```
-prisma/            schema + seed (ports the design handoff's talaqi-data.js)
-proxy.ts           role-based route guards (Next 16 successor of middleware.ts)
-scripts/db.mjs     local embedded PostgreSQL runner
-specs/             implementation specs distilled from the design prototype
-src/lib/           auth, i18n, AI flows, matching engine, DTOs, rate limiting
-src/app/api/       REST API (auth, projects/chat/brief/matches, provider, admin)
-src/app/(public)/  landing, about, for-clients, for-providers, contact, login, signup
-src/app/client/    dashboard, AI chat, brief, matches, projects, profile, settings
-src/app/provider/  opportunities, proposal requests, profile, settings
-src/app/admin/     overview, users, providers, projects, briefs, analytics, categories
-src/components/    shells (top bar / sidebars / footer) + screens + UI primitives
-```
-
-## Design
-
-Rebuilt pixel-faithfully from the high-fidelity prototype in `design_handoff_talaqi_backend/` (navy `#1B3568` / teal `#14969E` / gold `#C6A15B`, IBM Plex Sans Arabic, 16–20px card radii, soft shadows). All UI copy — Arabic and English — is the handoff's final dictionary, ported verbatim.
+Historical specs under specs/ describe Talaqee. Their inline-style/demo/fresh-fork assumptions are superseded by AGENTS.md and the Infame contracts. No demo credentials, fake traction or fixed AI output are Infame acceptance. Local tests do not prove actual Cloud publication, live providers or supported-phone Arabic voice.

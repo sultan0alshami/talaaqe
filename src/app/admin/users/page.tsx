@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UsersScreen } from "@/components/screens/admin/users-screen";
 
 // Admin users — mirrors GET /api/admin/users.
 export default async function AdminUsersPage() {
-  const session = await getSession();
+  const session = await requirePageSession("ADMIN");
   const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
 
   return (

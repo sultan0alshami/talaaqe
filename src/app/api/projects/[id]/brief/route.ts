@@ -31,11 +31,11 @@ const genSchema = z.object({ lang: z.enum(["ar", "en"]).default("ar") });
 
 // Generate (or regenerate) the 13-item brief from the conversation (README §8B).
 export const POST = handler(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   const { lang } = await parseBody(req, genSchema).catch(() => ({ lang: "ar" as const }));
 
-  const rl = rateLimit(`brief:${session.userId}`, 5);
+  const rl = await rateLimit(`brief:${session.userId}`, 5);
   if (!rl.ok) throw new ApiError(429, `Rate limited — retry in ${rl.retryAfterSec}s`);
 
   const { project } = await getOwnedProject(session.userId, id);
@@ -130,7 +130,7 @@ const editSchema = z.object({
 
 // Client edits (title/summary/budget/timeline) — flags editedByClient, no new version.
 export const PATCH = handler(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   const edits = await parseBody(req, editSchema);
   const { project } = await getOwnedProject(session.userId, id);

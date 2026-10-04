@@ -2,13 +2,13 @@
 // Fetches the provider's matched opportunities + stat inputs, passes plain
 // JSON to the client screen (spec provider-admin §1).
 import { MatchStatus } from "@prisma/client";
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { opportunityInclude, toOpportunityDTO } from "@/lib/dto";
 import { ProviderHomeScreen } from "@/components/screens/provider/home-screen";
 
 export default async function ProviderHomePage() {
-  const session = (await getSession())!; // proxy.ts guarantees PROVIDER
+  const session = await requirePageSession("CREATOR");
   const provider = await prisma.provider.findUnique({
     where: { userId: session.userId },
     include: { user: true },

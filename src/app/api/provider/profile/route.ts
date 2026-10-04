@@ -5,7 +5,7 @@ import { getOwnProvider } from "@/lib/ownership";
 import { PROVIDER_TYPE_LABELS } from "@/lib/domain";
 
 export const GET = handler(async () => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const p = await getOwnProvider(session.userId);
   const type = PROVIDER_TYPE_LABELS[p.providerType];
   return ok({
@@ -59,7 +59,7 @@ const patchSchema = z.object({
 });
 
 export const PATCH = handler(async (req: Request) => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const body = await parseBody(req, patchSchema);
   const p = await getOwnProvider(session.userId);
 

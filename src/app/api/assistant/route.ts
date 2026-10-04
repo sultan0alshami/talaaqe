@@ -44,7 +44,7 @@ let client: Anthropic | null = null;
 export const POST = handler(async (req: Request) => {
   const { lang, messages } = await parseBody(req, schema);
 
-  const rl = rateLimit(`assistant:${getClientIp(req)}`, 20);
+  const rl = await rateLimit(`assistant:${getClientIp(req)}`, 20);
   if (!rl.ok) return fail(429, "Too many messages", { retryAfterSec: rl.retryAfterSec });
 
   if (!aiEnabled()) {

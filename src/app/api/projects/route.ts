@@ -9,7 +9,7 @@ import { projectListInclude, toProjectListItem } from "@/lib/dto";
 import type { ChatMessage } from "@/lib/domain";
 
 export const GET = handler(async () => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const client = await prisma.client.findUnique({ where: { userId: session.userId } });
   if (!client) throw new ApiError(404, "Client profile not found");
   const projects = await prisma.project.findMany({
@@ -31,10 +31,10 @@ const createSchema = z.object({
 // Create a draft project from the client's first chat message and run the
 // first AI clarification turn (README §7: POST /api/projects).
 export const POST = handler(async (req: Request) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { description, mode, lang } = await parseBody(req, createSchema);
 
-  const rl = rateLimit(`chat:${session.userId}`);
+  const rl = await rateLimit(`chat:${session.userId}`);
   if (!rl.ok) throw new ApiError(429, `Rate limited — retry in ${rl.retryAfterSec}s`);
 
   const client = await prisma.client.findUnique({ where: { userId: session.userId } });

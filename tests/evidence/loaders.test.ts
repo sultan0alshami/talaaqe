@@ -1,0 +1,21 @@
+import { randomUUID } from "node:crypto";
+import { afterEach, expect, it } from "vitest";
+import { prisma } from "@/lib/prisma";
+import { createOwnershipChallenge, getCreatorEvidence, listEvidenceReviewQueue, uploadPrivateAsset } from "@/lib/evidence/service";
+import { cleanup, fixture, png } from "./fixtures";
+afterEach(cleanup);
+it("scopes private owner loaders and audits real active-admin queues without exposing object keys", async () => {
+  const f = await fixture();
+  const proof = (await uploadPrivateAsset(f.owner, { operationKey: randomUUID(), purpose: "OWNERSHIP_PROOF", contentType: "image/png", bytes: png }, f.options)).asset;
+  const challenge = (await createOwnershipChallenge(f.owner, { operationKey: randomUUID(), accountId: f.account.id, expectedMappingRevision: 1, expectedEvidenceRevision: 1 }, f.options)).challenge;
+  const mine = await getCreatorEvidence(f.owner, f.creator.id, f.options);
+  expect(mine.assets).toEqual([proof]); expect(mine.challenges.map(c => c.id)).toEqual([challenge.id]);
+  expect(JSON.stringify(mine)).not.toContain("storageKey");
+  await expect(getCreatorEvidence(f.outsider, f.creator.id, f.options)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await expect(listEvidenceReviewQueue(f.owner, { kind: "OWNERSHIP" }, f.options)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  const queue = await listEvidenceReviewQueue(f.admin, { kind: "OWNERSHIP", limit: 50 }, f.options);
+  expect(queue.entries.map(e => e.id)).toContain(challenge.id);
+  expect(await prisma.adminAudit.count({ where: { actorUserId: f.admin, action: "evidence.queue_accessed" } })).toBe(1);
+  await prisma.user.update({ where: { id: f.admin }, data: { active: false } });
+  await expect(listEvidenceReviewQueue(f.admin, { kind: "OWNERSHIP" }, f.options)).rejects.toMatchObject({ code: "FORBIDDEN" });
+});

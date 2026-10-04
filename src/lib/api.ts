@@ -1,83 +1,79 @@
-// Shared route-handler helpers: JSON responses, zod parsing, role guards.
 import { NextResponse } from "next/server";
+import { Prisma, type Role } from "@prisma/client";
 import { z } from "zod";
-import type { Role } from "@prisma/client";
 import { getSession, type Session } from "./auth";
-import { prisma } from "./prisma";
+import { AuthenticationInvalidated } from "./identity";
 
-export function ok<T>(data: T, init?: ResponseInit) {
-  return NextResponse.json(data as unknown as Record<string, unknown>, init);
-}
-
+export function ok<T>(data: T, init?: ResponseInit) { return NextResponse.json(data, init); }
 export function fail(status: number, error: string, extra?: Record<string, unknown>) {
   return NextResponse.json({ error, ...extra }, { status });
 }
-
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
+  constructor(public status: number, message: string) { super(message); }
 }
-
-/** Wrap a handler: uncaught ApiError → status json; anything else → 500. */
-export function handler<A extends unknown[]>(
-  fn: (...args: A) => Promise<Response>
-): (...args: A) => Promise<Response> {
+const retired = /^\/api\/(projects|provider|matches|admin|categories|skills|assistant)(?:\/|$)/;
+export function assertMutationOrigin(req: Request) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
+  const expected = process.env.APP_ORIGIN;
+  if (!expected || req.headers.get("origin") !== new URL(expected).origin) throw new ApiError(403, "Invalid request origin");
+}
+export function handler<A extends unknown[]>(fn: (...args: A) => Promise<Response>): (...args: A) => Promise<Response> {
   return async (...args: A) => {
     try {
+      const req = args[0];
+      if (req instanceof Request) {
+        assertMutationOrigin(req);
+        if (retired.test(new URL(req.url).pathname)) {
+          await requireSession();
+          throw new ApiError(410, "Legacy Talaqee endpoint retired");
+        }
+      }
       return await fn(...args);
-    } catch (e) {
-      if (e instanceof ApiError) return fail(e.status, e.message);
-      console.error("[api]", e);
+    } catch (error) {
+      if (error instanceof ApiError) return fail(error.status, error.message);
+      if (error instanceof AuthenticationInvalidated) return fail(401, "Authentication invalidated");
+      if (error instanceof z.ZodError) return fail(400, "Validation failed");
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return fail(409, "Resource already exists");
+      // ORM errors can contain private submitted values: never dump their objects.
+      console.error("[infame-api] request failed", error instanceof Error ? error.name : "UnknownError");
       return fail(500, "Internal error");
     }
   };
 }
-
-// Suspension must take effect before the 7-day JWT expires, so re-check
-// user.active on every authenticated call (memoized briefly per user).
-const activeCache = new Map<string, { active: boolean; at: number }>();
-const ACTIVE_TTL_MS = 60_000;
-
-async function assertActive(userId: string) {
-  const cached = activeCache.get(userId);
-  if (cached && Date.now() - cached.at < ACTIVE_TTL_MS) {
-    if (!cached.active) throw new ApiError(403, "Account suspended");
-    return;
-  }
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { active: true } });
-  activeCache.set(userId, { active: !!user?.active, at: Date.now() });
-  if (!user?.active) throw new ApiError(403, "Account suspended");
-}
-
-/** Drop the memoized active flag (call when an admin toggles a user). */
-export function invalidateActiveCache(userId: string) {
-  activeCache.delete(userId);
-}
-
+// Compatibility export: current authorization is re-read on every call.
+export function invalidateActiveCache(_userId: string) { void _userId; }
 export async function requireSession(): Promise<Session> {
   const session = await getSession();
   if (!session) throw new ApiError(401, "Not authenticated");
-  await assertActive(session.userId);
   return session;
 }
-
 export async function requireRole(...roles: Role[]): Promise<Session> {
   const session = await requireSession();
   if (!roles.includes(session.role)) throw new ApiError(403, "Forbidden");
   return session;
 }
-
 export async function parseBody<S extends z.ZodType>(req: Request, schema: S): Promise<z.infer<S>> {
-  let body: unknown;
+  const reader = req.body?.getReader();
+  if (!reader) throw new ApiError(400, "Missing JSON body");
+  const chunks: Uint8Array[] = [];
+  let length = 0;
   try {
-    body = await req.json();
-  } catch {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > 65536) { await reader.cancel(); throw new ApiError(413, "Body exceeds 64 KB"); }
+      chunks.push(value);
+    }
+    const joined = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength; }
+    const input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(joined));
+    const parsed = schema.safeParse(input);
+    if (!parsed.success) throw new ApiError(400, "Validation failed");
+    return parsed.data;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(400, "Invalid JSON body");
-  }
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    throw new ApiError(400, "Validation failed: " + parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
-  }
-  return parsed.data;
+  } finally { reader.releaseLock(); }
 }

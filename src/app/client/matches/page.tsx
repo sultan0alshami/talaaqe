@@ -1,7 +1,7 @@
 // Recommended providers (client) — server page. Resolves ?project=<id>
 // (ownership enforced) or falls back to the latest project with matches.
 import { MatchStatus } from "@prisma/client";
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { providerCardInclude, toMatchDTO } from "@/lib/dto";
 import { MatchesScreen } from "@/components/screens/client/matches-screen";
@@ -20,7 +20,7 @@ export default async function ClientMatchesPage({
   searchParams: Promise<{ project?: string }>;
 }) {
   const { project: projectId } = await searchParams;
-  const session = (await getSession())!; // proxy.ts guarantees CLIENT
+  const session = await requirePageSession("BRAND");
   const client = await prisma.client.findUnique({ where: { userId: session.userId } });
 
   const project = client

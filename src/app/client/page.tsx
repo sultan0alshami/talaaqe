@@ -1,11 +1,11 @@
 import { MatchStatus, ProjectStatus } from "@prisma/client";
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { projectListInclude, toProjectListItem } from "@/lib/dto";
 import { HomeScreen } from "@/components/screens/client/home-screen";
 
 export default async function ClientHomePage() {
-  const session = (await getSession())!; // proxy.ts guarantees CLIENT
+  const session = await requirePageSession("BRAND");
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: { client: true },

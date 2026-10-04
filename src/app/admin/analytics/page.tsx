@@ -1,9 +1,11 @@
+import { requirePageSession } from "@/lib/auth";
 import { MatchStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsScreen } from "@/components/screens/admin/analytics-screen";
 
 // Admin matching analytics — mirrors GET /api/admin/analytics.
 export default async function AdminAnalyticsPage() {
+  await requirePageSession("ADMIN");
   const matches = await prisma.match.findMany({ select: { matchScore: true, status: true } });
 
   const avg = matches.length

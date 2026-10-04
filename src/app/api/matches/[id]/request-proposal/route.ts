@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/activity";
 
 // Client requests a proposal from a recommended provider (README §7).
 export const POST = handler(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
 
   const match = await prisma.match.findUnique({

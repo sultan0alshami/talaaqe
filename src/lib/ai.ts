@@ -275,7 +275,7 @@ export async function generateBrief(opts: {
   if (!aiEnabled()) return { brief: scriptedBrief(), mode: "scripted" };
 
   const transcript = history
-    .map((m) => `${m.role === "user" ? "CLIENT" : "CONSULTANT"}: ${lang === "ar" ? m.ar : m.en}`)
+    .map((m) => `${m.role === "user" ? "BRAND" : "CONSULTANT"}: ${lang === "ar" ? m.ar : m.en}`)
     .join("\n");
   const userContent = `Original need: ${description}\n\nConversation:\n${transcript}\n\nExtracted requirements JSON:\n${JSON.stringify(extracted, null, 2)}\n\nCall emit_brief with the complete brief now.`;
 

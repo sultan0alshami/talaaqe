@@ -1,0 +1,45 @@
+# Infame ownership and integration
+
+Updated 2026-10-01. Status: assignments below define boundaries; future domain specialists are not implicitly running or finished. Coordinator owns integration and must explicitly activate a bounded task. Every worker is told: **you share the codebase; preserve other agents' work, inspect current changes and do not revert edits you do not own.**
+
+Source: isolated full clone at `C:/Users/Asus/Claude_Code/Infame`, branch `infame/mvp`, inherited source `b001002526c7952da97268c75dbeb9ae21414d9b`. Do not modify source Talaqee checkout or act on another workspace's instructions.
+
+## Shared paths: one writer
+
+| Owner | Exclusive paths/responsibility |
+|---|---|
+| Coordinator/foundation | `AGENTS.md`, `README.md`, `package.json`, `package-lock.json`, `tsconfig.json`, Next/PostCSS/ESLint/Vitest/Playwright configs, `components.json`, `proxy.ts`, `.gitignore`, `.env.example`, `.github/**`, deployment/service-worker manifests and config. Secret runtime files remain ignored. |
+| Coordinator/foundation | `prisma/schema.prisma`, all `prisma/migrations/**`, `prisma/seed.ts`, `scripts/**`; review every domain's schema request, migration/index/constraint and safe seed. No domain agent modifies Prisma. |
+| Coordinator/foundation | `src/lib/config/**`, `src/lib/contracts/**`, inherited `src/lib/domain.ts`, `src/lib/dto.ts`, `src/lib/format.ts`, `src/lib/auth.ts`, `src/lib/jwt.ts`, `src/lib/api.ts`, `src/lib/ownership.ts`, `src/lib/prisma.ts`, `src/lib/rate-limit.ts`, shared identity/session/verification/OTP/env/AI budget helpers. Shared offer schema lives once at `src/lib/contracts/offers.ts`; deals and matching import it. |
+| Coordinator/foundation | `src/lib/onboarding/shared/**`, `src/lib/voice/**`, `src/lib/ai/shared/**`, shared job/consent/version/visibility interfaces; role orchestration mount and signup. Provider credentials/voice authorization/spend enforcement are central. |
+| Coordinator/foundation | `src/components/ui/**`, `src/components/shells/**`, shared onboarding/card/transcript UI, `src/app/layout.tsx`, `src/app/globals.css`, role layouts and public layout/navigation, auth pages/API, public marketing/PWA/SEO mount points. Legacy shell adapters retained while callers migrate. |
+| Coordinator/foundation | `src/lib/i18n.tsx`, `src/lib/talaqi-data.ts`, dictionary composer/barrels/shared keys, `src/lib/dictionary/shared/**`; domains supply unique key modules. Public strings derive from typed brand config. |
+| Coordinator/foundation | `docs/PROGRESS.md`, `docs/REUSE_INVENTORY.md`, `docs/DEVELOPMENT.md`, `docs/CLOUD_SETUP.md`, integration/release architecture/runbook entrypoints, cross-domain `tests/integration/**`, global `e2e/**`. Verifier may submit evidence through a coordinator-owned report path assigned for that run. |
+| Planning specialist (current task) | Only `docs/DECISIONS.md`, `docs/CONTRACTS.md`, `docs/OWNERSHIP.md`, `docs/FOUNDER_DEPENDENCIES.md`, `docs/plans/00-08*.md`. No product/config/schema/dependency writes. |
+| Contract implementation specialist (next bounded handoff, 2026-10-01) | Coordinator explicitly transfers only `src/lib/contracts/money.ts`, `src/lib/contracts/vocabulary.ts`, `src/lib/contracts/offers.ts` and `tests/contracts*.test.ts` to the planning specialist after plans are written. Implement canonical parsers/DTO/offer contract with failing tests; no dependencies/Prisma/config/auth edits. Other shared contract paths remain coordinator-owned. Return validated changes to coordinator for integration/review. |
+| Design/research specialist | Only explicitly assigned `docs/SHADCN_RESEARCH.md`, `docs/UI_COMPOSITION.md`, research artifacts/Figma handoff links. Mutations to components/tokens/registry configuration return to coordinator. |
+
+## Domain leaves: activate after foundation handoff
+
+Exact allowed files are narrowed again in each task. A broad directory row does not grant overlapping writes to shared entrypoints or another domain.
+
+| Track | Exclusive domain leaves | Imports/handoff |
+|---|---|---|
+| Creator | `src/lib/creator/**`, `src/lib/onboarding/creator/**`, `src/lib/social/**`, `src/lib/imports/social/**`, `src/lib/dto/creator.ts`, `src/lib/ownership/creator.ts`, `src/components/screens/creator/**`, `src/app/creator/**` except layout, `src/app/api/creator/**`, creator/public-profile route files individually assigned, `src/lib/dictionary/creator/**`, `tests/creator/**` | Uses central state/consent/jobs/visibility/money; requests schema/cron/env/shell changes. Supplies approved eligible social-account/evidence DTO to matching and export projection to public owner. |
+| Brand/campaign | `src/lib/brand/**`, `src/lib/campaign/**`, `src/lib/onboarding/brand/**`, `src/lib/imports/website/**`, `src/lib/dto/brand.ts`, `src/lib/ownership/brand.ts`, `src/components/screens/brand/**`, `src/app/brand/**` except layout, `src/app/api/brand/**`, `src/app/api/campaigns/**`, individually assigned company public route, `src/lib/dictionary/brand/**`, `tests/brand/**` | Uses central auth/offer eligibility/orchestrator; SSRF transport changes reviewed centrally. Supplies immutable approved campaign version to matching/deals. Never changes shared signup. |
+| Matching | `src/lib/matching/**`, `src/lib/dto/matching.ts`, `src/components/screens/matching/**`, individually assigned brand matches/search pages, `src/app/api/matching/**`, `src/lib/dictionary/matching/**`, `tests/matching/**` | Replaces inherited `src/lib/matching.ts` via coordinator-controlled adapter/retirement. Pure scores first; imports central offers/campaign/creator types. Never alters rates/licence records/auth. |
+| Deals | `src/lib/deals/**`, `src/lib/dto/deals.ts`, `src/lib/ownership/deals.ts`, `src/components/deals/**`, `src/components/screens/deals/**`, `src/app/deals/**`, `src/app/api/deals/**`, `src/lib/dictionary/deals/**`, `tests/deals/**` | Uses coordinator-owned `contracts/offers.ts`, exact money and transaction helpers. Event/outbox interface to admin notifications. Schema/partial-index requests return to coordinator. |
+| Admin/growth | `src/lib/admin/**`, `src/lib/imports/csv/**`, `src/lib/claims/**`, `src/lib/invites/**`, `src/lib/referrals/**`, `src/lib/notifications/**`, `src/lib/dto/admin.ts`, `src/components/screens/admin/**`, `src/app/admin/**` except layout, `src/app/api/admin/**`, explicitly assigned claim/invite/notification routes, `src/lib/dictionary/admin/**`, `tests/admin/**` | Reviews evidence through shared mutation contract, never promotes unrelated metrics. Coordinator owns public SEO files/crons/config/auth revocation; admin supplies sanitized published index inputs and event handlers. |
+| Independent reviewer/verifier | Read-only all assigned product paths, plus an explicitly assigned review report/evidence directory | No product fixes while reviewing. Reports reproducible actor/state/security/regression findings; fixes go to implementation owner, followed by independent recheck. May exercise synthetic disposable targets only. |
+
+## Handoff order and integration rules
+
+1. Phase00 baseline/inventory/test infrastructure and decisions → phase01 canonical runtime contracts/schema/auth/DTO projections.
+2. Coordinator freezes contract export paths and foundation review/migration evidence before activating domain leaves. A specialist sends schema additions/indexes and expected failing invariants; coordinator implements/integrates them.
+3. Phase02 tokens/primitives/navigation/orchestration → creator03 and brand04 in parallel with independent paths. Design evidence covers selected components and actual RTL state behavior.
+4. Creator produces eligible account snapshots; brand produces immutable approved brief. Matching05 consumes both; deals06 consumes shared supported basket and offer schema. Admin leaves may start earlier after identity/evidence contracts, then integrate domain events in07.
+5. Full merged suite, four gates, database concurrency tests and relevant browser tests run after every coherent integration. Per-track green does not substitute for union evidence. Root records revision/commands/results and concrete unresolved blockers.
+
+Before editing: inspect Git status/diff, read local instructions and installed Next guide relevant to the task, confirm prerequisite evidence and exact ownership. Keep one writer per shared path. Send required cross-domain changes to coordinator with expected behavior/tests, do not patch a shared file opportunistically. Never commit secrets or silently reset/resume data. Preserve original content/history while adopting the Infame contract; source specs are superseded where `DECISIONS.md` says so.
+
+Review gates: owner runs meaningful failing test before implementation, relevant validation after, independent reviewer checks correctness/ownership/visibility/security and failure/race cases, owner fixes findings, verifier rechecks, then coordinator runs all four gates. No task status is complete until required acceptance is recorded; unavailable live providers remain launch dependencies even when adapters are code-tested.

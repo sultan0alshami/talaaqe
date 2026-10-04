@@ -12,15 +12,15 @@ type UserRow = {
   nameAr: string;
   nameEn: string;
   email: string;
-  role: "CLIENT" | "PROVIDER" | "ADMIN";
+  role: "BRAND" | "CREATOR" | "ADMIN";
   active: boolean;
   joined: string;
 };
 
 // Role chip + avatar color map (behaviors §6.8).
 const ROLE_CHIP: Record<UserRow["role"], { labelKey: keyof Dict; bg: string; fg: string; avatar: string }> = {
-  CLIENT: { labelKey: "roleClient", bg: "#EEF3FB", fg: "#1B3568", avatar: "#1B3568" },
-  PROVIDER: { labelKey: "roleProvider", bg: "#E8F5F6", fg: "#0E7A81", avatar: "#14969E" },
+  BRAND: { labelKey: "roleClient", bg: "#EEF3FB", fg: "#1B3568", avatar: "#1B3568" },
+  CREATOR: { labelKey: "roleProvider", bg: "#E8F5F6", fg: "#0E7A81", avatar: "#14969E" },
   ADMIN: { labelKey: "roleAdminL", bg: "#F7F0E3", fg: "#8A6D33", avatar: "#14213A" },
 };
 

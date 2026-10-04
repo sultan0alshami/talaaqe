@@ -4,7 +4,7 @@ import { getOwnedProject } from "@/lib/ownership";
 import { providerCardInclude, toMatchDTO } from "@/lib/dto";
 
 export const GET = handler(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   await getOwnedProject(session.userId, id);
   const matches = await prisma.match.findMany({

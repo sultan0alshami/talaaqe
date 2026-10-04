@@ -15,11 +15,11 @@ const schema = z.object({
 
 // Send a chat message → AI clarification reply (README §7/§8A).
 export const POST = handler(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   const { message, mode, lang } = await parseBody(req, schema);
 
-  const rl = rateLimit(`chat:${session.userId}`);
+  const rl = await rateLimit(`chat:${session.userId}`);
   if (!rl.ok) throw new ApiError(429, `Rate limited — retry in ${rl.retryAfterSec}s`);
 
   const { project } = await getOwnedProject(session.userId, id);

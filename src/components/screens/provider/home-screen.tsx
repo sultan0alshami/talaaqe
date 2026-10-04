@@ -76,7 +76,8 @@ export function ProviderHomeScreen({
     const res = await fetch(`/api/provider/opportunities/${matchId}/accept`, { method: "POST" }).catch(() => null);
     if (!res || !res.ok) {
       setOverride((o) => {
-        const { [matchId]: _drop, ...rest } = o;
+        const rest = { ...o };
+        delete rest[matchId];
         return rest;
       });
     } else {

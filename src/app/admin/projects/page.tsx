@@ -1,8 +1,10 @@
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProjectsScreen } from "@/components/screens/admin/projects-screen";
 
 // Admin projects — mirrors GET /api/admin/projects.
 export default async function AdminProjectsPage() {
+  await requirePageSession("ADMIN");
   const projects = await prisma.project.findMany({
     include: { client: { include: { user: true } }, category: true },
     orderBy: { createdAt: "desc" },

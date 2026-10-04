@@ -1,4 +1,4 @@
-import { SignupScreen } from "@/components/screens/public/signup";
+import { AuthScreen } from "@/components/infame/auth-screen";
 
 export default async function SignupPage({
   searchParams,
@@ -6,5 +6,5 @@ export default async function SignupPage({
   searchParams: Promise<{ role?: string | string[] }>;
 }) {
   const { role } = await searchParams;
-  return <SignupScreen initialRole={typeof role === "string" ? role : undefined} />;
+  return <AuthScreen mode="signup" initialRole={typeof role === "string" ? role : undefined} />;
 }

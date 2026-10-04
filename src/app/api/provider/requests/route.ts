@@ -7,7 +7,7 @@ import { opportunityInclude, toOpportunityDTO } from "@/lib/dto";
 // Proposal requests: clients who asked this provider for a proposal.
 // Includes PROPOSAL_SENT so the "sent ✓" state persists (prototype behavior).
 export const GET = handler(async () => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const provider = await getOwnProvider(session.userId);
   const matches = await prisma.match.findMany({
     where: {

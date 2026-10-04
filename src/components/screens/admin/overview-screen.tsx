@@ -83,7 +83,10 @@ export function OverviewScreen({
   // "Last updated" — clock read only after mount so SSR and hydration render
   // the same placeholder (avoids a guaranteed hydration mismatch).
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => setNow(new Date()), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setNow(new Date()));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const lastUpdated = `${t.adminSub.split(":")[0]}: ${now ? fmtWhen(now, lang) : "—"}`;
 
   return (

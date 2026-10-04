@@ -1,4 +1,4 @@
-import { LoginScreen } from "@/components/screens/public/login";
+import { AuthScreen } from "@/components/infame/auth-screen";
 
 export default async function LoginPage({
   searchParams,
@@ -6,5 +6,5 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string | string[] }>;
 }) {
   const { next } = await searchParams;
-  return <LoginScreen next={typeof next === "string" ? next : undefined} />;
+  return <AuthScreen mode="login" next={typeof next === "string" ? next : undefined} />;
 }

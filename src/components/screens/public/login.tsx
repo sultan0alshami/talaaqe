@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 
-const DEST: Record<string, string> = { CLIENT: "/client", PROVIDER: "/provider", ADMIN: "/admin" };
+const DEST: Record<string, string> = { BRAND: "/client", CREATOR: "/provider", ADMIN: "/admin" };
 
 const labelStyle: React.CSSProperties = {
   fontSize: 13,

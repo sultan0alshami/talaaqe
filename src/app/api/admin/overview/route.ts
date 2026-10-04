@@ -7,8 +7,8 @@ export const GET = handler(async () => {
   const [users, clients, providers, projects, weekly, briefs, pending, avgScore, topCats, pendingProviders] =
     await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { role: "CLIENT" } }),
-      prisma.user.count({ where: { role: "PROVIDER" } }),
+      prisma.user.count({ where: { role: "BRAND" } }),
+      prisma.user.count({ where: { role: "CREATOR" } }),
       prisma.project.count(),
       prisma.project.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.brief.count(),

@@ -8,7 +8,7 @@ import { providerCardInclude, toMatchDTO } from "@/lib/dto";
 
 // Approve the brief → BRIEF_APPROVED, run the matching engine → PROVIDERS_RECOMMENDED.
 export const POST = handler(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   const { project } = await getOwnedProject(session.userId, id);
   const brief = project.brief;

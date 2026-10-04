@@ -1,5 +1,5 @@
-import { ForClientsScreen } from "@/components/screens/public/for-clients";
+import { redirect } from "next/navigation";
 
-export default async function ForClientsPage() {
-  return <ForClientsScreen />;
+export default function ForClientsPage() {
+  redirect("/for-brands");
 }

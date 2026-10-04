@@ -5,7 +5,7 @@ import { getOwnProvider } from "@/lib/ownership";
 import { logActivity } from "@/lib/activity";
 
 export const POST = handler(async (_req: Request, { params }: { params: Promise<{ matchId: string }> }) => {
-  const session = await requireRole("PROVIDER");
+  const session = await requireRole("CREATOR");
   const { matchId } = await params;
   const provider = await getOwnProvider(session.userId);
   const match = await prisma.match.findUnique({ where: { id: matchId } });

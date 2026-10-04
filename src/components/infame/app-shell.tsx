@@ -1,0 +1,68 @@
+"use client";
+
+import type { ReactNode } from "react";
+import type { Theme } from "@/lib/brand";
+import {
+  DashboardShell,
+  type NavSpec,
+} from "@/components/shells/dashboard-shell";
+
+// Infame adapts the retained Talaqee dashboard instead of defining a second shell.
+export function AppShell({
+  children,
+  name,
+  role,
+  initialTheme,
+}: {
+  children: ReactNode;
+  name: string;
+  role: "CREATOR" | "BRAND" | "ADMIN";
+  initialTheme: Theme;
+}) {
+  const dashboardRole =
+    role === "CREATOR" ? "creator" : role === "BRAND" ? "brand" : "admin";
+  const home = `/${dashboardRole}`;
+  const nav: NavSpec[] = [
+    { key: "home", label: { ar: "الرئيسية", en: "Overview" }, href: home },
+    ...(role === "BRAND"
+      ? [
+          {
+            key: "new",
+            label: { ar: "حملة جديدة", en: "New campaign" },
+            href: "/brand/campaigns/new",
+          },
+          {
+            key: "campaigns",
+            label: { ar: "حملاتي", en: "Campaigns" },
+            href: "/brand/campaigns",
+          },
+        ]
+      : []),
+    ...(role !== "ADMIN"
+      ? [
+          {
+            key: "deals",
+            label: { ar: "الصفقات", en: "Deals" },
+            href: home + "/deals",
+          },
+          {
+            key: "profile",
+            label: { ar: "ملفي", en: "My profile" },
+            href: home + "/onboarding",
+          },
+        ]
+      : []),
+  ];
+  return (
+    <DashboardShell
+      role={dashboardRole}
+      sidebarTitle={{ ar: name, en: name }}
+      nav={nav}
+      userName={name}
+      userInitial={name.trim().charAt(0)}
+      initialTheme={initialTheme}
+    >
+      {children}
+    </DashboardShell>
+  );
+}

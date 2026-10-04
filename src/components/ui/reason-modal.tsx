@@ -31,8 +31,7 @@ export function ReasonModal({
 
   useEffect(() => {
     if (open) {
-      setReason("");
-      const id = setTimeout(() => ref.current?.focus(), 50);
+      const id = setTimeout(() => { setReason(""); ref.current?.focus(); }, 50);
       return () => clearTimeout(id);
     }
   }, [open]);

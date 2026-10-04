@@ -1,14 +1,8 @@
-import { PublicNav } from "@/components/shells/public-nav";
-import { PublicFooter } from "@/components/shells/public-footer";
-import { ChatWidget } from "@/components/chatbot/chat-widget";
+import { cookies } from "next/headers";
+import { PublicShell } from "@/components/infame/public-shell";
+import { THEME_COOKIE } from "@/lib/brand";
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <PublicNav />
-      <div style={{ flex: 1 }}>{children}</div>
-      <PublicFooter />
-      <ChatWidget />
-    </div>
-  );
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const initialTheme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
+  return <PublicShell initialTheme={initialTheme}>{children}</PublicShell>;
 }

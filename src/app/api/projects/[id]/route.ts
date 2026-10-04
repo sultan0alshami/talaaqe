@@ -4,7 +4,7 @@ import { projectDetailInclude, toProjectDetail, messagesOf } from "@/lib/dto";
 import { getOwnedProject } from "@/lib/ownership";
 
 export const GET = handler(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  const session = await requireRole("CLIENT");
+  const session = await requireRole("BRAND");
   const { id } = await params;
   await getOwnedProject(session.userId, id);
   const row = await prisma.project.findUnique({ where: { id }, include: projectDetailInclude });

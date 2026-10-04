@@ -1,9 +1,11 @@
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toBriefDTO } from "@/lib/dto";
 import { BriefsScreen } from "@/components/screens/admin/briefs-screen";
 
 // Admin briefs review — mirrors GET /api/admin/briefs.
 export default async function AdminBriefsPage() {
+  await requirePageSession("ADMIN");
   const briefs = await prisma.brief.findMany({
     include: { project: { include: { client: { include: { user: true } }, category: true } } },
     orderBy: { createdAt: "desc" },

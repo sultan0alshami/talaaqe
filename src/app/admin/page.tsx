@@ -1,14 +1,17 @@
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { OverviewScreen } from "@/components/screens/admin/overview-screen";
+import { sevenDaysAgo } from "@/lib/clock";
 
 // Admin overview — mirrors GET /api/admin/overview.
 export default async function AdminOverviewPage() {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+  await requirePageSession("ADMIN");
+  const weekAgo = sevenDaysAgo();
   const [users, clients, providers, projects, weekly, briefs, pending, avgScore, topCats, pendingProviders] =
     await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { role: "CLIENT" } }),
-      prisma.user.count({ where: { role: "PROVIDER" } }),
+      prisma.user.count({ where: { role: "BRAND" } }),
+      prisma.user.count({ where: { role: "CREATOR" } }),
       prisma.project.count(),
       prisma.project.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.brief.count(),

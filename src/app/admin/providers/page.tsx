@@ -1,9 +1,11 @@
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PROVIDER_TYPE_LABELS } from "@/lib/domain";
 import { ProvidersScreen } from "@/components/screens/admin/providers-screen";
 
 // Admin providers — mirrors GET /api/admin/providers.
 export default async function AdminProvidersPage() {
+  await requirePageSession("ADMIN");
   const providers = await prisma.provider.findMany({
     include: { user: true },
     orderBy: [{ verifiedStatus: "asc" }, { rating: "desc" }],

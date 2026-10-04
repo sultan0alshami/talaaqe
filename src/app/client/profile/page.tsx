@@ -1,9 +1,9 @@
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileScreen } from "@/components/screens/client/profile-screen";
 
 export default async function ClientProfilePage() {
-  const session = (await getSession())!; // proxy.ts guarantees CLIENT
+  const session = await requirePageSession("BRAND");
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: { client: true },

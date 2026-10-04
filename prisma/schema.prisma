@@ -1,7 +1,5 @@
-// Talaqi — AI Procurement & Execution Platform
-// Data model per design_handoff_talaqi_backend/README.md §6.
-// Human-facing text is stored as paired Ar/En columns so the instant
-// AR↔EN toggle can re-render persisted content without a refetch.
+// Infame canonical domain follows the preserved Talaqee models below.
+// Legacy procurement rows remain for migration audit, never new-domain DTOs.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,8 +11,8 @@ datasource db {
 }
 
 enum Role {
-  CLIENT
-  PROVIDER
+  BRAND
+  CREATOR
   ADMIN
 }
 
@@ -58,26 +56,39 @@ enum VerifiedStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  nameEn       String?
-  email        String   @unique
-  phone        String?
-  passwordHash String
-  role         Role
-  companyName  String?
-  language     String   @default("ar") // "ar" | "en"
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  client       Client?
-  provider     Provider?
-  aiUsage      AiUsageLog[]
+  id                      String            @id @default(cuid())
+  name                    String
+  nameEn                  String?
+  email                   String            @unique
+  phone                   String?
+  passwordHash            String
+  role                    Role
+  companyName             String?
+  language                String            @default("ar") // "ar" | "en"
+  active                  Boolean           @default(true)
+  sessionVersion          Int               @default(1)
+  emailVerifiedAt         DateTime?
+  phoneVerifiedAt         DateTime?
+  countryCode             String?
+  timeZone                String?
+  isTest                  Boolean           @default(false)
+  notificationPreferences Json              @default("{}")
+  createdAt               DateTime          @default(now())
+  client                  Client?
+  provider                Provider?
+  aiUsage                 AiUsageLog[]
+  sessions                AuthSession[]
+  tokens                  AuthToken[]
+  creator                 Creator?
+  brand                   Brand?
+  drafts                  OnboardingDraft[]
+  notifications           Notification[]
 }
 
 model Client {
-  id               String  @id @default(cuid())
-  userId           String  @unique
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   organizationType String? // individual | startup | sme | company | government
   sector           String?
   location         String?
@@ -85,30 +96,30 @@ model Client {
 }
 
 model Provider {
-  id             String         @id @default(cuid())
-  userId         String         @unique
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  providerType   ProviderType
-  roleTitleAr    String? // e.g. "مطور متاجر إلكترونية"
-  roleTitleEn    String?
-  bio            String?
-  experienceYears Int           @default(0)
-  priceRangeMin  Int?
-  priceRangeMax  Int?
-  availability   String?        // now | 1_week | 2_weeks | 1_month
-  rating         Float          @default(0)
-  verifiedStatus VerifiedStatus @default(PENDING)
-  location       String?        // city key
-  locationAr     String?
-  locationEn     String?
-  languages      String[]       // ["ar","en"]
-  avatarColor    String?        // brand tile color from prototype
-  avatarInitial  String?
-  categories     ProviderCategory[]
-  skills         ProviderSkill[]
-  portfolio      PortfolioItem[]
-  matches        Match[]
-  createdAt      DateTime       @default(now())
+  id              String             @id @default(cuid())
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerType    ProviderType
+  roleTitleAr     String? // e.g. "مطور متاجر إلكترونية"
+  roleTitleEn     String?
+  bio             String?
+  experienceYears Int                @default(0)
+  priceRangeMin   Int?
+  priceRangeMax   Int?
+  availability    String? // now | 1_week | 2_weeks | 1_month
+  rating          Float              @default(0)
+  verifiedStatus  VerifiedStatus     @default(PENDING)
+  location        String? // city key
+  locationAr      String?
+  locationEn      String?
+  languages       String[] // ["ar","en"]
+  avatarColor     String? // brand tile color from prototype
+  avatarInitial   String?
+  categories      ProviderCategory[]
+  skills          ProviderSkill[]
+  portfolio       PortfolioItem[]
+  matches         Match[]
+  createdAt       DateTime           @default(now())
 }
 
 model PortfolioItem {
@@ -127,7 +138,7 @@ model Project {
   client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   titleAr        String
   titleEn        String
-  description    String        // raw client need, e.g. "أحتاج متجر إلكتروني لبيع العطور"
+  description    String // raw client need, e.g. "أحتاج متجر إلكتروني لبيع العطور"
   categoryId     String?
   category       Category?     @relation(fields: [categoryId], references: [id])
   status         ProjectStatus @default(DRAFT)
@@ -148,40 +159,40 @@ model Project {
 // The 13-item AI output — versioned. Client edits set editedByClient
 // without a new version; regeneration increments version.
 model Brief {
-  id                 String     @id @default(cuid())
-  projectId          String     @unique
-  project            Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  version            Int        @default(1)
-  titleAr            String
-  titleEn            String
-  summaryAr          String
-  summaryEn          String
-  objectiveAr        String
-  objectiveEn        String
-  scopeAr            String[]   // ordered scope items
-  scopeEn            String[]
-  deliverablesAr     String[]
-  deliverablesEn     String[]
-  requiredSkills     String[]   // skill names render LTR in both locales
-  budgetMin          Int
-  budgetMax          Int
-  currency           String     @default("SAR")
-  timelineAr         String
-  timelineEn         String
-  complexity         Complexity
-  complexityPct      Int        @default(50) // 0–100 for the UI bar
-  missingAr          String[]   // open questions
-  missingEn          String[]
-  providerTypeAr     String     // recommended provider type
-  providerTypeEn     String
-  criteriaAr         String[]   // evaluation criteria
-  criteriaEn         String[]
-  milestones         Json       // [{tAr,tEn,dAr,dEn}]
-  qualityScore       Int?       // admin review metric 0–100
-  approvedByClient   Boolean    @default(false)
-  editedByClient     Boolean    @default(false)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  projectId        String     @unique
+  project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version          Int        @default(1)
+  titleAr          String
+  titleEn          String
+  summaryAr        String
+  summaryEn        String
+  objectiveAr      String
+  objectiveEn      String
+  scopeAr          String[] // ordered scope items
+  scopeEn          String[]
+  deliverablesAr   String[]
+  deliverablesEn   String[]
+  requiredSkills   String[] // skill names render LTR in both locales
+  budgetMin        Int
+  budgetMax        Int
+  currency         String     @default("SAR")
+  timelineAr       String
+  timelineEn       String
+  complexity       Complexity
+  complexityPct    Int        @default(50) // 0–100 for the UI bar
+  missingAr        String[] // open questions
+  missingEn        String[]
+  providerTypeAr   String // recommended provider type
+  providerTypeEn   String
+  criteriaAr       String[] // evaluation criteria
+  criteriaEn       String[]
+  milestones       Json // [{tAr,tEn,dAr,dEn}]
+  qualityScore     Int? // admin review metric 0–100
+  approvedByClient Boolean    @default(false)
+  editedByClient   Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 model Conversation {
@@ -189,8 +200,8 @@ model Conversation {
   projectId             String   @unique
   project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   clientId              String
-  messages              Json     // [{role:"assistant"|"user", ar, en, chips?:[{ar,en}], ts}]
-  extractedRequirements Json     // structured extraction per README §8
+  messages              Json // [{role:"assistant"|"user", ar, en, chips?:[{ar,en}], ts}]
+  extractedRequirements Json // structured extraction per README §8
   questionsAsked        Int      @default(0)
   readyForBrief         Boolean  @default(false)
   createdAt             DateTime @default(now())
@@ -203,13 +214,13 @@ model Match {
   project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   providerId     String
   provider       Provider    @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  matchScore     Int         // 0–100
+  matchScore     Int // 0–100
   reasonAr       String
   reasonEn       String
-  scoreBreakdown Json        // per-criterion subscores per README §9
+  scoreBreakdown Json // per-criterion subscores per README §9
   status         MatchStatus @default(RECOMMENDED)
-  declineReason  String?     // required reason a provider gives when declining
-  noteAr         String?     // gold note shown on provider opportunity card
+  declineReason  String? // required reason a provider gives when declining
+  noteAr         String? // gold note shown on provider opportunity card
   noteEn         String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -218,22 +229,22 @@ model Match {
 }
 
 model Category {
-  id          String  @id @default(cuid())
+  id          String             @id @default(cuid())
   nameAr      String
   nameEn      String
   description String?
-  demoCount   Int     @default(0) // marketing count shown on the landing grid
-  sortOrder   Int     @default(0)
+  demoCount   Int                @default(0) // marketing count shown on the landing grid
+  sortOrder   Int                @default(0)
   skills      Skill[]
   providers   ProviderCategory[]
   projects    Project[]
 }
 
 model Skill {
-  id         String   @id @default(cuid())
-  name       String   @unique
+  id         String          @id @default(cuid())
+  name       String          @unique
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   providers  ProviderSkill[]
 }
 
@@ -260,7 +271,7 @@ model ActivityLog {
   id        String   @id @default(cuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type      String   // created | chat_started | brief_generated | brief_edited | brief_approved | providers_recommended | proposal_requested | proposal_sent | opportunity_accepted | opportunity_declined | status_changed
+  type      String // created | chat_started | brief_generated | brief_edited | brief_approved | providers_recommended | proposal_requested | proposal_sent | opportunity_accepted | opportunity_declined | status_changed
   textAr    String
   textEn    String
   createdAt DateTime @default(now())
@@ -274,11 +285,850 @@ model AiUsageLog {
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId    String?
-  flow         String   // chat | brief
+  flow         String // chat | brief
   model        String
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  SNAPCHAT
+  X
+}
+
+enum ProfileState {
+  DRAFT
+  PRIVATE
+  PUBLISHED
+  HIDDEN
+}
+
+enum OwnershipStatus {
+  UNPROVED
+  PENDING
+  VERIFIED
+  REJECTED
+  REVOKED
+}
+
+enum EvidenceSource {
+  API
+  SCREENSHOT_VERIFIED
+  SELF_REPORTED
+  PUBLIC_IMPORT
+}
+
+enum ReviewStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+  REVOKED
+  NEEDS_RECHECK
+}
+
+enum DealFormat {
+  STORY
+  POST
+  REEL
+  LIVE
+  CAMPAIGN
+  VIDEO
+  SHORT
+}
+
+enum CampaignStatus {
+  DRAFT
+  BRIEF_GENERATED
+  BRIEF_APPROVED
+  SHORTLISTED
+  IN_DEALS
+  COMPLETED
+  CANCELLED
+}
+
+enum DealStatus {
+  OFFERED
+  COUNTERED
+  ACCEPTED
+  AGREED
+  DELIVERED
+  COMPLETED
+  DECLINED
+  CANCELLED
+}
+
+model AuthSession {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version   Int
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model AuthToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     String
+  tokenHash   String    @unique
+  destination String?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, purpose, expiresAt])
+}
+
+model RateBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+model Creator {
+  id               String               @id @default(cuid())
+  userId           String?              @unique
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  handle           String               @unique
+  displayName      String
+  bio              String?
+  countryCode      String?
+  city             Json?
+  timeZone         String?
+  languages        String[]             @default([])
+  dialects         String[]             @default([])
+  nicheIds         String[]             @default([])
+  fameTags         String[]             @default([])
+  contentStyles    String[]             @default([])
+  currency         String?
+  minimumMinor     BigInt?
+  availability     Json?
+  travel           Json?
+  state            ProfileState         @default(DRAFT)
+  isTest           Boolean              @default(true)
+  publicConsentAt  DateTime?
+  brandVisible     Boolean              @default(false)
+  profileFacts     Json                 @default("{}")
+  publishedAt      DateTime?
+  primaryAccountId String?
+  accounts         SocialAccount[]
+  rates            CreatorRate[]
+  work             CreatorWork[]
+  licences         AdvertisingLicence[]
+  portfolios       PortfolioVersion[]
+  deals            Deal[]
+  matches          CreatorMatch[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([state, isTest])
+}
+
+model Brand {
+  id              String                  @id @default(cuid())
+  userId          String                  @unique
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String                  @unique
+  name            String
+  description     String?
+  countryCode     String?
+  city            Json?
+  timeZone        String?
+  website         String?
+  sector          String?
+  state           ProfileState            @default(DRAFT)
+  isTest          Boolean                 @default(true)
+  publicConsentAt DateTime?
+  publishedAt     DateTime?
+  profileFacts    Json                    @default("{}")
+  portfolios      BrandPortfolioVersion[]
+  verifications   BusinessVerification[]
+  campaigns       Campaign[]
+  deals           Deal[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([state, isTest])
+}
+
+model Niche {
+  id        String  @id
+  parentId  String?
+  labelAr   String
+  labelEn   String
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model SocialAccount {
+  id                    String            @id @default(cuid())
+  creatorId             String
+  creator               Creator           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  platform              Platform
+  handle                String
+  providerAccountId     String?
+  displayName           String?
+  avatarUrl             String?
+  intendedConfirmedAt   DateTime?
+  ownershipStatus       OwnershipStatus   @default(UNPROVED)
+  ownershipReviewedBy   String?
+  ownershipReviewedAt   DateTime?
+  ownershipProofAssetId String?
+  ownershipIdentityHash String?
+  consentAt             DateTime?
+  mappingRevision       Int               @default(1)
+  evidenceRevision      Int               @default(1)
+  factsApprovedAt       DateTime?
+  publicVisible         Boolean           @default(false)
+  brandVisible          Boolean           @default(false)
+  supportedFormats      DealFormat[]      @default([])
+  fieldVisibility       Json              @default("{}")
+  snapshots             MetricsSnapshot[]
+  corrections           FactCorrection[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([creatorId, platform, handle])
+  @@index([platform, handle])
+}
+
+// Observations are append-only. Corrections never modify provider observations.
+model MetricsSnapshot {
+  id                    String         @id @default(cuid())
+  accountId             String
+  account               SocialAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  source                EvidenceSource
+  observedAt            DateTime
+  importedAt            DateTime       @default(now())
+  mappingRevision       Int
+  jobId                 String?
+  providerObservationId String?
+  supersedesId          String?
+  followers             BigInt?
+  averageViews          BigInt?
+  engagementRate        Decimal?       @db.Decimal(12, 8)
+  demographics          Json?
+  formatMetrics         Json?
+  engagementContext     Json?
+  evidenceAssetId       String?
+  approvedAt            DateTime?
+  approvedBy            String?
+  excludedAt            DateTime?
+  reviewStatus          ReviewStatus   @default(PENDING)
+
+  @@unique([accountId, providerObservationId])
+  @@unique([accountId, id])
+  @@index([accountId, observedAt])
+}
+
+model FactCorrection {
+  id            String        @id @default(cuid())
+  accountId     String
+  account       SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  field         String
+  revision      Int           @default(1)
+  value         Json
+  reportedBy    String
+  approvedAt    DateTime?
+  brandVisible  Boolean       @default(false)
+  publicVisible Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+}
+
+model CreatorRate {
+  id          String     @id @default(cuid())
+  creatorId   String
+  creator     Creator    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  platform    Platform
+  format      DealFormat
+  currency    String
+  amountMinor BigInt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([creatorId, platform, format, currency])
+}
+
+model CreatorWork {
+  id            String    @id @default(cuid())
+  creatorId     String
+  creator       Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  url           String?
+  assetId       String?
+  approvedAt    DateTime?
+  publicVisible Boolean   @default(false)
+  brandVisible  Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+}
+
+model AdvertisingLicence {
+  id              String       @id @default(cuid())
+  creatorId       String
+  creator         Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  jurisdiction    String
+  issuer          String
+  type            String?
+  scope           String?
+  revision        Int          @default(1)
+  holderName      String
+  licenceNumber   String
+  accountIds      String[]     @default([])
+  platformScope   Platform[]   @default([])
+  evidenceAssetId String?
+  validFrom       DateTime?
+  expiresAt       DateTime?
+  status          ReviewStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  policyVersion   String?
+  reviewMethod    String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+// Representative authority and local business registration are separate records.
+model BusinessVerification {
+  id              String       @id @default(cuid())
+  brandId         String
+  brand           Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  kind            String
+  revision        Int          @default(1)
+  jurisdiction    String?
+  identifier      String?
+  evidenceAssetId String?
+  status          ReviewStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  expiresAt       DateTime?
+  reviewNote      String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([brandId, kind, status])
+}
+
+model PortfolioVersion {
+  id            String    @id @default(cuid())
+  creatorId     String
+  creator       Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  version       Int
+  content       Json
+  inputRevision Int
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([creatorId, version])
+}
+
+model BrandPortfolioVersion {
+  id            String    @id @default(cuid())
+  brandId       String
+  brand         Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  version       Int
+  content       Json
+  inputRevision Int
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([brandId, version])
+}
+
+model OnboardingDraft {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String
+  revision    Int            @default(1)
+  step        String         @default("WELCOME")
+  mode        String         @default("TEXT")
+  input       Json           @default("{}")
+  transcript  Json           @default("[]")
+  consent     Json           @default("{}")
+  completedAt DateTime?
+  jobs        SourceJob[]
+  commands    DraftCommand[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([userId, kind])
+}
+
+model DraftCommand {
+  id           String          @id @default(cuid())
+  draftId      String
+  draft        OnboardingDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  operationKey String
+  payloadHash  String
+  result       Json
+  createdAt    DateTime        @default(now())
+
+  @@unique([draftId, operationKey])
+}
+
+model SourceJob {
+  id           String          @id @default(cuid())
+  draftId      String
+  draft        OnboardingDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  source       String
+  identity     Json
+  revision     Int
+  operationKey String
+  payloadHash  String
+  status       String          @default("QUEUED")
+  result       Json?
+  errorCode    String?
+  attempts     Int             @default(0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+
+  @@unique([draftId, operationKey])
+  @@index([status, createdAt])
+}
+
+model Campaign {
+  id                  String            @id @default(cuid())
+  brandId             String
+  brand               Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title               String
+  input               Json
+  conversation        Json              @default("[]")
+  revision            Int               @default(1)
+  status              CampaignStatus    @default(DRAFT)
+  currentBriefVersion Int?
+  briefs              CampaignBrief[]
+  matchRuns           MatchRun[]
+  commands            CampaignCommand[]
+  matchCommands       MatchCommand[]
+  deals               Deal[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([brandId, createdAt])
+}
+
+model CampaignBrief {
+  id               String    @id @default(cuid())
+  campaignId       String
+  campaign         Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  version          Int
+  inputRevision    Int
+  content          Json
+  approvedAt       DateTime?
+  approvedByUserId String?
+  createdAt        DateTime  @default(now())
+
+  @@unique([campaignId, version])
+}
+
+model MatchDecisionRecord {
+  id          String   @id @default(cuid())
+  campaignId  String
+  creatorId   String
+  actorUserId String
+  decision    String   @default("NONE")
+  runId       String?
+  revision    Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([campaignId, creatorId])
+}
+
+model CampaignCommand {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  operationKey String
+  actorUserId  String
+  payloadHash  String
+  result       Json
+  createdAt    DateTime @default(now())
+
+  @@unique([campaignId, operationKey])
+  @@unique([actorUserId, operationKey])
+}
+
+model MatchCommand {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  operationKey String
+  actorUserId  String
+  payloadHash  String
+  result       Json
+  createdAt    DateTime @default(now())
+
+  @@unique([campaignId, operationKey])
+}
+
+model MatchRun {
+  id                  String         @id @default(cuid())
+  campaignId          String
+  campaign            Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  briefVersion        Int
+  algorithmVersion    String
+  requirementSnapshot Json
+  policySnapshot      Json
+  results             CreatorMatch[]
+  createdAt           DateTime       @default(now())
+}
+
+model CreatorMatch {
+  id        String   @id @default(cuid())
+  runId     String
+  run       MatchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  score     Int
+  snapshot  Json
+  createdAt DateTime @default(now())
+
+  @@unique([runId, creatorId])
+}
+
+model Deal {
+  id                       String                  @id @default(cuid())
+  campaignId               String
+  campaign                 Campaign                @relation(fields: [campaignId], references: [id])
+  creatorId                String
+  creator                  Creator                 @relation(fields: [creatorId], references: [id])
+  brandId                  String
+  brand                    Brand                   @relation(fields: [brandId], references: [id])
+  status                   DealStatus              @default(OFFERED)
+  version                  Int                     @default(1)
+  currentOfferVersion      Int                     @default(1)
+  acceptedOfferVersion     Int?
+  agreementVersion         Int?
+  briefVersion             Int
+  origin                   String                  @default("DIRECT")
+  matchRunId               String?
+  slotOrdinal              Int?
+  commands                 DealCommand[]
+  deliveredAt              DateTime?
+  completedAt              DateTime?
+  brandPaymentReportedAt   DateTime?
+  creatorReceiptReportedAt DateTime?
+  firstRatingAt            DateTime?
+  ratingsRevealedAt        DateTime?
+  offers                   DealOffer[]
+  agreements               AgreementSnapshot[]
+  confirmations            AgreementConfirmation[]
+  messages                 DealMessage[]
+  ratings                  DealRating[]
+  events                   DealEvent[]
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  @@index([brandId, status])
+  @@index([creatorId, status])
+}
+
+model DealCommand {
+  id           String   @id @default(cuid())
+  dealId       String
+  deal         Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  result       Json
+  createdAt    DateTime @default(now())
+
+  @@unique([actorUserId, operationKey])
+  @@unique([dealId, operationKey])
+}
+
+// Private, resumable offer composition. An unclaimed creator can have a draft
+// without becoming a Deal participant or accepting an obligation.
+model OfferDraft {
+  id          String              @id @default(cuid())
+  actorUserId String
+  campaignId  String
+  creatorId   String
+  revision    Int                 @default(1)
+  terms       Json
+  commands    OfferDraftCommand[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([actorUserId, campaignId, creatorId])
+  @@unique([id, actorUserId])
+}
+
+model OfferDraftCommand {
+  id           String     @id @default(cuid())
+  draftId      String
+  draft        OfferDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  result       Json
+  createdAt    DateTime   @default(now())
+
+  @@unique([actorUserId, operationKey])
+  @@unique([draftId, operationKey])
+}
+
+model PolicyVersion {
+  id              String       @id
+  kind            String
+  countryCodes    String[]
+  status          ReviewStatus @default(PENDING)
+  content         Json
+  evidenceAssetId String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime     @default(now())
+
+  @@index([kind, status])
+}
+
+model DealOffer {
+  id              String    @id @default(cuid())
+  dealId          String
+  deal            Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  version         Int
+  proposerUserId  String
+  recipientUserId String
+  terms           Json
+  status          String    @default("PENDING")
+  acceptedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@unique([dealId, version])
+}
+
+model AgreementSnapshot {
+  id           String   @id @default(cuid())
+  dealId       String
+  deal         Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  version      Int
+  offerVersion Int
+  briefVersion Int
+  content      Json
+  createdAt    DateTime @default(now())
+
+  @@unique([dealId, version])
+}
+
+model AgreementConfirmation {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  version   Int
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+
+  @@unique([dealId, version, userId])
+}
+
+model DealMessage {
+  id           String   @id @default(cuid())
+  dealId       String
+  deal         Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  senderUserId String
+  text         String
+  language     String?
+  createdAt    DateTime @default(now())
+
+  @@index([dealId, createdAt])
+}
+
+model DealRating {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId    String
+  role      Role
+  score     Int
+  comment   String?
+  language  String?
+  createdAt DateTime @default(now())
+
+  @@unique([dealId, userId])
+}
+
+model DealEvent {
+  id          String   @id @default(cuid())
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actorUserId String
+  type        String
+  snapshot    Json
+  createdAt   DateTime @default(now())
+
+  @@index([dealId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  data      Json
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model OutboxEvent {
+  id               String    @id @default(cuid())
+  deduplicationKey String    @unique
+  type             String
+  payload          Json
+  status           String    @default("PENDING")
+  attempts         Int       @default(0)
+  availableAt      DateTime  @default(now())
+  deliveredAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([status, availableAt])
+}
+
+model PrivateAsset {
+  id          String    @id @default(cuid())
+  ownerUserId String
+  revision    Int       @default(1)
+  purpose     String
+  contentType String
+  size        Int
+  storageKey  String    @unique
+  checksum    String
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model EvidenceCommand {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  resourceType String
+  resourceId   String
+  resultJson   Json
+  createdAt    DateTime @default(now())
+
+  @@unique([actorUserId, operationKey])
+  @@unique([resourceType, resourceId, operationKey])
+}
+
+model OwnershipChallenge {
+  id              String       @id @default(cuid())
+  accountId       String
+  ownerUserId     String
+  identity        Json
+  identityHash    String
+  mappingRevision Int
+  challengeCode   String
+  revision        Int          @default(1)
+  status          ReviewStatus @default(PENDING)
+  proofAssetId    String?
+  submittedAt     DateTime?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([ownerUserId, status])
+}
+
+model AiReservation {
+  id             String    @id @default(cuid())
+  userId         String
+  operationKey   String
+  payloadHash    String
+  purpose        String
+  status         String    @default("RESERVED")
+  reservedMicros BigInt
+  actualMicros   BigInt?
+  result         Json?
+  createdAt      DateTime  @default(now())
+  settledAt      DateTime?
+
+  @@unique([userId, operationKey])
+  @@index([userId, createdAt])
+}
+
+model VerificationFallback {
+  id              String       @id @default(cuid())
+  userId          String
+  countryCode     String
+  policyVersion   String
+  status          ReviewStatus @default(PENDING)
+  evidenceAssetId String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  expiresAt       DateTime?
+}
+
+model ImportRecord {
+  id         String   @id @default(cuid())
+  batchId    String
+  platform   Platform
+  handle     String
+  sourceUrl  String?
+  creatorId  String?
+  evidence   Json
+  status     String   @default("UNCLAIMED")
+  importedBy String
+  createdAt  DateTime @default(now())
+
+  @@unique([platform, handle])
+}
+
+model CreatorClaim {
+  id              String       @id @default(cuid())
+  creatorId       String
+  userId          String
+  status          ReviewStatus @default(PENDING)
+  evidenceAssetId String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime     @default(now())
+}
+
+model Invitation {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  inviterUserId String
+  email         String
+  role          Role
+  creatorId     String?
+  campaignId    String?
+  proposedTerms Json?
+  expiresAt     DateTime
+  acceptedAt    DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model AdminAudit {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  action       String
+  resourceType String
+  resourceId   String
+  snapshot     Json
+  createdAt    DateTime @default(now())
+
+  @@index([resourceType, resourceId, createdAt])
 }

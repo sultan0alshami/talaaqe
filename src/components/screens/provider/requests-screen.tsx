@@ -34,7 +34,8 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
     const res = await fetch(`/api/provider/requests/${matchId}/send-proposal`, { method: "POST" }).catch(() => null);
     if (!res || !res.ok) {
       setOverride((o) => {
-        const { [matchId]: _drop, ...rest } = o;
+        const rest = { ...o };
+        delete rest[matchId];
         return rest;
       });
     } else {

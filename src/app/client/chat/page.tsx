@@ -1,6 +1,6 @@
 // AI chat assistant (client) — server page. Resumes a conversation when
 // ?project=<id> is given (ownership enforced), otherwise starts fresh.
-import { getSession } from "@/lib/auth";
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { messagesOf } from "@/lib/dto";
 import { ChatScreen } from "@/components/screens/client/chat-screen";
@@ -11,7 +11,7 @@ export default async function ClientChatPage({
   searchParams: Promise<{ project?: string }>;
 }) {
   const { project: projectId } = await searchParams;
-  const session = (await getSession())!; // proxy.ts guarantees CLIENT
+  const session = await requirePageSession("BRAND");
   const aiEnabled = !!process.env.ANTHROPIC_API_KEY;
 
   if (projectId) {

@@ -1,8 +1,13 @@
+import { requirePageSession } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { THEME_COOKIE } from "@/lib/brand";
 import { VerifiedStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DashboardShell, type NavSpec } from "@/components/shells/dashboard-shell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requirePageSession("ADMIN");
+  const theme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
   const pending = await prisma.provider.count({ where: { verifiedStatus: VerifiedStatus.PENDING } });
 
   const nav: NavSpec[] = [
@@ -22,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       sidebarTitle={{ ar: "إدارة المنصة", en: "Platform admin" }}
       nav={nav}
       userInitial="م"
+      initialTheme={theme}
     >
       {children}
     </DashboardShell>

@@ -1,8 +1,10 @@
+import { requirePageSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CategoriesScreen } from "@/components/screens/admin/categories-screen";
 
 // Admin categories & skills — mirrors GET /api/admin/categories + /api/admin/skills.
 export default async function AdminCategoriesPage() {
+  await requirePageSession("ADMIN");
   const [categories, skills] = await Promise.all([
     prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.skill.findMany({ include: { category: true }, orderBy: { name: "asc" } }),
