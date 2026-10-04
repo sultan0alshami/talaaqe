@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AdminReadError, AdminUsersQuerySchema } from "./contracts";
 import { getAdminOverview } from "./overview";
 import { changeAdminUserStatus, getAdminUsers } from "./users";
+import { getAdminCampaigns } from "./campaigns";
 
 export const loadAdminOverview = domainHandler(async (request: Request) => {
   const actor = await requireRole("ADMIN");
@@ -16,6 +17,12 @@ export const loadAdminUsers = domainHandler(async (request: Request) => {
   const entries = [...new URL(request.url).searchParams.entries()];
   if (new Set(entries.map(([key]) => key)).size !== entries.length) throw new AdminReadError("VALIDATION", 422);
   return getAdminUsers(actor, Object.fromEntries(entries));
+});
+export const loadAdminCampaigns = domainHandler(async (request: Request) => {
+  const actor = await requireRole("ADMIN");
+  const entries = [...new URL(request.url).searchParams.entries()];
+  if (new Set(entries.map(([key]) => key)).size !== entries.length) throw new AdminReadError("VALIDATION", 422);
+  return getAdminCampaigns(actor, Object.fromEntries(entries));
 });
 export const mutateAdminUserStatus = domainHandler(async (request: Request, context: { params: Promise<{ id: string }> }) => {
   const actor = await requireRole("ADMIN");

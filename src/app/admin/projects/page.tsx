@@ -1,30 +1,20 @@
+import { redirect } from "next/navigation";
 import { requirePageSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { AdminReadError, type AdminCampaignsDTO } from "@/lib/admin/contracts";
+import { getAdminCampaigns, parseAdminCampaignsQuery } from "@/lib/admin/campaigns";
 import { ProjectsScreen } from "@/components/screens/admin/projects-screen";
 
-// Admin projects — mirrors GET /api/admin/projects.
-export default async function AdminProjectsPage() {
-  await requirePageSession("ADMIN");
-  const projects = await prisma.project.findMany({
-    include: { client: { include: { user: true } }, category: true },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return (
-    <ProjectsScreen
-      projects={projects.map((p) => ({
-        id: p.id,
-        titleAr: p.titleAr,
-        titleEn: p.titleEn,
-        clientAr: p.client.user.companyName ?? p.client.user.name,
-        clientEn: p.client.user.nameEn ?? p.client.user.companyName ?? p.client.user.name,
-        categoryAr: p.category?.nameAr ?? null,
-        categoryEn: p.category?.nameEn ?? null,
-        status: p.status,
-        budgetMin: p.budgetMin,
-        budgetMax: p.budgetMax,
-        createdAt: p.createdAt.toISOString(),
-      }))}
-    />
-  );
+export default async function AdminProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const actor = await requirePageSession("ADMIN");
+  const query = await searchParams;
+  let campaigns: AdminCampaignsDTO | null = null, errorCode: string | null = null, after: string | undefined;
+  try {
+    after = parseAdminCampaignsQuery(query).after;
+    campaigns = await getAdminCampaigns(actor, after ? { after } : {});
+  } catch (error) {
+    if (!(error instanceof AdminReadError)) throw error;
+    if (error.status === 401 || error.status === 403) redirect("/login");
+    errorCode = error.code;
+  }
+  return <ProjectsScreen key={after === undefined ? "first" : "after:" + after} initialCampaigns={campaigns} after={after} errorCode={errorCode} />;
 }

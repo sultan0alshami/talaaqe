@@ -16,5 +16,5 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     if (error.status === 401 || error.status === 403) redirect("/login");
     errorCode = error.code;
   }
-  return <UsersScreen key={after ?? "first"} initialUsers={users} after={after} errorCode={errorCode} />;
+  return <UsersScreen key={after === undefined ? "first" : "after:" + after} initialUsers={users} after={after} errorCode={errorCode} />;
 }

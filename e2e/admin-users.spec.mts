@@ -302,6 +302,14 @@ test("actual bounded cursor navigation remounts SSR data and authoritative denia
   await expect(page).toHaveURL(/\/admin\/users$/);
   const beginning = await list(page, "/api/admin/users");
   await expect.poll(() => page.locator("[data-admin-user]").evaluateAll(elements => elements.map(element => element.getAttribute("data-admin-user")))).toEqual(beginning.users.map(user => user.id));
+  await page.goto("/admin/users?after=first");
+  const literalCursor = await list(page, "/api/admin/users?after=first");
+  expect(beginning.users.some(user => user.id === f.targetId)).toBe(true);
+  expect(literalCursor.users.some(user => user.id === f.targetId)).toBe(false);
+  await expect.poll(() => page.locator("[data-admin-user]").evaluateAll(elements => elements.map(element => element.getAttribute("data-admin-user")))).toEqual(literalCursor.users.map(user => user.id));
+  await page.getByRole("link", { name: label("الصفحة الأولى", "First page"), exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/users$/);
+  await expect.poll(() => page.locator("[data-admin-user]").evaluateAll(elements => elements.map(element => element.getAttribute("data-admin-user")))).toEqual(beginning.users.map(user => user.id));
   const empty = await list(page, "/api/admin/users?after=~~~~"); expect(empty.users).toHaveLength(0); expect(empty.nextCursor).toBeNull();
   await page.goto("/admin/users?after=~~~~");
   await expect(page.getByText(label("لا يوجد مستخدمون في هذه الصفحة.", "No users on this page."), { exact: true })).toBeVisible();

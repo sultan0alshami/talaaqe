@@ -25,7 +25,7 @@ export type DashboardDeal = {
   briefVersion?: number;
 };
 
-const campaignStatuses: Record<string, [string, string]> = {
+export const campaignStatuses: Record<string, [string, string]> = {
   DRAFT: ["مسودة", "Draft"],
   BRIEF_GENERATED: ["موجز للمراجعة", "Brief ready for review"],
   BRIEF_APPROVED: ["موجز معتمد", "Brief approved"],

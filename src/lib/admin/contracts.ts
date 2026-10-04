@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { OriginalTextSchema } from "@/lib/contracts/vocabulary";
+import { CampaignStatusSchema, OriginalTextSchema } from "@/lib/contracts/vocabulary";
+import { MoneySchema } from "@/lib/contracts/money";
 
 export const AdminEvidenceKindSchema = z.enum(["OWNERSHIP", "SCREENSHOT", "ADVERTISING_LICENCE", "REPRESENTATIVE", "BUSINESS_REGISTRATION"]);
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -32,6 +33,19 @@ export const AdminUserStatusResultSchema = z.object({
   userId: z.string().min(1).max(200), active: z.boolean(), statusVersion: z.number().int().positive().max(2147483647), appliedAt: z.iso.datetime(), replayed: z.boolean(),
 }).strict();
 export type AdminUserStatusCommand = z.infer<typeof AdminUserStatusCommandSchema>;
+
+export const AdminCampaignSchema = z.object({
+  id: z.string().min(1).max(200), title: z.string().max(10000), brandName: z.string().max(10000),
+  status: CampaignStatusSchema, revision: z.number().int().positive().max(2147483647), createdAt: z.iso.datetime(),
+  budget: MoneySchema.nullable(), budgetSource: z.enum(["SAVED_INPUT", "UNAVAILABLE"]),
+}).strict().refine(row => (row.budget !== null) === (row.budgetSource === "SAVED_INPUT"));
+export const AdminCampaignsSchema = z.object({
+  asOf: z.iso.datetime(), scope: z.literal("ALL_STORED_RECORDS"),
+  campaigns: z.array(AdminCampaignSchema).max(30), nextCursor: z.string().min(1).max(200).nullable(),
+}).strict();
+export const AdminCampaignsQuerySchema = AdminUsersQuerySchema;
+export type AdminCampaignDTO = z.infer<typeof AdminCampaignSchema>;
+export type AdminCampaignsDTO = z.infer<typeof AdminCampaignsSchema>;
 
 export class AdminReadError extends Error {
   constructor(public readonly code: string, public readonly status: number) { super(code); this.name = "AdminReadError"; }
