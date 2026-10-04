@@ -120,7 +120,10 @@ async function reviewEntry(page: Page, copy: Copy, id: string, kind: string, sta
   if (await open.count()) await open.click();
   return row;
 }
-const observed = () => new Date(Date.now() - 7_200_000).toISOString().slice(0, 19);
+// Chromium normalizes zero seconds away; Playwright.fill requires the exact
+// normalized datetime-local value. This keeps the identical UTC instant.
+const inputTime = (milliseconds: number) => new Date(milliseconds).toISOString().slice(0, 19).replace(/:00$/, "");
+const observed = () => inputTime(Date.now() - 7_200_000);
 async function reason(row: Locator, copy: Copy, text: string) {
   await row.getByLabel(copy("سبب المراجعة (مطلوب)", "Review reason (required)"), { exact: true }).fill(text);
   await row.getByLabel(copy("لغة السبب الأصلية (اختياري، رمز BCP47)", "Original reason language (optional, BCP47 code)"), { exact: true }).fill("ar");
@@ -181,7 +184,7 @@ test("private screenshot upload and immutable review replay retain unknowns, sep
     await screenshot.getByLabel(copy("تنسيق القياس 1", "Metric format 1"), { exact: true }).selectOption("REEL");
     await screenshot.getByLabel(copy("قيمة التنسيق 1", "Format value 1"), { exact: true }).fill("0");
     await screenshot.getByLabel(copy("وحدة التنسيق 1", "Format unit 1"), { exact: true }).selectOption("IMPRESSIONS");
-    const starts = new Date(Date.now() - 14_400_000).toISOString().slice(0, 19), ends = new Date(Date.now() - 10_800_000).toISOString().slice(0, 19);
+    const starts = inputTime(Date.now() - 14_400_000), ends = inputTime(Date.now() - 10_800_000);
     await screenshot.getByLabel(copy("التنسيق 1 · بداية الفترة (UTC)", "Format 1 · Window start (UTC)"), { exact: true }).fill(starts);
     await screenshot.getByLabel(copy("التنسيق 1 · نهاية الفترة (UTC)", "Format 1 · Window end (UTC)"), { exact: true }).fill(ends);
     await screenshot.getByLabel(copy("التنسيق 1 · المنطقة الزمنية الأصلية", "Format 1 · Original timezone"), { exact: true }).fill("Asia/Kuwait");
@@ -400,7 +403,7 @@ test("licence review selects actual scoped policy IDs and rechecks a withdrawn o
     await licence.getByLabel(copy("نوع الترخيص", "Licence type"), { exact: true }).fill("نوع وثيقة اصطناعية");
     await licence.getByLabel(copy("نطاق الترخيص الأصلي", "Original licence scope"), { exact: true }).fill(originalScope);
     await licence.getByLabel(copy("بداية صلاحية الترخيص (UTC)", "Licence valid from (UTC)"), { exact: true }).fill(observed());
-    await licence.getByLabel(copy("انتهاء صلاحية الترخيص (UTC)", "Licence expires at (UTC)"), { exact: true }).fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 19));
+    await licence.getByLabel(copy("انتهاء صلاحية الترخيص (UTC)", "Licence expires at (UTC)"), { exact: true }).fill(inputTime(Date.now() + 86_400_000));
     await licence.getByRole("checkbox", { name: `INSTAGRAM · @${f.account.handle}`, exact: true }).check();
     const proofId = await upload(page, licence, copy);
     const submitted = await command<{ licence: { id: string } }>(page, () => licence.getByRole("button", { name: copy("إرسال الترخيص للمراجعة", "Submit licence for review"), exact: true }).click());

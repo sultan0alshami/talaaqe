@@ -1,6 +1,6 @@
 # Phase07 — admin, growth and notifications
 
-Status: planned. Admin/growth specialist owns leaves; coordinator owns auth/schema/public SEO/cron/config. Independent reviewer. Identity/evidence contracts allow isolated admin work earlier; domain event integration depends on creator/brand/deals. Coding invite/referral flows does not authorize outreach.
+Status: active. Canonical evidence queues are mounted; the original overview is the first reviewed metadata-read slice. See `07-original-admin-overview.md`; the next users/session-revocation prerequisites are in `07-original-admin-users.md`. Further operations/growth/notifications remain unimplemented. Admin/growth specialist owns leaves; coordinator owns auth/schema/public SEO/cron/config. Independent reviewer. Identity/evidence contracts allow isolated admin work earlier; domain event integration depends on creator/brand/deals. Coding invite/referral flows does not authorize outreach.
 
 ## 07.1 Genuine dashboard and audited trust queues
 

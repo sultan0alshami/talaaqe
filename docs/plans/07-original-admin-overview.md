@@ -1,0 +1,11 @@
+# Original admin overview activation
+
+Prerequisites: committed original shells, campaign/deal compositions and canonical evidence queues; Phase07.1. Root owns admin metadata contracts, transaction/session boundary, service, narrowly replaced overview GET, SSR/layout and native/browser acceptance. import_peer owns the retained original overview screen and its scoped CSS. canonical_review independently reviews both. Source and concurrent research work stay preserved.
+
+Preserve Talaqee's 1040px, two four-card rows, 1.2:1 chart/queue and original card/row geometry. Replace procurement/demo inputs with actual canonical counts. This first slice is an audited metadata read, not an administration mutation workflow. Other legacy admin APIs remain retired. All five saved pending evidence kinds match the existing queue predicates; the bounded ownership preview reports started challenges and whether an evidence reference was saved, never ready/verified/current proof.
+
+Counts explicitly include all saved states, private/draft/test/suspended records. They represent operational records rather than published, active, eligible or live traction. The timestamp is the actual server snapshot. Authentication uses the current real clock independently of a test resource clock. The authorized snapshot locks User then AuthSession, rechecks active role/version/revocation/expiry and uses a consistent transaction. No proof bytes, nonce, notes, private asset IDs, transcripts or provider secrets enter the DTO or audit.
+
+Consequential tests first: native current session/role/suspension and lock-wait invalidation; exact canonical totals/time boundaries/five-kind predicates; legacy/demo adversarial counts ignored; bounded deterministic preview/private-field exclusion; snapshot consistency during concurrent writes; no synthetic zero on read failure; anonymous401/nonadmin403/private no-store/current revocation in actual HTTP. Arabic360 and English desktop/360, long handles, keyboard/focus, actual refresh progress and retained prior data on failure. Schema/provider/legal/outreach changes are outside this slice.
+
+Independent review, all four gates and full browser union precede commit. Further audited users/creators/campaigns/niches/analytics, CSV/claims and notification operations remain separate tasks.
