@@ -1,0 +1,43 @@
+/* Retained Talaqee profile dimensions, scoped to public presentation. */
+.page { width: calc(100% - 32px); max-width: 900px; margin-inline: auto; padding-block: 40px 64px; }
+.brand { max-width: 860px; }
+.header { margin-block-end: 22px; }
+.title { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+.subtitle { color: var(--muted-foreground); margin: 0; font-size: 14.5px; overflow-wrap: anywhere; }
+.identity { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 26px; margin-block-end: 18px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.avatar { width: 72px; height: 72px; flex-shrink: 0; border-radius: 20px; background: var(--foreground); color: var(--background); font-size: 30px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.identityDetails { flex: 1; min-width: min(220px, 100%); }
+.name { font-size: 19px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.handle { font-size: 14px; color: var(--muted-foreground); margin: 4px 0 0; overflow-wrap: anywhere; text-align: start; }
+.bio { margin: 10px 0 0; font-size: 14px; color: var(--muted-foreground); white-space: pre-wrap; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 18px; }
+.fact { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.fact dt { font-size: 12px; color: var(--muted-foreground); margin-block-end: 3px; }
+.fact dd { font-size: 15px; font-weight: 700; margin: 0; text-align: start; overflow-wrap: anywhere; }
+.panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 24px; min-width: 0; }
+.panelTitle { font-size: 15px; font-weight: 700; margin: 0 0 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-block-end: 22px; }
+.chip { background: var(--accent); color: var(--accent-foreground); font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; overflow-wrap: anywhere; max-width: 100%; }
+.sectionHeading { font-size: 15px; font-weight: 700; margin: 0 0 12px; }
+.accountsHeading, .workHeading { margin-block-start: 22px; }
+.muted { font-size: 13.5px; color: var(--muted-foreground); margin: 0; overflow-wrap: anywhere; }
+.list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.item { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.itemHeading { font-size: 13.5px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.itemText { font-size: 13.5px; margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rates { display: flex; flex-direction: column; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.rate { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 14px; }
+.rate > span, .money { max-width: 100%; overflow-wrap: anywhere; }
+.website { display: inline-flex; align-items: center; min-height: 44px; margin-block-start: 14px; color: var(--foreground); font-size: 13.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.website:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; border-radius: 4px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+@media (max-width: 640px) {
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panels { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  .identity, .panel { padding: 22px; }
+}
