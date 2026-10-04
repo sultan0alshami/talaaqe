@@ -10,6 +10,7 @@ import {
   AssetPurposeSchema, EvidenceQueueQuerySchema, uploadPrivateAsset, getPrivateAsset, getCreatorEvidence, getBrandEvidence, listEvidenceReviewQueue,
   createOwnershipChallenge, submitOwnershipProof, reviewOwnershipProof, submitMetricsScreenshot, reviewMetricsScreenshot, approveMetricsSnapshot,
   submitFactCorrection, approveFactCorrection, submitAdvertisingLicence, reviewAdvertisingLicence, submitBusinessVerification, reviewBusinessVerification,
+  listLicencePolicyOptions, LicencePolicyOptionsQuerySchema,
 } from "./service";
 
 export const loadEvidence = domainHandler(async () => {
@@ -78,6 +79,23 @@ export const loadEvidenceQueue = domainHandler(async (request: Request) => {
   const query = EvidenceQueueQuerySchema.safeParse(values);
   if (!query.success) throw new EvidenceError("VALIDATION", 422);
   return listEvidenceReviewQueue(session.userId, query.data, await evidenceOptionsForSession(session));
+});
+
+export const loadLicencePolicyOptions = domainHandler(async (request: Request, context: { params: Promise<{ id: string }> }) => {
+  const session = await requireRole("ADMIN"), { id } = await context.params;
+  if (!Id.safeParse(id).success) throw new EvidenceError("VALIDATION", 422);
+  const values: Record<string, unknown> = {};
+  for (const [key, value] of new URL(request.url).searchParams) {
+    if (Object.hasOwn(values, key) || !["cursor", "limit"].includes(key)) throw new EvidenceError("VALIDATION", 422);
+    values[key] = value;
+  }
+  if (values.limit !== undefined) {
+    if (typeof values.limit !== "string" || !/^[1-9][0-9]?$/.test(values.limit)) throw new EvidenceError("VALIDATION", 422);
+    values.limit = Number(values.limit);
+  }
+  const query = LicencePolicyOptionsQuerySchema.safeParse(values);
+  if (!query.success) throw new EvidenceError("VALIDATION", 422);
+  return listLicencePolicyOptions(session.userId, id, await evidenceOptionsForSession(session), query.data);
 });
 
 type Operation = { roles: readonly ("CREATOR" | "BRAND" | "ADMIN")[]; run: (actor: string, resourceId: string | undefined, command: unknown, options: EvidenceOptions) => Promise<unknown> };

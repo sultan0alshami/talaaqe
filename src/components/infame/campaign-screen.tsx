@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import styles from "./workflow-layout.module.css";
+import { CampaignBrief } from "./campaign-brief";
+import briefStyles from "./campaign-brief.module.css";
+import { CampaignGuided } from "./campaign-guided";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
@@ -1194,135 +1197,20 @@ export function CampaignScreen({
         </Button>
       )}
       {mode === "GUIDED" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {copy(
-                "اشرح الفكرة بطريقتك",
-                "Explain the idea in your own words",
-              )}
-            </CardTitle>
-            <CardDescription className="text-base">
-              {copy(
-                "المحادثة والفقرة تقترحان نفس حقول النموذج. لا يُطبّق اقتراح أو يُعتمد موجز بدون مراجعتك.",
-                "Chat and paragraph input propose the same form fields. A proposal or brief needs your explicit review before it is applied or approved.",
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant={guidedMode === "chat" ? "secondary" : "outline"}
-                aria-pressed={guidedMode === "chat"}
-                onClick={() => setGuidedMode("chat")}
-              >
-                {copy("محادثة", "Conversation")}
-              </Button>
-              <Button
-                variant={guidedMode === "paragraph" ? "secondary" : "outline"}
-                aria-pressed={guidedMode === "paragraph"}
-                onClick={() => setGuidedMode("paragraph")}
-              >
-                {copy("فقرة كاملة", "Full paragraph")}
-              </Button>
-            </div>
-            <p className="text-base text-muted-foreground">
-              {copy(
-                "المساعد غير مهيأ حاليًا. النموذج متاح بالكامل؛ طلب المساعد يعرض حالة الخدمة الفعلية.",
-                "The assistant is not configured currently. The complete form is available; assistant requests show the actual service status.",
-              )}
-            </p>
-            {campaign?.conversation.length ? (
-              <ol
-                aria-label={copy("المحادثة المحفوظة", "Saved conversation")}
-                className="space-y-3"
-              >
-                {campaign.conversation.map((turn, index) => (
-                  <li key={index} className="space-y-2 rounded-lg border p-4">
-                    <p className="text-sm text-muted-foreground">
-                      {turn.role === "user"
-                        ? copy("أنت", "You")
-                        : copy("المساعد", "Assistant")}
-                    </p>
-                    <p
-                      dir="auto"
-                      lang={turn.language ?? undefined}
-                      className="whitespace-pre-wrap break-words text-base"
-                    >
-                      {turn.text}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-base">
-                {copy("ما فيه رسائل محفوظة بعد.", "No saved messages yet.")}
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              {copy("أسئلة توضيحية محفوظة", "Saved clarification questions")}:{" "}
-              {campaign?.clarificationCount ?? 0} / 5
-            </p>
-            <label className="block space-y-2">
-              <span className="text-base font-medium">
-                {guidedMode === "chat"
-                  ? copy("رسالتك", "Your message")
-                  : copy("وصف الحملة", "Campaign description")}
-              </span>
-              <Textarea
-                dir="auto"
-                rows={6}
-                maxLength={20000}
-                className="text-base"
-                value={inputText}
-                onChange={(event) => setInputText(event.target.value)}
-              />
-            </label>
-            <label className="block space-y-2">
-              <span className="text-base">
-                {copy(
-                  "لغة النص الأصلية (اختياري، رمز BCP47)",
-                  "Original text language (optional, BCP47 code)",
-                )}
-              </span>
-              <Input
-                className="text-base"
-                dir="ltr"
-                value={inputLanguage}
-                maxLength={100}
-                onChange={(event) => setInputLanguage(event.target.value)}
-                placeholder="ar / en"
-              />
-            </label>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                size="lg"
-                disabled={disabled || !inputText.trim()}
-                onClick={askAssistant}
-              >
-                {copy("اطلب اقتراحًا للمراجعة", "Request a proposal to review")}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => setMode("FORM")}
-              >
-                {copy(
-                  "افتح نفس الحقول بالنموذج",
-                  "Open the same fields in the form",
-                )}
-              </Button>
-            </div>
-            {!campaign && (
-              <p className="text-base text-muted-foreground">
-                {copy(
-                  "طلب الاقتراح ينشئ مسودة خاصة للحملة. النص غير المعالج يبقى في هذا المحرر حتى تغادر الصفحة.",
-                  "Requesting a proposal creates a private campaign draft. Unprocessed text stays in this editor until you leave the page.",
-                )}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <CampaignGuided
+          conversation={campaign?.conversation ?? []}
+          clarificationCount={campaign?.clarificationCount ?? 0}
+          mode={guidedMode}
+          text={inputText}
+          language={inputLanguage}
+          disabled={disabled}
+          hasCampaign={!!campaign}
+          onModeChange={setGuidedMode}
+          onTextChange={setInputText}
+          onLanguageChange={setInputLanguage}
+          onRequest={askAssistant}
+          onForm={() => setMode("FORM")}
+        />
       )}
       {mode === "FORM" && (
         <form
@@ -2122,17 +2010,17 @@ export function CampaignScreen({
         </Card>
       )}
       {campaign && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{copy("موجز الحملة", "Campaign brief")}</CardTitle>
-            <CardDescription className="text-base">
+        <section className={briefStyles.page}>
+          <header className={briefStyles.heading}>
+            <h2>{copy("موجز الحملة", "Campaign brief")}</h2>
+            <p>
               {copy(
                 "الموجز نسخة من التفاصيل المحفوظة. كل تعديل مادي يحتاج مراجعة واعتماد نسخة جديدة.",
                 "The brief is a version of your saved requirements. Material edits need review and approval of a new version.",
               )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+            </p>
+          </header>
+          <div className={briefStyles.preparation}>
             {!!campaign.missingFields.length && (
               <div className="space-y-3">
                 <p className="text-base font-medium">
@@ -2199,32 +2087,18 @@ export function CampaignScreen({
               </p>
             )}
             {currentBrief && (
-              <article className="space-y-5 rounded-lg border p-4 sm:p-6">
-                <h2 className="text-xl font-semibold">
-                  {copy("نسخة الموجز", "Brief version")} {currentBrief.version}
-                </h2>
-                <p className="text-base">
-                  {staleBrief
-                    ? copy(
-                        "قديمة — تفاصيل الحملة تغيرت",
-                        "Stale — campaign requirements changed",
-                      )
-                    : currentBrief.approvedAt
-                      ? copy("معتمدة", "Approved")
-                      : copy("بانتظار اعتمادك", "Awaiting your approval")}
-                </p>
-                <dl className="grid gap-5 sm:grid-cols-2">
-                  {Object.entries(currentBrief.content.requirements)
-                    .filter(([key]) => Object.hasOwn(fieldLabels, key))
-                    .map(([key, value]) => (
-                      <div className="min-w-0" key={key}>
-                        <dt className="text-base font-medium">{label(key)}</dt>
-                        <dd className="mt-2 text-base leading-7">
-                          {showValue(key, value)}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
+              <CampaignBrief
+                title={currentBrief.content.requirements.title}
+                version={currentBrief.version}
+                status={staleBrief
+                  ? copy("قديمة — تفاصيل الحملة تغيرت", "Stale — campaign requirements changed")
+                  : currentBrief.approvedAt
+                    ? copy("معتمدة", "Approved")
+                    : copy("بانتظار اعتمادك", "Awaiting your approval")}
+                rows={Object.entries(currentBrief.content.requirements)
+                  .filter(([key]) => Object.hasOwn(fieldLabels, key))
+                  .map(([key, value]) => ({ key, label: label(key), value: showValue(key, value) }))}
+              >
                 <p className="text-base text-muted-foreground">
                   {currentBrief.content.policyReview
                     ? copy(
@@ -2284,10 +2158,10 @@ export function CampaignScreen({
                       </Link>
                     </Button>
                   )}
-              </article>
+              </CampaignBrief>
             )}
             {campaign.briefs.length > 1 && (
-              <details>
+              <details className={briefStyles.history}>
                 <summary className="min-h-12 cursor-pointer py-3 text-base font-medium">
                   {copy("سجل النسخ السابقة", "Previous version history")}
                 </summary>
@@ -2333,8 +2207,8 @@ export function CampaignScreen({
                 </ol>
               </details>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
     </section>
   );

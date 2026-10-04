@@ -4,3 +4,4 @@ export { createOwnershipChallenge, submitOwnershipProof, reviewOwnershipProof, a
 export { submitMetricsScreenshot, reviewMetricsScreenshot, approveMetricsSnapshot, submitFactCorrection, approveFactCorrection, ScreenshotMetricsSchema, type MetricsSnapshotDTO } from "./metrics";
 export { submitAdvertisingLicence, reviewAdvertisingLicence, submitBusinessVerification, reviewBusinessVerification } from "./verifications";
 export { getCreatorEvidence, getBrandEvidence, listEvidenceReviewQueue, EvidenceQueueQuerySchema } from "./loaders";
+export { listLicencePolicyOptions, LicencePolicyOptionsQuerySchema } from "./licence-policy-options";

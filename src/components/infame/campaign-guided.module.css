@@ -1,0 +1,36 @@
+/* Talaqee's joined 780px conversation header, canvas and composer. */
+.chat { width: 100%; max-width: 780px; margin-inline: auto; min-width: 0; height: calc(100dvh - 130px); min-height: 680px; display: flex; flex-direction: column; }
+.header { background: var(--card); border: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 16px 22px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.avatar { width: 42px; height: 42px; border-radius: 13px; flex: none; background: linear-gradient(135deg, var(--foreground), var(--muted-foreground)); color: var(--background); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; }
+.identity { flex: 1 1 260px; min-width: 0; }
+.identity h2 { font-size: 15.5px; font-weight: 700; margin: 0 0 3px; }
+.identity p { font-size: 12.5px; color: var(--muted-foreground); margin: 0; overflow-wrap: anywhere; }
+.modes { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 24px; background: var(--muted); }
+.chat .modes [data-slot="button"] { border-radius: 999px; min-height: 44px; padding: 6px 14px; font-size: 12px; }
+.chat [data-slot="button"] { max-width: 100%; white-space: normal; text-align: start; height: auto; min-height: 44px; padding: 12px 24px; border-radius: 11px; overflow-wrap: anywhere; }
+.canvas { flex: 1; min-height: 160px; border-inline: 1px solid var(--border); background: var(--infame-surface-subtle); padding: 24px 22px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 16px; }
+.canvas:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
+.unavailable, .questions, .empty { font-size: 13.5px; margin: 0; overflow-wrap: anywhere; color: var(--muted-foreground); }
+.messages { display: flex; flex-direction: column; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.message { display: flex; flex-direction: column; min-width: 0; }
+.assistant { align-items: flex-start; }
+.user { align-items: flex-end; }
+.role { font-size: 12px; margin: 0 0 4px; color: var(--muted-foreground); }
+.bubble { max-width: 78%; min-width: 0; margin: 0; padding: 13px 18px; font-size: 14.5px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 2px 8px color-mix(in srgb, var(--foreground) 5%, transparent); }
+.assistant .bubble { background: var(--card); color: var(--card-foreground); border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; }
+.user .bubble { background: var(--foreground); color: var(--background); border-radius: 16px 4px 16px 16px; }
+.composer { background: var(--card); border: 1px solid var(--border); border-block-start: 0; border-radius: 0 0 18px 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13.5px; }
+.chat .input { border: 1.5px solid var(--border); border-radius: 11px; padding: 12px 16px; font-size: 14.5px; background: var(--infame-surface-subtle); width: 100%; min-width: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.note { margin: 0; font-size: 12.5px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+  .chat { height: auto; min-height: 0; }
+  .canvas { max-height: 50dvh; min-height: 180px; }
+  .header { padding: 16px 18px; }
+  .identity { flex-basis: calc(100% - 56px); }
+  .modes { width: 100%; }
+  .modes > button { flex: 1; }
+  .actions > button { width: 100%; }
+}

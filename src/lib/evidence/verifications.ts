@@ -11,7 +11,7 @@ const Licence = z.object({ operationKey: Key, creatorId: Id, jurisdiction: Count
   type: text, scope: text, accountBindings: Bindings, platformScope: z.array(PlatformSchema).min(1).max(5).refine(p => new Set(p).size === p.length),
   evidenceAssetId: Id, validFrom: UtcDateTimeSchema, expiresAt: UtcDateTimeSchema }).strict().refine(r => Date.parse(r.validFrom) < Date.parse(r.expiresAt));
 const LicenceReview = Review.extend({ policyVersionId: Id.optional() }).strict();
-function licenceScope(l: AdvertisingLicence) { return { jurisdiction: l.jurisdiction, issuer: l.issuer, holderName: l.holderName, licenceNumber: l.licenceNumber,
+export function licenceScope(l: AdvertisingLicence) { return { jurisdiction: l.jurisdiction, issuer: l.issuer, holderName: l.holderName, licenceNumber: l.licenceNumber,
   type: l.type, scope: l.scope, accountIds: [...l.accountIds].sort(), platformScope: [...l.platformScope].sort(), evidenceAssetId: l.evidenceAssetId,
   validFrom: l.validFrom?.toISOString() ?? null, expiresAt: l.expiresAt?.toISOString() ?? null }; }
 export async function licenceDTO(tx: Tx, l: AdvertisingLicence) { return { id: l.id, creatorId: l.creatorId, revision: l.revision, ...licenceScope(l), status: l.status,
@@ -96,7 +96,7 @@ export async function reviewAdvertisingLicence(actor: string, id: string, input:
 }
 const Business = z.object({ operationKey: Key, brandId: Id, kind: z.enum(["REPRESENTATIVE", "BUSINESS_REGISTRATION"]), jurisdiction: CountryCodeSchema,
   identifier: text, evidenceAssetId: Id, expiresAt: UtcDateTimeSchema.optional() }).strict();
-function businessScope(b: BusinessVerification) { return { kind: b.kind, jurisdiction: b.jurisdiction, identifier: b.identifier, evidenceAssetId: b.evidenceAssetId, expiresAt: b.expiresAt?.toISOString() ?? null }; }
+export function businessScope(b: BusinessVerification) { return { kind: b.kind, jurisdiction: b.jurisdiction, identifier: b.identifier, evidenceAssetId: b.evidenceAssetId, expiresAt: b.expiresAt?.toISOString() ?? null }; }
 export async function businessDTO(tx: Tx, b: BusinessVerification) { return { id: b.id, brandId: b.brandId, revision: b.revision, ...businessScope(b), status: b.status, reviewedAt: b.reviewedAt?.toISOString() ?? null,
   reviewNote: b.reviewNote ? { text: b.reviewNote, language: await reviewLanguage(tx, "BusinessVerification", b.id, b.revision) } : null }; }
 export async function submitBusinessVerification(actor: string, input: unknown, options: EvidenceOptions) {
