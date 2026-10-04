@@ -41,6 +41,7 @@ export default async function CreatorDealPage({
       role="CREATOR"
       initialDraft={context?.draft}
       readiness={{
+        requirements: context?.requirements ?? null,
         templates: context?.templates ?? [],
         mandatoryPolicyVersionIds:
           context?.requirements?.mandatoryPolicyVersionIds ?? [],

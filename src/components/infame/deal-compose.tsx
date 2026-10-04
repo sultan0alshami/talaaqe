@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import styles from "./deal-layout.module.css";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -135,20 +136,20 @@ export function DealCompose({
     }
   }
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <header className="space-y-4">
+    <div className={`${styles.page} ${styles.compose}`}>
+      <header className={styles.header}>
         <Link
           href={`/brand/campaigns/${encodeURIComponent(context.campaign.id)}`}
-          className="inline-flex min-h-12 items-center font-medium underline underline-offset-4"
+          className={`${styles.back} inline-flex min-h-12 items-center underline underline-offset-4`}
         >
           {copy("ارجع للحملة", "Back to campaign")}
         </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className={styles.headerRow}>
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold sm:text-4xl">
               {copy("جهّز عرض التعاون", "Prepare a collaboration offer")}
             </h1>
-            <p className="max-w-2xl text-muted-foreground">
+            <p className={`${styles.headerCopy} max-w-2xl text-muted-foreground`}>
               {copy(
                 "اجمع الشروط بوضوح واحفظها على مهلك. ما يُرسل شيء للطرف الآخر إلا بعد مراجعتك وإرسالك الصريح.",
                 "Prepare clear terms at your own pace and save them. Nothing goes to the other party until you explicitly review and send it.",
@@ -160,7 +161,7 @@ export function DealCompose({
           </Button>
         </div>
       </header>
-      <Card>
+      <Card className={styles.context}>
         <CardContent className="grid gap-5 p-6 sm:grid-cols-2">
           <div>
             <p className="text-sm text-muted-foreground">
@@ -274,88 +275,94 @@ export function DealCompose({
           )}
         </div>
       )}
-      <DealEditor
-        key={editorKey}
-        initialTerms={context.draft?.terms ?? {}}
-        templates={context.templates}
-        mandatoryPolicyVersionIds={
-          context.requirements?.mandatoryPolicyVersionIds ?? []
-        }
-        busy={locked || compareRequired}
-        blockedReasons={context.readiness.blockedReasons}
-        submitLabel={copy(
-          "راجع العرض قبل الإرسال",
-          "Review offer before sending",
-        )}
-        onSave={save}
-        onSubmit={async (terms) => {
-          setPrepared(terms);
-          setReviewed(false);
-        }}
-        onDirty={() => {
-          setPrepared(null);
-          setReviewed(false);
-        }}
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>{copy("راجع ثم أرسل", "Review, then send")}</CardTitle>
-          <CardDescription>
-            {copy(
-              "المسودة خاصة بك. العرض المرسل يثبت نسخة ويظهر للطرف الآخر.",
-              "The draft is private to you. Sending creates a version visible to the other party.",
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {prepared ? (
-            <DealTerms terms={prepared} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {copy(
-                "أكمل الشروط واختر مراجعة العرض لعرض النسخة التي سترسلها هنا.",
-                "Complete the terms and choose review to show the exact offer you will send here.",
-              )}
-            </p>
-          )}
-          <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
-            <Checkbox
-              checked={reviewed}
-              disabled={
-                locked ||
-                !prepared ||
-                !context.readiness.canSend ||
-                compareRequired
-              }
-              onCheckedChange={(value) => setReviewed(value === true)}
-            />
-            <span className="text-sm leading-7">
-              {copy(
-                "راجعت المخرجات والمبلغ والفترة والحقوق والشروط، وأريد إرسال هذا العرض للطرف الآخر.",
-                "I reviewed the deliverables, amount, period, rights and terms, and want to send this offer to the other party.",
-              )}
-            </span>
-          </label>
-          <Button
-            disabled={
-              locked ||
-              !prepared ||
-              !reviewed ||
-              !context.readiness.canSend ||
-              compareRequired
+      <div className={styles.body}>
+        <div className={styles.main}>
+          <DealEditor
+            key={editorKey}
+            initialTerms={context.draft?.terms ?? {}}
+            templates={context.templates}
+            mandatoryPolicyVersionIds={
+              context.requirements?.mandatoryPolicyVersionIds ?? []
             }
-            onClick={send}
-          >
-            {copy("أرسل العرض", "Send offer")}
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            {copy(
-              "قبول العرض لا يبدأ التنفيذ مباشرةً؛ بعد القبول يؤكد كل طرف الاتفاق المثبّت بشكل مستقل.",
-              "Acceptance does not immediately start execution; each party separately confirms the frozen agreement after acceptance.",
+            busy={locked || compareRequired}
+            blockedReasons={context.readiness.blockedReasons}
+            submitLabel={copy(
+              "راجع العرض قبل الإرسال",
+              "Review offer before sending",
             )}
-          </p>
-        </CardContent>
-      </Card>
+            onSave={save}
+            onSubmit={async (terms) => {
+              setPrepared(terms);
+              setReviewed(false);
+            }}
+            onDirty={() => {
+              setPrepared(null);
+              setReviewed(false);
+            }}
+          />
+        </div>
+        <aside className={styles.rail}>
+          <Card>
+            <CardHeader>
+              <CardTitle><h2>{copy("راجع ثم أرسل", "Review, then send")}</h2></CardTitle>
+              <CardDescription>
+                {copy(
+                  "المسودة خاصة بك. العرض المرسل يثبت نسخة ويظهر للطرف الآخر.",
+                  "The draft is private to you. Sending creates a version visible to the other party.",
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {prepared ? (
+                <DealTerms terms={prepared} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {copy(
+                    "أكمل الشروط واختر مراجعة العرض لعرض النسخة التي سترسلها هنا.",
+                    "Complete the terms and choose review to show the exact offer you will send here.",
+                  )}
+                </p>
+              )}
+              <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
+                <Checkbox
+                  checked={reviewed}
+                  disabled={
+                    locked ||
+                    !prepared ||
+                    !context.readiness.canSend ||
+                    compareRequired
+                  }
+                  onCheckedChange={(value) => setReviewed(value === true)}
+                />
+                <span className="text-sm leading-7">
+                  {copy(
+                    "راجعت المخرجات والمبلغ والفترة والحقوق والشروط، وأريد إرسال هذا العرض للطرف الآخر.",
+                    "I reviewed the deliverables, amount, period, rights and terms, and want to send this offer to the other party.",
+                  )}
+                </span>
+              </label>
+              <Button
+                disabled={
+                  locked ||
+                  !prepared ||
+                  !reviewed ||
+                  !context.readiness.canSend ||
+                  compareRequired
+                }
+                onClick={send}
+              >
+                {copy("أرسل العرض", "Send offer")}
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                {copy(
+                  "قبول العرض لا يبدأ التنفيذ مباشرةً؛ بعد القبول يؤكد كل طرف الاتفاق المثبّت بشكل مستقل.",
+                  "Acceptance does not immediately start execution; each party separately confirms the frozen agreement after acceptance.",
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }

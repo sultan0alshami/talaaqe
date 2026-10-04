@@ -1,0 +1,98 @@
+/* Immutable Talaqee project detail and proposal-request geometry. */
+.page {
+  width: 100%;
+  max-width: 1000px;
+  min-width: 0;
+  margin-inline: auto;
+  color: var(--foreground);
+}
+
+.page > * + * { margin-block-start: 18px; }
+.page h1 { margin: 0; font-size: 25px; font-weight: 700; line-height: 1.5; }
+.compose h1 { font-size: 24px; }
+.header { margin-block-end: 20px; }
+.back { margin-block-end: 14px; font-size: 13.5px; font-weight: 600; }
+.headerRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.headerRow > div { min-width: 0; }
+.header p { overflow-wrap: anywhere; }
+.headerCopy { margin-block-start: 6px; font-size: 14.5px; line-height: 1.9; }
+.status { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; background: var(--muted); }
+
+.body { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.main, .rail { display: flex; min-width: 0; flex-direction: column; gap: 18px; }
+.main { --deal-panel-padding: 24px; }
+.rail { --deal-panel-padding: 22px; }
+.page [data-slot="card"] {
+  --card-spacing: 0px;
+  min-width: 0;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: var(--deal-panel-padding, 24px);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: none;
+  overflow: visible;
+}
+.page [data-slot="card-header"], .page [data-slot="card-content"] { min-width: 0; padding: 0; }
+.page [data-slot="card-header"] { gap: 6px; }
+.page [data-slot="card-title"] { font-size: 15px; font-weight: 700; line-height: 1.6; overflow-wrap: anywhere; }
+.page [data-slot="card-title"] h2 { margin: 0; font: inherit; }
+.rail [data-slot="card-title"] { font-size: 14px; }
+.page [data-slot="card-description"] { font-size: 13.5px; line-height: 1.9; }
+.page [data-slot="button"] { min-height: 44px; max-width: 100%; height: auto; white-space: normal; border-radius: 10px; padding: 11px 18px; font-size: 13.5px; line-height: 1.6; }
+.page input:not([type="checkbox"]):not([type="radio"]), .page textarea, .page select { min-width: 0; max-width: 100%; border-radius: 10px; }
+.page textarea { line-height: 1.9; }
+.page fieldset { min-width: 0; }
+.page p, .page dd, .page li, .page summary { overflow-wrap: anywhere; }
+.page summary { line-height: 1.8; }
+.page pre { overflow-wrap: anywhere; }
+.page h2 { font-size: 16px; font-weight: 700; line-height: 1.6; }
+.context [data-slot="card-content"] { padding: 0; gap: 20px; }
+.page .context { padding: 22px 24px; }
+.context h2 { font-size: 16px; }
+.context p { font-size: 13px; line-height: 1.8; }
+.editor { display: flex; min-width: 0; flex-direction: column; gap: 18px; }
+.editor > * { margin-block: 0; }
+.deliverable { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.editorActions { display: flex; gap: 9px; flex-wrap: wrap; }
+.editorActions > button { flex: 1 1 140px; }
+
+.progress { min-width: 0; padding: 26px 30px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); color: var(--card-foreground); }
+.progress h2 { margin: 0 0 20px; font-size: 13px; font-weight: 700; color: var(--muted-foreground); }
+.steps { display: flex; padding: 0; margin: 0; list-style: none; }
+.step { display: flex; min-width: 0; flex: 1; align-items: flex-start; }
+.step:last-child { flex: 0 1 90px; }
+.stepLabel { display: flex; width: 90px; max-width: 100%; flex-shrink: 0; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.circle { display: flex; width: 30px; height: 30px; flex-shrink: 0; align-items: center; justify-content: center; border: 2px solid var(--border); border-radius: 50%; background: var(--background); color: var(--muted-foreground); font-size: 13px; font-weight: 700; }
+.stepText { font-size: 12px; font-weight: 500; line-height: 1.4; color: var(--muted-foreground); }
+.recorded .circle { border-color: var(--foreground); background: var(--foreground); color: var(--background); }
+.recorded .stepText { color: var(--foreground); }
+.current .circle { border-color: var(--primary); outline: 2px solid var(--foreground); outline-offset: 3px; }
+.current .stepText { font-weight: 700; }
+.connector { flex: 1; height: 3px; min-width: 8px; margin-block-start: 14px; border-radius: 999px; background: var(--border); }
+.recordedConnector { background: var(--foreground); }
+.stopped { margin-block-start: 20px; font-size: 13px; line-height: 1.8; color: var(--muted-foreground); }
+
+@media (max-width: 760px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .headerRow > button { align-self: flex-start; }
+  .progress { padding: 24px; }
+  .stepLabel { width: 72px; }
+  .step:last-child { flex-basis: 72px; }
+}
+
+@media (max-width: 540px) {
+  .main, .rail { --deal-panel-padding: 18px; }
+  .page .context { padding: 20px 18px; }
+  .page h1, .compose h1 { font-size: 24px; }
+  .progress { padding: 22px 18px; }
+  .steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .step { position: relative; }
+  .stepLabel { width: 100%; max-width: none; flex-direction: row; gap: 12px; text-align: start; }
+  .stepText { font-size: 13px; }
+  .connector { position: absolute; inset-inline-start: 14px; top: 30px; margin: 0; width: 2px; height: 16px; min-width: 0; }
+  .deliverable { grid-template-columns: minmax(0, 1fr); }
+  .editorActions { flex-direction: column; }
+  .editorActions > button { flex: 0 1 auto; width: 100%; }
+}

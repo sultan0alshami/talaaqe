@@ -259,6 +259,33 @@ async function screenshot(page: import("@playwright/test").Page, name: string) {
     fullPage: true,
   });
 }
+async function actualReviewedOffer(
+  page: import("@playwright/test").Page,
+  f: Awaited<ReturnType<typeof reviewedFixture>>,
+) {
+  const response = await page.request.get(
+    `/api/deals/compose?campaignId=${f.campaign.id}&creatorId=${f.target.id}`,
+  );
+  expect(response.status()).toBe(200);
+  const current = (await response.json()).data;
+  expect(current.readiness).toEqual({ canSend: true, blockedReasons: [] });
+  const created = await page.request.post("/api/deals", {
+    headers: { Origin: origin },
+    data: {
+      ...f.input,
+      operationKey: randomUUID(),
+      expectedCampaignRevision: current.campaign.revision,
+      expectedBriefVersion: current.requirements.version,
+      terms: {
+        ...f.terms,
+        governingTermsVersionId: f.termsId,
+        licencePolicyVersionIds: current.requirements.mandatoryPolicyVersionIds,
+      },
+    },
+  });
+  expect(created.status()).toBe(200);
+  return (await created.json()).data.deal;
+}
 async function signIn(
   context: import("@playwright/test").BrowserContext,
   email: string,
@@ -535,6 +562,77 @@ test("current approved proof, portfolio, contact and reviewed policies enable th
     ),
   ).toBe(true);
   await screenshot(page, `${info.project.name}-deal-actual-two-confirmations`);
+  // Exercise execution through the real controls and commands, not service
+  // transitions. The prerequisite policies above remain synthetic fixtures.
+  const frozen = await db.agreementSnapshot.findFirstOrThrow({ where: { dealId: deal.id } });
+  await login(f.creatorEmail);
+  await page.goto(`/creator/deals/${deal.id}`);
+  await page.getByLabel(label("تفاصيل إثبات التسليم", "Delivery evidence details"), { exact: true }).fill("تفاصيل تسليم أصلية من الصانع <script>test</script>");
+  await page.getByLabel(label("روابط الإثبات — رابط HTTPS لكل سطر (اختياري)", "Evidence links — one HTTPS link per line (optional)"), { exact: true }).fill("https://example.invalid/synthetic-delivery");
+  const deliveredResponse = page.waitForResponse(response => response.url().endsWith(`/api/deals/${deal.id}/commands`) && response.request().method() === "POST");
+  await page.getByRole("button", { name: label("أبلغ عن التسليم مع الإثبات", "Report delivery with evidence"), exact: true }).click();
+  const deliveryResult = await deliveredResponse;
+  expect(deliveryResult.status()).toBe(200);
+  expect((await deliveryResult.json()).data.deal.status).toBe("DELIVERED");
+  await expect(page.getByText("تفاصيل تسليم أصلية من الصانع <script>test</script>", { exact: true })).toBeVisible();
+  expect((await db.deal.findUniqueOrThrow({ where: { id: deal.id } })).status).toBe("DELIVERED");
+  await login(f.brandEmail);
+  await page.goto(`/brand/deals/${deal.id}`);
+  await expect(page.getByText("تفاصيل تسليم أصلية من الصانع <script>test</script>", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "https://example.invalid/synthetic-delivery", exact: true })).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(page.getByRole("button", { name: label("سجّل اكتمال الصفقة", "Record completion"), exact: true })).toBeDisabled();
+  await page.getByLabel(label("راجعت التسليم وأريد تسجيل اكتمال الصفقة.", "I reviewed the delivery and want to record completion."), { exact: true }).check();
+  await page.getByRole("button", { name: label("سجّل اكتمال الصفقة", "Record completion"), exact: true }).click();
+  await expect(page.getByRole("heading", { name: label("تقييم التعاون", "Collaboration feedback"), exact: true })).toBeVisible();
+  expect((await db.deal.findUniqueOrThrow({ where: { id: deal.id } })).status).toBe("COMPLETED");
+  await page.getByLabel(label("أصرح بأنني دفعت المقابل للطرف الآخر، وأفهم أن إنفيم لا يتحقق من هذا الدفع.", "I declare that I paid the other party and understand that Infame does not verify this payment."), { exact: true }).check();
+  await page.getByRole("button", { name: label("أبلغ بأنني دفعت", "Declare that I paid"), exact: true }).click();
+  await expect(page.getByText(label("أبلغت الشركة عن الدفع — تصريح ذاتي", "The brand reported payment — self-reported"), { exact: true })).toBeVisible();
+  await page.getByLabel(label("تقييمك من ١ إلى ٥", "Your rating from 1 to 5"), { exact: true }).selectOption("3");
+  await page.getByLabel(label("تعليقك (اختياري)", "Your comment (optional)"), { exact: true }).fill("تقييم الشركة الأصلي المختوم");
+  await page.getByLabel(label("هذا تقييمي النهائي لهذه الصفقة، وأفهم سياسة الكشف.", "This is my final rating for this deal, and I understand the reveal policy."), { exact: true }).check();
+  await page.getByRole("button", { name: label("أرسل تقييمك المختوم", "Submit your sealed rating"), exact: true }).click();
+  await expect(page.locator("p").filter({ hasText: /^تقييم الشركة الأصلي المختوم$/ })).toBeVisible();
+  await login(f.creatorEmail);
+  await page.goto(`/creator/deals/${deal.id}`);
+  await expect(page.getByText("تقييم الشركة الأصلي المختوم", { exact: true })).toHaveCount(0);
+  expect(JSON.stringify(await (await page.request.get(`/api/deals/${deal.id}`)).json())).not.toContain("تقييم الشركة الأصلي المختوم");
+  await page.getByLabel(label("أصرح بأنني استلمت المقابل، وأفهم أن إنفيم لا يتحقق من هذا الاستلام.", "I declare that I received payment and understand that Infame does not verify this receipt."), { exact: true }).check();
+  await page.getByRole("button", { name: label("أبلغ بأنني استلمت", "Declare that I received"), exact: true }).click();
+  await expect(page.getByText(label("أبلغ الصانع عن الاستلام — تصريح ذاتي", "The creator reported receipt — self-reported"), { exact: true })).toBeVisible();
+  await page.getByLabel(label("تقييمك من ١ إلى ٥", "Your rating from 1 to 5"), { exact: true }).selectOption("5");
+  await page.getByLabel(label("تعليقك (اختياري)", "Your comment (optional)"), { exact: true }).fill("تقييم الصانع الأصلي");
+  await page.getByLabel(label("هذا تقييمي النهائي لهذه الصفقة، وأفهم سياسة الكشف.", "This is my final rating for this deal, and I understand the reveal policy."), { exact: true }).check();
+  await page.getByRole("button", { name: label("أرسل تقييمك المختوم", "Submit your sealed rating"), exact: true }).click();
+  await expect(page.getByText("تقييم الشركة الأصلي المختوم", { exact: true })).toBeVisible();
+  await expect(page.locator("p").filter({ hasText: /^تقييم الصانع الأصلي$/ })).toBeVisible();
+  const final = (await (await page.request.get(`/api/deals/${deal.id}`)).json()).data;
+  expect(final.ratingsRevealed).toBe(true);
+  expect(final.ratings).toHaveLength(2);
+  expect(final.brandPaymentReportedAt).toBeTruthy();
+  expect(final.creatorReceiptReportedAt).toBeTruthy();
+  expect(final.agreement.contentHash).toBe((frozen.content as { contentHash: string }).contentHash);
+  // A later material campaign edit must not substitute this deal's approved
+  // historical requirements or rewrite the frozen agreement.
+  const currentCampaign = await db.campaign.findUniqueOrThrow({ where: { id: f.campaign.id } });
+  await applyCampaignMutation(f.brandUserId, f.campaign.id, { action: "UPDATE_FIELDS", operationKey: randomUUID(), expectedRevision: currentCampaign.revision, payload: { patch: { summary: "ملخص لاحق لا يخص النسخة المثبتة" } } });
+  await page.reload();
+  await page.getByText(label("متطلبات الموجز المعتمدة", "Approved brief requirements"), { exact: true }).click();
+  await expect(page.locator("[data-brief-field]")).toHaveCount(30);
+  await expect(page.locator('[data-brief-field="title"] dd')).toBeVisible();
+  await expect(page.locator('[data-brief-field="budget"] dd')).toBeVisible();
+  await expect(page.locator('[data-brief-field="period"] dd')).toBeVisible();
+  await expect(page.locator('[data-brief-field="title"] dd')).toHaveText("حملة اصطناعية بمراجعة سياسات اختبار");
+  await expect(page.locator('[data-brief-field="budget"] dd')).toHaveText("10.001 KWD");
+  await expect(page.locator('[data-brief-field="period"] dd')).toContainText("Asia/Kuwait");
+  await expect(page.locator('[data-brief-field="summary"] dd')).not.toContainText("ملخص لاحق لا يخص النسخة المثبتة");
+  const progress = page.getByRole("region", { name: label("مراحل الصفقة المحفوظة", "Recorded deal stages"), exact: true });
+  await expect(progress.locator("li[aria-current=step]")).toContainText(label("الاكتمال", "Completion"));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => scrollTo(0, 0));
+  await screenshot(page, `${info.project.name}-deal-original-completed-brief`);
+  await page.getByText(label("متطلبات الموجز المعتمدة", "Approved brief requirements"), { exact: true }).click();
+  await page.screenshot({ path: path.join(workspace, ".infame", "artifacts", `${info.project.name}-deal-original-completed-preview.png`) });
 });
 
 test("offer parties, response-loss replay after reload and original text remain correct", async ({
@@ -636,6 +734,145 @@ test("offer parties, response-loss replay after reload and original text remain 
   await expect(
     page.getByText("رسالة أصلية بعد فقد الاستجابة", { exact: true }),
   ).toBeVisible();
+});
+
+test("two-tab counters preserve stale inputs, enforce the recipient and retain declined history", async ({ page, context, browser }, info) => {
+  const english = info.project.name === "english-desktop",
+    label = (ar: string, en: string) => english ? en : ar,
+    f = await reviewedFixture(english ? "en" : "ar");
+  await signIn(context, f.brandEmail, f.password);
+  const deal = await actualReviewedOffer(page, f);
+  const other = await context.newPage();
+  const open = async (tab: import("@playwright/test").Page, amount: string, note: string) => {
+    await tab.goto(`/brand/deals/${deal.id}`);
+    await tab.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true }).click();
+    await tab.getByLabel(label("المبلغ", "Amount"), { exact: true }).fill(amount);
+    await tab.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true }).fill(note);
+  };
+  const send = async (tab: import("@playwright/test").Page) => {
+    const response = tab.waitForResponse(r => r.url().endsWith(`/api/deals/${deal.id}/commands`) && r.request().method() === "POST");
+    await tab.getByRole("button", { name: label("أرسل الشروط المعدّلة", "Send revised terms"), exact: true }).click();
+    return response;
+  };
+  await open(page, "4.999", "عرض معدل أصلي من التبويب الأول");
+  await open(other, "4.998", "مدخل أصلي محفوظ في التبويب القديم");
+  expect((await send(page)).status()).toBe(200);
+  expect((await send(other)).status()).toBe(409);
+  const note = other.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
+  await expect(note).toHaveValue("مدخل أصلي محفوظ في التبويب القديم");
+  expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(2);
+  await other.getByRole("button", { name: label("حمّل الحالة الحالية", "Load current state"), exact: true }).click();
+  const compare = other.getByRole("button", { name: label("راجعت النسخة الحالية وأحتفظ بمدخلاتي", "I reviewed the current version and will keep my entries"), exact: true });
+  await expect(compare).toBeVisible();
+  await expect(other.getByRole("button", { name: label("أرسل الشروط المعدّلة", "Send revised terms"), exact: true })).toBeDisabled();
+  await expect(note).toHaveValue("مدخل أصلي محفوظ في التبويب القديم");
+  await expect(other.getByLabel(label("المبلغ", "Amount"), { exact: true })).toHaveValue("4.998");
+  await compare.click();
+  expect((await send(other)).status()).toBe(200);
+  const actual = (await (await other.request.get(`/api/deals/${deal.id}`)).json()).data;
+  expect(actual.offers).toHaveLength(3);
+  expect(actual.currentOffer.terms.amount).toEqual({ amountMinor: "4998", currencyCode: "KWD" });
+  expect(actual.currentOffer.terms.note).toEqual({ text: "مدخل أصلي محفوظ في التبويب القديم", language: "ar" });
+  expect(actual.currentOffer.recipientUserId).toBe(f.target.userId);
+  expect(actual.offers.filter((offer: { status: string }) => offer.status === "PENDING")).toHaveLength(1);
+  const ownAccept = await other.request.post(`/api/deals/${deal.id}/commands`, { headers: { Origin: origin }, data: { action: "ACCEPT", operationKey: randomUUID(), expectedVersion: actual.version, offerId: actual.currentOffer.id, expectedOfferVersion: actual.currentOffer.version, language: "ar" } });
+  expect(ownAccept.status()).toBe(403);
+  expect((await ownAccept.json()).error.code).toBe("RECIPIENT_ONLY");
+  expect(await db.agreementSnapshot.count({ where: { dealId: deal.id } })).toBe(0);
+  await screenshot(other, `${info.project.name}-deal-original-counter-history`);
+  const creatorContext = await browser.newContext({ baseURL: origin, viewport: english ? { width: 1440, height: 1000 } : { width: 360, height: 800 } });
+  try {
+    await signIn(creatorContext, f.creatorEmail, f.password);
+    const creatorPage = await creatorContext.newPage();
+    await creatorPage.goto(`/creator/deals/${deal.id}`);
+    await creatorPage.getByText(label("ارفض العرض بسبب واضح", "Decline with a clear reason"), { exact: true }).click();
+    await expect(creatorPage.getByRole("button", { name: label("ارفض هذا العرض", "Decline this offer"), exact: true })).toBeDisabled();
+    await creatorPage.getByLabel(label("سبب الرفض", "Decline reason"), { exact: true }).fill("سبب رفض أصلي محفوظ");
+    const declineResponse = creatorPage.waitForResponse(r => r.url().endsWith(`/api/deals/${deal.id}/commands`) && r.request().method() === "POST");
+    await creatorPage.getByRole("button", { name: label("ارفض هذا العرض", "Decline this offer"), exact: true }).click();
+    const declined = await declineResponse;
+    expect(declined.status()).toBe(200);
+    expect((await declined.json()).data.deal.status).toBe("DECLINED");
+    await expect(creatorPage.locator("p").filter({ hasText: /^سبب رفض أصلي محفوظ$/ })).toBeVisible();
+    expect((await db.deal.findUniqueOrThrow({ where: { id: deal.id } })).status).toBe("DECLINED");
+    await expect(creatorPage.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true })).toHaveCount(0);
+    const progress = creatorPage.getByRole("region", { name: label("مراحل الصفقة المحفوظة", "Recorded deal stages"), exact: true });
+    await expect(progress.locator("[aria-current=step]")).toHaveCount(0);
+    await expect(progress.getByText(label("قبول العرض · لم تصل إليها الصفقة", "Offer acceptance · Not reached"), { exact: false })).toBeVisible();
+    await creatorPage.getByLabel(label("رسالتك", "Your message"), { exact: true }).fill("رسالة أصلية بعد الرفض");
+    await creatorPage.getByRole("button", { name: label("أرسل الرسالة", "Send message"), exact: true }).click();
+    await expect(creatorPage.locator("p").filter({ hasText: /^رسالة أصلية بعد الرفض$/ })).toBeVisible();
+    expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(3);
+    expect(await creatorPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await creatorPage.evaluate(() => scrollTo(0, 0));
+    await screenshot(creatorPage, `${info.project.name}-deal-original-declined`);
+  } finally { await creatorContext.close(); await other.close(); }
+});
+
+test("reasoned cancellation stops progress and preserves original party messaging", async ({ page, context }, info) => {
+  const english = info.project.name === "english-desktop",
+    label = (ar: string, en: string) => english ? en : ar,
+    f = await reviewedFixture(english ? "en" : "ar");
+  await signIn(context, f.brandEmail, f.password);
+  const deal = await actualReviewedOffer(page, f);
+  await page.goto(`/brand/deals/${deal.id}`);
+  await page.getByRole("button", { name: label("ألغِ الصفقة بسبب واضح", "Cancel with a clear reason"), exact: true }).click();
+  const confirm = page.getByRole("button", { name: label("أكّد إلغاء الصفقة", "Confirm cancellation"), exact: true });
+  await expect(confirm).toBeDisabled();
+  await page.getByLabel(label("سبب الإلغاء", "Cancellation reason"), { exact: true }).fill("سبب إلغاء أصلي محفوظ");
+  const cancelledResponse = page.waitForResponse(r => r.url().endsWith(`/api/deals/${deal.id}/commands`) && r.request().method() === "POST");
+  await confirm.click();
+  const response = await cancelledResponse;
+  expect(response.status()).toBe(200);
+  expect((await response.json()).data.deal.status).toBe("CANCELLED");
+  await expect(page.locator("p").filter({ hasText: /^سبب إلغاء أصلي محفوظ$/ })).toBeVisible();
+  const progress = page.getByRole("region", { name: label("مراحل الصفقة المحفوظة", "Recorded deal stages"), exact: true });
+  await expect(progress.locator("[aria-current=step]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true })).toHaveCount(0);
+  await signIn(context, f.creatorEmail, f.password);
+  await page.goto(`/creator/deals/${deal.id}`);
+  await expect(page.locator("p").filter({ hasText: /^سبب إلغاء أصلي محفوظ$/ })).toBeVisible();
+  await page.getByLabel(label("رسالتك", "Your message"), { exact: true }).fill("رسالة أصلية بعد الإلغاء");
+  await page.getByRole("button", { name: label("أرسل الرسالة", "Send message"), exact: true }).click();
+  await expect(page.locator("p").filter({ hasText: /^رسالة أصلية بعد الإلغاء$/ })).toBeVisible();
+  expect((await db.deal.findUniqueOrThrow({ where: { id: deal.id } })).status).toBe("CANCELLED");
+  expect(await db.agreementSnapshot.count({ where: { dealId: deal.id } })).toBe(0);
+  expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("counter readiness follows actual policy restoration and withdrawal after reload", async ({
+  page,
+  context,
+}, info) => {
+  const english = info.project.name === "english-desktop",
+    label = (ar: string, en: string) => (english ? en : ar),
+    f = await reviewedFixture(english ? "en" : "ar");
+  await signIn(context, f.brandEmail, f.password);
+  const deal = await actualReviewedOffer(page, f);
+  await db.policyVersion.update({ where: { id: f.marketId }, data: { status: "REVOKED" } });
+  await page.goto(`/brand/deals/${deal.id}`);
+  await page.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true }).click();
+  const submit = page.getByRole("button", { name: label("أرسل الشروط المعدّلة", "Send revised terms"), exact: true });
+  const note = page.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
+  await note.fill("مدخل أصلي محفوظ أثناء مراجعة السياسة");
+  await expect(submit).toBeDisabled();
+  // Explicit synthetic control fixture restoration in the guarded E2E database.
+  // The page still obtains readiness from the real authenticated compose API.
+  await db.policyVersion.update({ where: { id: f.marketId }, data: { status: "VERIFIED" } });
+  await page.getByRole("button", { name: label("حمّل الحالة الحالية", "Load current state"), exact: true }).click();
+  await expect(note).toHaveValue("مدخل أصلي محفوظ أثناء مراجعة السياسة");
+  await expect(submit).toBeEnabled();
+  await db.policyVersion.update({ where: { id: f.marketId }, data: { status: "REVOKED" } });
+  const withdrawnRead = page.waitForResponse(response => response.url().includes("/api/deals/compose?") && response.status() === 200);
+  await page.getByRole("button", { name: label("حمّل الحالة الحالية", "Load current state"), exact: true }).click();
+  const withdrawnContext = (await (await withdrawnRead).json()).data;
+  expect(withdrawnContext.readiness.canSend).toBe(false);
+  expect(withdrawnContext.readiness.blockedReasons).toContain("POLICY_REVIEW_REQUIRED");
+  await expect(page.getByRole("button", { name: label("حمّل الحالة الحالية", "Load current state"), exact: true })).toBeEnabled();
+  await expect(submit).toBeDisabled();
+  await expect(note).toHaveValue("مدخل أصلي محفوظ أثناء مراجعة السياسة");
+  expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(1);
 });
 
 test("immutable agreement, separate confirmation, reported payment and sealed ratings are readable", async ({

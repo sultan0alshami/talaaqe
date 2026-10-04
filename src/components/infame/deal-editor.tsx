@@ -1,4 +1,5 @@
 "use client";
+import styles from "./deal-layout.module.css";
 import { useId, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -178,13 +179,13 @@ export function DealEditor({
   }
   const field = (name: string) => `${prefix}-${name}`;
   return (
-    <fieldset className="min-w-0 space-y-6" disabled={busy}>
+    <fieldset className={styles.editor} disabled={busy}>
       <legend className="sr-only">{copy("شروط العرض", "Offer terms")}</legend>
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle><h2>
             {copy("المخرجات والمقابل", "Deliverables and payment")}
-          </CardTitle>
+          </h2></CardTitle>
           <CardDescription>
             {copy(
               "حدد المخرجات الفعلية، والمبلغ بعملة العرض. لا يتم تحويل العملات تلقائيًا.",
@@ -247,7 +248,7 @@ export function DealEditor({
             {rows.map((row, index) => (
               <div
                 key={index}
-                className="grid min-w-0 gap-3 rounded-2xl border border-border p-4 sm:grid-cols-[1fr_1fr_6rem_auto]"
+                className={styles.deliverable}
               >
                 <label className="grid gap-2 text-sm">
                   {copy("المنصة", "Platform")}
@@ -377,7 +378,7 @@ export function DealEditor({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>{copy("فترة التنفيذ", "Delivery period")}</CardTitle>
+          <CardTitle><h2>{copy("فترة التنفيذ", "Delivery period")}</h2></CardTitle>
           <CardDescription>
             {copy(
               "أدخل الأوقات بتوقيت UTC، واختر منطقة IANA للحملة صراحةً. لا تؤخذ من البلد أو إعدادات جهازك.",
@@ -444,9 +445,9 @@ export function DealEditor({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle><h2>
             {copy("حقوق الاستخدام والملاحظات", "Usage rights and notes")}
-          </CardTitle>
+          </h2></CardTitle>
           <CardDescription>
             {copy(
               "النص الذي تكتبه يبقى بلغته الأصلية عند تغيير لغة الواجهة.",
@@ -529,9 +530,9 @@ export function DealEditor({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle><h2>
             {copy("الشروط والسياسات المراجعة", "Reviewed terms and policies")}
-          </CardTitle>
+          </h2></CardTitle>
           <CardDescription>
             {copy(
               "اختر نسخة مراجعة مناسبة للطرفين والأسواق الفعلية. حفظ المسودة لا يعتمد الشروط ولا يؤكد أهلية الصفقة.",
@@ -674,7 +675,7 @@ export function DealEditor({
           "Blank fields do not erase previously saved values; enter a replacement to change them. Review every term before sending it to the other party.",
         )}
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className={styles.editorActions}>
         <Button variant="outline" onClick={save} disabled={busy}>
           {busy
             ? copy("جاري الحفظ…", "Saving…")
