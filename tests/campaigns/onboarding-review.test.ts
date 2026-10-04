@@ -1,15 +1,17 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { applyDraftCommand, canonicalHash, createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
+import { applyDraftCommand, createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
 import { profileCommand, publicCreator } from "@/lib/onboarding/profiles";
+import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
 
 // Independent review of coordinator-owned production modules. Synthetic local
-// records simulate accepted ownership; they do not establish live-provider proof.
+// byte-reviewed records exercise ownership; they do not establish live-provider proof.
 const users: string[] = [];
 afterAll(async () => {
   await prisma.outboxEvent.deleteMany({ where: { OR: users.map((actorUserId) => ({ payload: { path: ["actorUserId"], equals: actorUserId } })) } });
   await prisma.creator.deleteMany({ where: { userId: { in: users } } });
+  await cleanupReviewedEvidence(prisma, users, "test");
   await prisma.user.deleteMany({ where: { id: { in: users } } });
 });
 async function fixture() {
@@ -37,10 +39,7 @@ async function fixture() {
   await command("SAVE_PROFILE", profile);
   const creator = await prisma.creator.findUniqueOrThrow({ where: { userId } });
   const account = await prisma.socialAccount.findUniqueOrThrow({ where: { id: creator.primaryAccountId! } });
-  await prisma.socialAccount.update({ where: { id: account.id }, data: { ownershipStatus: "VERIFIED", ownershipReviewedAt: new Date(), ownershipReviewedBy: adminId } });
-  // Compatible with schema08 when the coordinator deploys it; no schema mutation.
-  const columns = await prisma.$queryRaw<{ exists: boolean }[]>`SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='SocialAccount' AND column_name='ownershipIdentityHash') AS exists`;
-  if (columns[0].exists) await prisma.$executeRaw`UPDATE "SocialAccount" SET "ownershipIdentityHash"=${canonicalHash(identity)} WHERE id=${account.id}`;
+  await reviewedOwnershipFixture(prisma, userId, adminId, account.id, "test", new Date());
   return { userId, handle, draft, identity, map, command, profile, account };
 }
 

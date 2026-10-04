@@ -1,0 +1,3 @@
+These generated self-signed certificate/key fixtures identify only `brand.example.com` in local adversarial transport tests. They are public test data, never production credentials. Test-owned TLS injection connects to an ephemeral loopback server; the production transport must reject its real loopback peer before writing HTTP. No product localhost exception exists.
+
+The `.pem.txt` extension keeps these intentional public synthetic fixtures visible to Git without weakening the repository's `*.pem` secret exclusion. Never install this certificate as a trusted system CA or reuse this key outside these tests.

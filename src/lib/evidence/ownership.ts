@@ -1,35 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import type { OwnershipChallenge, SocialAccount } from "@prisma/client";
+import type { OwnershipChallenge } from "@prisma/client";
 import { accountContext, canonicalHash, event, Id, identity, identityHash, inputJson, Key, lock, parse, previous, receipt, requireMapping, requireRevision, Revision, Review, reviewLanguage, transaction, type EvidenceOptions, type Tx } from "./common";
 import { usableAsset } from "./assets";
-import { EvidenceError, MAX_EVIDENCE_BYTES } from "./storage";
-// Metadata-only current read gate. The caller locks owner/reviewer Users and the
-// account first. Accepted review performed physical byte/checksum validation;
-// this function never calls a provider or storage and cannot expose private keys.
-export async function acceptedOwnershipProof(tx: Tx, account: SocialAccount, ownerUserId: string, now: Date): Promise<boolean> {
-  if (!Number.isFinite(now.getTime()) || account.ownershipStatus !== "VERIFIED" || !account.ownershipReviewedBy || !account.ownershipReviewedAt
-    || account.ownershipReviewedAt > now || !account.ownershipProofAssetId || account.ownershipIdentityHash !== identityHash(account)) return false;
-  const creator = await tx.creator.findUnique({ where: { id: account.creatorId }, select: { userId: true } });
-  if (creator?.userId !== ownerUserId) return false;
-  const owner = await tx.user.findUnique({ where: { id: ownerUserId }, select: { active: true, role: true } });
-  const reviewer = await tx.user.findUnique({ where: { id: account.ownershipReviewedBy }, select: { active: true, role: true } });
-  if (!owner?.active || owner.role !== "CREATOR" || !reviewer?.active || reviewer.role !== "ADMIN") return false;
-  const candidates = await tx.ownershipChallenge.findMany({ where: { accountId: account.id, ownerUserId, status: "VERIFIED", mappingRevision: account.mappingRevision,
-    identityHash: account.ownershipIdentityHash, proofAssetId: account.ownershipProofAssetId, reviewedBy: account.ownershipReviewedBy, reviewedAt: account.ownershipReviewedAt }, orderBy: { id: "asc" }, take: 2 });
-  if (candidates.length !== 1) return false;
-  await lock(tx, "OwnershipChallenge", candidates[0]!.id, true);
-  const challenge = await tx.ownershipChallenge.findUniqueOrThrow({ where: { id: candidates[0]!.id } });
-  if (challenge.status !== "VERIFIED" || challenge.ownerUserId !== ownerUserId || challenge.accountId !== account.id
-    || challenge.mappingRevision !== account.mappingRevision || challenge.identityHash !== identityHash(account) || canonicalHash(challenge.identity) !== challenge.identityHash
-    || challenge.proofAssetId !== account.ownershipProofAssetId || challenge.reviewedBy !== account.ownershipReviewedBy || !challenge.reviewedAt
-    || challenge.reviewedAt.getTime() !== account.ownershipReviewedAt.getTime() || !challenge.submittedAt
-    || challenge.submittedAt < challenge.createdAt || challenge.submittedAt > challenge.reviewedAt || challenge.reviewedAt >= challenge.expiresAt) return false;
-  await lock(tx, "PrivateAsset", account.ownershipProofAssetId, true);
-  const asset = await tx.privateAsset.findUnique({ where: { id: account.ownershipProofAssetId } });
-  return !!asset && asset.ownerUserId === ownerUserId && asset.purpose === "OWNERSHIP_PROOF" && !asset.deletedAt && asset.createdAt <= challenge.submittedAt
-    && asset.size > 0 && asset.size <= MAX_EVIDENCE_BYTES && ["image/png", "image/jpeg", "image/webp", "application/pdf"].includes(asset.contentType) && /^[a-f0-9]{64}$/.test(asset.checksum);
-}
+import { EvidenceError } from "./storage";
+export { acceptedOwnershipProof } from "./readiness";
 
 const Start = z.object({ operationKey: Key, accountId: Id, expectedMappingRevision: Revision, expectedEvidenceRevision: Revision }).strict();
 const Submit = z.object({ operationKey: Key, expectedRevision: Revision, assetId: Id }).strict();
@@ -41,8 +16,9 @@ export async function ownershipChallengeDTO(tx: Tx, challenge: OwnershipChalleng
 const dto = ownershipChallengeDTO;
 export async function createOwnershipChallenge(actor: string, input: unknown, options: EvidenceOptions) {
   const command = parse(Start, input), hash = canonicalHash({ action: "START_OWNERSHIP", ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const { account } = await accountContext(tx, actor, command.accountId);
+    now = await boundary.checkpoint();
     requireMapping(account, command.expectedMappingRevision);
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { challenge: await dto(tx, await tx.ownershipChallenge.findUniqueOrThrow({ where: { id: replay.resourceId } })), replayed: true };
@@ -54,7 +30,10 @@ export async function createOwnershipChallenge(actor: string, input: unknown, op
     const challenge = await tx.ownershipChallenge.create({ data: { accountId: account.id, ownerUserId: actor, identity: inputJson(identity(account)), identityHash: identityHash(account), mappingRevision: account.mappingRevision,
       challengeCode: "infame-" + randomBytes(16).toString("hex"), expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000), createdAt: now, updatedAt: now } });
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 } } });
-    await receipt(tx, actor, command.operationKey, hash, "OwnershipChallenge", challenge.id, challenge.revision, now);
+    await receipt(tx, actor, command.operationKey, hash, "OwnershipChallenge", challenge.id, challenge.revision, now, {
+      ownerUserId: actor, accountId: account.id, mappingRevision: account.mappingRevision,
+      identityHash: identityHash(account), expectedEvidenceRevision: command.expectedEvidenceRevision,
+    });
     await event(tx, actor, command.operationKey, "ownership.challenge_created", "OwnershipChallenge", challenge.id, 1, now, { accountId: account.id });
     return { challenge: await dto(tx, challenge), replayed: false };
   });
@@ -70,13 +49,16 @@ async function context(tx: Tx, actor: string, id: string, review: boolean) {
 }
 export async function submitOwnershipProof(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(Submit, input), hash = canonicalHash({ action: "SUBMIT_OWNERSHIP", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const { account, challenge } = await context(tx, actor, id, false);
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { challenge: await dto(tx, challenge), replayed: true };
     requireRevision(challenge.revision, command.expectedRevision);
     if (challenge.status !== "PENDING" || challenge.expiresAt <= now || challenge.submittedAt) throw new EvidenceError("INVALID_STATE");
-    await usableAsset(tx, command.assetId, actor, "OWNERSHIP_PROOF", options);
+    await usableAsset(tx, command.assetId, actor, "OWNERSHIP_PROOF", options, boundary);
+    now = await boundary.checkpoint();
+    if (challenge.expiresAt <= now) throw new EvidenceError("INVALID_STATE");
     const updated = await tx.ownershipChallenge.update({ where: { id }, data: { revision: { increment: 1 }, proofAssetId: command.assetId, submittedAt: now, updatedAt: now } });
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 }, ownershipStatus: "PENDING", ownershipIdentityHash: null, ownershipReviewedAt: null, ownershipReviewedBy: null, ownershipProofAssetId: null, publicVisible: false, brandVisible: false } });
     await receipt(tx, actor, command.operationKey, hash, "OwnershipChallenge", id, updated.revision, now);
@@ -86,15 +68,18 @@ export async function submitOwnershipProof(actor: string, id: string, input: unk
 }
 export async function reviewOwnershipProof(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(Decision, input), hash = canonicalHash({ action: "REVIEW_OWNERSHIP", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const { account, challenge } = await context(tx, actor, id, true);
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { challenge: await dto(tx, challenge), replayed: true };
     requireRevision(challenge.revision, command.expectedRevision);
     if (command.decision === "REVOKED" ? challenge.status !== "VERIFIED" : challenge.status !== "PENDING") throw new EvidenceError("INVALID_STATE");
     if (command.decision === "VERIFIED") {
       if (challenge.expiresAt <= now || !challenge.submittedAt || challenge.submittedAt > now || !challenge.proofAssetId || command.observedChallengeCode !== challenge.challengeCode) throw new EvidenceError("INVALID_EVIDENCE");
-      await usableAsset(tx, challenge.proofAssetId, challenge.ownerUserId, "OWNERSHIP_PROOF", options);
+      await usableAsset(tx, challenge.proofAssetId, challenge.ownerUserId, "OWNERSHIP_PROOF", options, boundary);
+      now = await boundary.checkpoint();
+      if (challenge.expiresAt <= now || challenge.submittedAt > now) throw new EvidenceError("INVALID_EVIDENCE");
     }
     const updated = await tx.ownershipChallenge.update({ where: { id }, data: { revision: { increment: 1 }, status: command.decision, reviewedBy: actor, reviewedAt: now, reviewNote: command.note.text, updatedAt: now } });
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 }, ownershipStatus: command.decision,

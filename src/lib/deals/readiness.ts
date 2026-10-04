@@ -13,18 +13,19 @@ import { OfferDraftTermsSchema } from "./drafts";
 
 const id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const QuerySchema = z.object({ campaignId: id, creatorId: id, dealId: id.optional(), matchRunId: id.optional() }).strict();
-export async function getDealComposeContext(actorUserId: string, input: unknown, client: PrismaClient = prisma, now = new Date()) {
+export async function getDealComposeContext(actorUserId: string, input: unknown, client: PrismaClient = prisma, resourceNow?: Date) {
   const parsed = QuerySchema.safeParse(input);
   if (!parsed.success) throw new DealError("VALIDATION", 400);
   const query = parsed.data;
-  if (!Number.isFinite(now.getTime())) throw new DealError("INVALID_CLOCK", 400);
-  const ownDeal = query.dealId ? await getDeal(actorUserId, query.dealId, { client, now }) : null;
+  if (!Number.isFinite((resourceNow ?? new Date()).getTime())) throw new DealError("INVALID_CLOCK", 400);
+  const ownDeal = query.dealId ? await getDeal(actorUserId, query.dealId, { client, now: resourceNow }) : null;
   if (ownDeal && (ownDeal.campaignId !== query.campaignId || ownDeal.creatorId !== query.creatorId)) throw new DealError("NOT_FOUND", 404);
   return client.$transaction(async (tx) => {
     const originalCreatorUserId = ownDeal?.offers.find((offer) => offer.version === 1)?.recipientUserId;
     const ctx = await dealParticipantContext(tx, actorUserId, query.campaignId, query.creatorId, false, originalCreatorUserId);
+    const now = resourceNow ?? new Date();
     if (ctx.role === "CREATOR" && !ownDeal) throw new DealError("NOT_FOUND", 404);
-    const visible = !ctx.creator.isTest && ctx.creator.state === "PUBLISHED" && ctx.creator.brandVisible && (!ctx.creator.userId || !!await publicCreator(ctx.creator.handle, tx));
+    const visible = !ctx.creator.isTest && ctx.creator.state === "PUBLISHED" && ctx.creator.brandVisible && (!ctx.creator.userId || !!await publicCreator(ctx.creator.handle, tx, ctx.evidenceActors));
     if (!visible && !ownDeal) throw new DealError("NOT_FOUND", 404);
     // Historical participants may read their frozen deal even when today's
     // public profile is withdrawn. Confirmation uses that deal's approved brief.
@@ -43,12 +44,12 @@ export async function getDealComposeContext(actorUserId: string, input: unknown,
     if (!ctx.creator.userId) blockedReasons.push("CREATOR_UNCLAIMED");
     let templates: Awaited<ReturnType<typeof reviewedGoverningOptions>> = [];
     if (requirements) {
-      if (!await offerVerificationSatisfied(tx, ctx.brandUserId, requirements, now)) blockedReasons.push("BRAND_CONTACT_VERIFICATION_REQUIRED");
+      if (!await offerVerificationSatisfied(tx, ctx.brandUserId, requirements, now, ctx.evidenceActors)) blockedReasons.push("BRAND_CONTACT_VERIFICATION_REQUIRED");
       try {
-        const review = await resolveCampaignPolicyReview(tx, requirements, now);
+        const review = await resolveCampaignPolicyReview(tx, requirements, now, ctx.evidenceActors);
         if (!review || review.mandatoryPolicyVersionIds.slice().sort().join("|") !== requirements.mandatoryPolicyVersionIds.slice().sort().join("|")) blockedReasons.push("POLICY_REVIEW_REQUIRED");
-        else if (ctx.creator.userId && !await loadEligibleCreator(tx, requirements, ctx.creator.id, now, { policyReader: reviewedMatchingPolicies })) blockedReasons.push("CREATOR_NOT_ELIGIBLE");
-        if (ctx.creator.countryCode) templates = await reviewedGoverningOptions(tx, requirements, ctx.creator.countryCode, now);
+        else if (ctx.creator.userId && !await loadEligibleCreator(tx, requirements, ctx.creator.id, now, { policyReader: reviewedMatchingPolicies, evidenceActors: ctx.evidenceActors, liveClock: resourceNow === undefined })) blockedReasons.push("CREATOR_NOT_ELIGIBLE");
+        if (ctx.creator.countryCode) templates = await reviewedGoverningOptions(tx, requirements, ctx.creator.countryCode, now, ctx.evidenceActors);
         if (!templates.length) blockedReasons.push("REVIEWED_TERMS_UNAVAILABLE");
       } catch (error) {
         blockedReasons.push(error instanceof DealError ? error.code : "POLICY_UNAVAILABLE");

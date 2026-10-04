@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { CountryCodeSchema } from "@/lib/contracts/vocabulary";
 import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
+import { lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 
 export const PhoneFallbackPolicySchema = z.object({ schemaVersion: z.literal(1), kind: z.literal("PHONE_FALLBACK"),
   countryCode: CountryCodeSchema, marketCountryCodes: z.array(CountryCodeSchema).min(1).max(249),
@@ -17,7 +18,9 @@ export function phoneVerificationTarget(phone: string, phoneCountryCode: string)
   return JSON.stringify({ phone, phoneCountryCode, provider: "twilio-verify" });
 }
 export async function offerVerificationSatisfied(tx: Prisma.TransactionClient, brandUserId: string,
-  requirements: CampaignRequirementsDTO, now = new Date()): Promise<boolean> {
+  requirements: CampaignRequirementsDTO, now = new Date(), locked?: EvidenceActorLocks): Promise<boolean> {
+  const actors = locked ?? await lockEvidenceActors(tx, { otherOwnerIds: [brandUserId], includePolicies: true });
+  if (!actors.ownerIds.has(brandUserId)) return false;
   const user = await tx.user.findUnique({ where: { id: brandUserId } });
   if (!user?.active || user.role !== "BRAND" || !user.emailVerifiedAt || user.emailVerifiedAt > now) return false;
   const through = new Date(Math.max(Date.parse(requirements.period.endsAt), now.getTime()));
@@ -36,7 +39,7 @@ export async function offerVerificationSatisfied(tx: Prisma.TransactionClient, b
     reviewedBy: { not: null }, evidenceAssetId: { not: null }, OR: [{ expiresAt: null }, { expiresAt: { gte: through } }] } });
   const policyRefs = await tx.policyVersion.findMany({ where: { id: { in: fallbacks.map((f) => f.policyVersion) } }, select: { reviewedBy: true } });
   const reviewerIds = [...new Set([...fallbacks.map((f) => f.reviewedBy), ...policyRefs.map((p) => p.reviewedBy)].filter((id): id is string => id !== null))].sort();
-  if (reviewerIds.length) await tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(reviewerIds)}) ORDER BY id FOR SHARE`);
+  if (reviewerIds.some(id => !actors.reviewerIds.has(id))) return false;
   const fallbackIds = fallbacks.map((f) => f.id).sort();
   if (fallbackIds.length) await tx.$queryRaw(Prisma.sql`SELECT id FROM "VerificationFallback" WHERE id IN (${Prisma.join(fallbackIds)}) ORDER BY id FOR SHARE`);
   const policyIds = [...new Set(fallbacks.map((f) => f.policyVersion))].sort();
@@ -46,13 +49,14 @@ export async function offerVerificationSatisfied(tx: Prisma.TransactionClient, b
   const assetIds = [...new Set([...fallbacks.map((f) => f.evidenceAssetId), ...currentPolicies.map((p) => p.evidenceAssetId)].filter((id): id is string => id !== null))].sort();
   if (assetIds.length) await tx.$queryRaw(Prisma.sql`SELECT id FROM "PrivateAsset" WHERE id IN (${Prisma.join(assetIds)}) ORDER BY id FOR SHARE`);
   for (const fallback of fallbacks) {
+    if (fallback.userId !== brandUserId || fallback.countryCode !== requirements.brandCountryCode || !policyIds.includes(fallback.policyVersion) || !fallback.reviewedAt) continue;
     const [reviewer, policy, evidence] = await Promise.all([
       tx.user.findUnique({ where: { id: fallback.reviewedBy! }, select: { active: true, role: true } }),
       tx.policyVersion.findUnique({ where: { id: fallback.policyVersion } }),
       tx.privateAsset.findUnique({ where: { id: fallback.evidenceAssetId! } }),
     ]);
     const content = PhoneFallbackPolicySchema.safeParse(policy?.content);
-    if (!reviewer?.active || reviewer.role !== "ADMIN" || !policy || policy.kind !== "PHONE_FALLBACK" || policy.status !== "VERIFIED" || !policy.reviewedBy || !policy.reviewedAt || policy.reviewedAt > now || policy.reviewedAt < policy.createdAt || !policy.evidenceAssetId || (policy.expiresAt && policy.expiresAt < through) || !policy.countryCodes.includes(requirements.brandCountryCode) || !content.success || content.data.countryCode !== requirements.brandCountryCode || !requirements.marketCountryCodes.every((c) => content.data.marketCountryCodes.includes(c))) continue;
+    if (!actors.reviewerIds.has(fallback.reviewedBy!) || !reviewer?.active || reviewer.role !== "ADMIN" || !policy || policy.kind !== "PHONE_FALLBACK" || policy.status !== "VERIFIED" || !policy.reviewedBy || !actors.reviewerIds.has(policy.reviewedBy) || !policy.reviewedAt || policy.reviewedAt > now || policy.reviewedAt < policy.createdAt || !policy.evidenceAssetId || (policy.expiresAt && policy.expiresAt < through) || !policy.countryCodes.includes(requirements.brandCountryCode) || !content.success || content.data.countryCode !== requirements.brandCountryCode || !requirements.marketCountryCodes.every((c) => content.data.marketCountryCodes.includes(c))) continue;
     const [policyReviewer, policyEvidence] = await Promise.all([
       tx.user.findUnique({ where: { id: policy.reviewedBy }, select: { active: true, role: true } }),
       tx.privateAsset.findUnique({ where: { id: policy.evidenceAssetId } }),

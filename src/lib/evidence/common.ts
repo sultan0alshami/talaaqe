@@ -6,9 +6,12 @@ import { canonicalHash, inputJson, record } from "@/lib/onboarding/drafts";
 import { OriginalTextSchema } from "@/lib/contracts/vocabulary";
 import { EvidenceError, type EvidenceStorage } from "./storage";
 import type { PrismaClient } from "@prisma/client";
+import type { Session } from "@/lib/jwt";
 
 export type Tx = Prisma.TransactionClient;
-export type EvidenceOptions = { storage: EvidenceStorage; client?: PrismaClient; now?: Date };
+// Only trusted server adapters construct this context; it is never body input.
+export type EvidenceActor = Pick<Session, "userId" | "role" | "sessionId" | "sessionVersion">;
+export type EvidenceOptions = { storage: EvidenceStorage; client?: PrismaClient; now?: Date; serverAuth?: EvidenceActor };
 export const Id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 export const Key = z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/);
 export const Revision = z.number().int().positive();
@@ -18,9 +21,58 @@ export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value); if (!result.success) throw new EvidenceError("INVALID_COMMAND", 400); return result.data;
 }
 export function clock(options: EvidenceOptions) { const now = options.now ?? new Date(); if (!Number.isFinite(now.getTime())) throw new EvidenceError("INVALID_CLOCK", 400); return now; }
-export async function transaction<T>(options: EvidenceOptions, callback: (tx: Tx, now: Date) => Promise<T>) {
+const SessionContext = z.object({ userId: z.string().min(1).max(200), role: z.enum(["CREATOR", "BRAND", "ADMIN"]),
+  sessionId: z.string().regex(/^[A-Za-z0-9_-]{43}$/), sessionVersion: z.number().int().positive().max(2147483647) }).strict();
+async function currentSession(tx: Tx, actor: string, options: EvidenceOptions, commit: boolean) {
+  if (!options.serverAuth) {
+    // Development/test domain fixtures remain framework-free. Production and
+    // every HTTP adapter require a revocable, server-resolved session.
+    if (process.env.NODE_ENV === "production") throw new EvidenceError("UNAUTHENTICATED", 401);
+    return;
+  }
+  const parsed = SessionContext.safeParse(options.serverAuth);
+  if (!parsed.success || parsed.data.userId !== actor) throw new EvidenceError("UNAUTHENTICATED", 401);
+  const context = parsed.data;
+  // Do not hold a session lock across byte IO: sign-out must be able to revoke
+  // an in-flight operation. The final share lock linearizes commit with revoke.
+  if (commit) await tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${context.sessionId} FOR SHARE`;
+  const session = await tx.authSession.findUnique({ where: { id: context.sessionId }, include: { user: { select: { active: true, role: true, sessionVersion: true } } } });
+  const now = new Date(); // Authentication never uses a historical evidence clock.
+  if (!session || session.userId !== actor || session.revokedAt || session.expiresAt <= now || !session.user.active
+    || session.version !== context.sessionVersion || session.user.sessionVersion !== context.sessionVersion || session.user.role !== context.role) {
+    throw new EvidenceError("UNAUTHENTICATED", 401);
+  }
+}
+export type EvidenceBoundary = {
+  // Call after actor/domain locks and again after external byte IO. No session
+  // lock is retained here; sign-out can still revoke an in-flight operation.
+  checkpoint(): Promise<Date>;
+  onRollback(cleanup: () => Promise<void>): void;
+};
+export async function transaction<T>(options: EvidenceOptions, actor: string, callback: (tx: Tx, now: Date, boundary: EvidenceBoundary) => Promise<T>) {
   const now = clock(options);
-  return (options.client ?? prisma).$transaction(tx => callback(tx, now), { maxWait: 10_000, timeout: 25_000 });
+  return (options.client ?? prisma).$transaction(async tx => {
+    const cleanup: Array<() => Promise<void>> = [];
+    const boundary: EvidenceBoundary = {
+      async checkpoint() { await currentSession(tx, actor, options, false); return clock(options); },
+      onRollback(callback) { cleanup.push(callback); },
+    };
+    try {
+      await currentSession(tx, actor, options, false);
+      const result = await callback(tx, now, boundary);
+      await currentSession(tx, actor, options, true);
+      return result;
+    } catch (error) {
+      // Compensation stays inside the transaction, before its owner lock is
+      // released. A failed/closed transaction must never authorize a deletion.
+      let failed = false;
+      for (const compensate of cleanup.reverse()) {
+        try { await compensate(); } catch { failed = true; }
+      }
+      if (failed) throw new EvidenceError("ASSET_ROLLBACK_UNAVAILABLE", 503);
+      throw error;
+    }
+  }, { maxWait: 10_000, timeout: 25_000 });
 }
 type Table = "User" | "Creator" | "Brand" | "SocialAccount" | "OwnershipChallenge" | "PrivateAsset" | "MetricsSnapshot" | "FactCorrection" | "AdvertisingLicence" | "BusinessVerification" | "PolicyVersion";
 export async function lock(tx: Tx, table: Table, id: string, share = false) {

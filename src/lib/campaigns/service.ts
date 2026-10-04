@@ -3,6 +3,7 @@ import { Prisma, PrismaClient, type Brand, type Campaign, type CampaignBrief } f
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { canonicalHash, checkedJson, inputJson } from "@/lib/onboarding/drafts";
+import { lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { OriginalTextSchema } from "@/lib/contracts/vocabulary";
 import {
   CampaignBriefContentSchema, CampaignDraftFieldsSchema, CampaignFieldObjectSchema, CampaignFieldsSchema,
@@ -15,7 +16,7 @@ export class CampaignError extends Error {
 }
 type Transaction = Prisma.TransactionClient;
 export type CampaignCommandContext = { channel: "FORM" | "CHAT_TOOL" | "PARAGRAPH_TOOL" | "SERVER"; policyReview?: CampaignPolicyReview | null;
-  policyReviewResolver?: (tx: Transaction, requirements: CampaignRequirementsDTO) => Promise<CampaignPolicyReview | null> };
+  policyReviewResolver?: (tx: Transaction, requirements: CampaignRequirementsDTO, now?: Date, actors?: EvidenceActorLocks) => Promise<CampaignPolicyReview | null> };
 type Proposal = { id: string; patch: CampaignDraftFields; originalText: z.infer<typeof OriginalTextSchema>; basedOnFieldsRevision: number; createdAt: string; appliedAt: string | null };
 type DraftState = { schemaVersion: 1; fields: CampaignDraftFields; fieldsRevision: number; proposals: Proposal[]; clarificationCount: number };
 type ChatTurn = { role: "user" | "assistant"; kind: "GREETING" | "CLARIFICATION" | "PROPOSAL"; text: string; language: string | null; field: string | null; ts: number };
@@ -58,22 +59,27 @@ export async function campaignDTO(tx: Transaction, campaign: Campaign): Promise<
     currentBriefVersion: campaign.currentBriefVersion, briefs: briefs.map(briefDTO), updatedAt: campaign.updatedAt.toISOString() };
 }
 
-async function authorize(tx: Transaction, actorUserId: string): Promise<Brand> {
+async function authorize(tx: Transaction, actorUserId: string, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>): Promise<Brand> {
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${actorUserId} FOR UPDATE`;
   const user = await tx.user.findUnique({ where: { id: actorUserId }, select: { role: true, active: true } });
   if (!user?.active || user.role !== "BRAND") throw new CampaignError("FORBIDDEN", 403);
   const brand = await tx.brand.findUnique({ where: { userId: actorUserId } });
   if (!brand) throw new CampaignError("BRAND_PROFILE_REQUIRED");
+  await beforeDomainLock?.(tx, brand);
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id = ${brand.id} FOR SHARE`;
-  return tx.brand.findUniqueOrThrow({ where: { id: brand.id } });
+  const current = await tx.brand.findUniqueOrThrow({ where: { id: brand.id } });
+  if (current.userId !== actorUserId) throw new CampaignError("NOT_FOUND", 404);
+  return current;
 }
 export async function withOwnedCampaign<T>(client: PrismaClient, actorUserId: string, campaignId: string,
-  action: (tx: Transaction, campaign: Campaign, brand: Brand) => Promise<T>): Promise<T> {
+  action: (tx: Transaction, campaign: Campaign, brand: Brand) => Promise<T>, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>): Promise<T> {
   return client.$transaction(async (tx) => {
-    const brand = await authorize(tx, actorUserId);
+    const brand = await authorize(tx, actorUserId, beforeDomainLock);
     if (!await tx.campaign.findFirst({ where: { id: campaignId, brandId: brand.id }, select: { id: true } })) throw new CampaignError("NOT_FOUND", 404);
     await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id = ${campaignId} FOR UPDATE`;
-    return action(tx, await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } }), brand);
+    const current = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+    if (current.brandId !== brand.id) throw new CampaignError("NOT_FOUND", 404);
+    return action(tx, current, brand);
   }, { maxWait: 10_000, timeout: 20_000 });
 }
 function editable(campaign: Campaign, expectedRevision: number): void {
@@ -217,6 +223,7 @@ export async function approveCampaignBrief(actorUserId: string, campaignId: stri
   const command = parse(ApprovalSchema, input), key = `campaign:${campaignId}:${command.operationKey}`;
   if (context.channel !== "FORM") throw new CampaignError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
   let policyReview = context.policyReview ? parse(CampaignPolicyReviewSchema, context.policyReview, "INVALID_POLICY_REVIEW") : null;
+  let evidenceActors: EvidenceActorLocks | undefined;
   const hash = canonicalHash({ action: "APPROVE_BRIEF", ...command, policyReview, serverPolicyResolver: context.policyReviewResolver ? "reviewed-registry-v1" : null });
   return withOwnedCampaign(client, actorUserId, campaignId, async (tx, campaign, brand) => {
     const previous = await replay<{ campaign: CampaignDTO; brief: CampaignBriefDTO }>(tx, actorUserId, key, hash, campaignId);
@@ -228,7 +235,7 @@ export async function approveCampaignBrief(actorUserId: string, campaignId: stri
     if (latest?.id !== brief.id) throw new CampaignError("STALE_BRIEF");
     const content = parseBriefContent(brief.content);
     const fields = parse(CampaignFieldsSchema, state.fields, "MISSING_REQUIREMENTS");
-    if (context.policyReviewResolver && !brief.approvedAt) policyReview = await context.policyReviewResolver(tx, content.requirements);
+    if (context.policyReviewResolver && !brief.approvedAt) policyReview = await context.policyReviewResolver(tx, content.requirements, undefined, evidenceActors);
     if (canonicalHash({ ...fields, campaignId, version: brief.version, brandCountryCode: brand.countryCode, mandatoryPolicyVersionIds: content.requirements.mandatoryPolicyVersionIds }) !== canonicalHash(content.requirements)) throw new CampaignError("STALE_BRIEF");
     if (policyReview && (Date.parse(policyReview.reviewedAt) > Date.now() || canonicalHash([...policyReview.marketCountryCodes].sort()) !== canonicalHash([...fields.marketCountryCodes].sort()))) throw new CampaignError("INVALID_POLICY_REVIEW", 400);
     let approved = brief;
@@ -247,7 +254,9 @@ export async function approveCampaignBrief(actorUserId: string, campaignId: stri
     const result = { campaign: await campaignDTO(tx, updated), brief: briefDTO(approved) };
     await journal(tx, campaignId, actorUserId, key, hash, result);
     return { ...result, replayed: false };
-  });
+  }, context.policyReviewResolver ? async (tx, brand) => {
+    evidenceActors = await lockEvidenceActors(tx, { brandIds: [brand.id], otherOwnerIds: [actorUserId], includePolicies: true, updateOwners: true });
+  } : undefined);
 }
 
 export async function getApprovedRequirements(actorUserId: string, campaignId: string, client: PrismaClient = prisma): Promise<CampaignRequirementsDTO> {

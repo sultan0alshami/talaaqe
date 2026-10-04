@@ -1,7 +1,7 @@
-# Pending evidence session prerequisite
+# Restored evidence session witness
 
-The adjacent evidence-session.test.ts.txt preserves the authored session.test.ts witness byte-for-byte. It is deferred outside test discovery while the user-directed Talaqee interface reuse checkpoint is completed.
+The adjacent evidence-session.test.ts.txt preserves the authored witness byte-for-byte. The visual checkpoint deferred it temporarily; it is now active at tests/evidence/session.test.ts. Both copies have SHA-256 `D6FF82644B30732DEB83DB5D3E32EDB5ECA3649258F000EE5359CD0EAA67D450`.
 
-Before accepting the evidence phase, restore this file to tests/evidence/session.test.ts, implement trusted server session checks in evidence services and transport routes, observe the expected failing witness before the implementation, and pass the unchanged revoked-session, actor-mismatch, in-flight revocation, expiry and current role/version assertions using the actual session clock. Do not weaken these security assertions or label them verified before they are executed successfully.
+The actual guarded original suite first failed all three tests on 2026-10-04, then passed all three after trusted session integration. Its unchanged revoked-session, actor-mismatch, in-flight revocation, expiry and current role/version assertions also pass in the current 69-test focused proof/session/matching/deal run. Authentication uses the actual clock, with checkpoints around locks and byte I/O and a final session SHARE lock before commit. Supplemental storage/clock/HTTP failures remain active separately.
 
-Deferred on 2026-10-04 by the coordinator's explicit scope instruction. No evidence implementation was completed for these assertions.
+The full union gates and browser evidence are recorded in docs/PROGRESS.md. These disposable local tests do not establish enabled live-provider or production acceptance. No original assertion was weakened or skipped.

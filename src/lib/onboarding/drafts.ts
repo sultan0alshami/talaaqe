@@ -24,7 +24,7 @@ export const SourceIdentitySchema = z.object({
 export type SourceIdentity = z.infer<typeof SourceIdentitySchema>;
 export type SourceMapping = { source: z.infer<typeof PlatformSchema> | "WEBSITE"; identity: SourceIdentity; revision: number; confirmedAt: string | null };
 export type SourceConsent = { identityHash: string; sourceRevision: number; scopes: string[]; consentVersion: string; grantedAt: string };
-export type ProposedFact = { id: string; jobId: string; fieldKey: string; value: Json; unit: string | null; source: string; evidenceAt: string; sourceReference: string | null; reviewStatus: "PROPOSED"; visibility: "PRIVATE" };
+export type ProposedFact = { id: string; jobId: string; fieldKey: string; value: Json; unit: string | null; source: string; evidenceAt: string | null; retrievedAt?: string; sourceHash?: string; sourceReference: string | null; reviewStatus: "PROPOSED"; visibility: "PRIVATE" };
 export type DraftState = {
   version: 1; answers: Record<string, Json>; sources: Record<string, SourceMapping>;
   facts: Record<string, ProposedFact[]>; mappingRevision: number; factsRevision: number; generatedSectionsStale: boolean;
@@ -108,13 +108,19 @@ async function authorize(tx: Transaction, actorUserId: string): Promise<DraftRol
   return user.role;
 }
 export async function withOwnedDraft<T>(client: PrismaClient, actorUserId: string, draftId: string,
-  operation: (tx: Transaction, draft: OnboardingDraft, role: DraftRole) => Promise<T>): Promise<T> {
+  operation: (tx: Transaction, draft: OnboardingDraft, role: DraftRole) => Promise<T>,
+  beforeDomainLock?: (tx: Transaction, role: DraftRole) => Promise<void>): Promise<T> {
   return client.$transaction(async (tx) => {
     const role = await authorize(tx, actorUserId);
     const owned = await tx.onboardingDraft.findFirst({ where: { id: draftId, userId: actorUserId, kind: role }, select: { id: true } });
     if (!owned) throw new OnboardingError("NOT_FOUND", 404);
+    // Proof consumers acquire the current reviewer Users before domain rows,
+    // consistently with evidence review. Other callers retain the same order.
+    if (beforeDomainLock) await beforeDomainLock(tx, role);
     await tx.$queryRaw`SELECT id FROM "OnboardingDraft" WHERE id = ${draftId} FOR UPDATE`;
-    return operation(tx, await tx.onboardingDraft.findUniqueOrThrow({ where: { id: draftId } }), role);
+    const current = await tx.onboardingDraft.findUnique({ where: { id: draftId } });
+    if (!current || current.userId !== actorUserId || current.kind !== role) throw new OnboardingError("NOT_FOUND", 404);
+    return operation(tx, current, role);
   }, { maxWait: 10_000, timeout: 20_000 });
 }
 export async function createOrResumeDraft(actorUserId: string, client: PrismaClient = prisma): Promise<DraftDTO> {

@@ -1,10 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 import { taskState, assertLocalTarget, workspace } from "../scripts/task-state.mjs";
+import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../tests/helpers/reviewed-evidence";
 
 const state = taskState();
 if (process.env.DATABASE_URL !== assertLocalTarget(state, "e2e")) throw new Error("Matching browser journeys require exact E2E task target");
@@ -19,6 +20,7 @@ test.afterEach(async () => {
   await db.creator.deleteMany({ where: { id: { in: creators.splice(0) } } });
   await db.policyVersion.deleteMany({ where: { id: { in: policies.splice(0) } } });
   await db.privateAsset.deleteMany({ where: { id: { in: assets.splice(0) } } });
+  await cleanupReviewedEvidence(db, users, "e2e");
   await db.user.deleteMany({ where: { id: { in: users.splice(0) } } });
 });
 test.afterAll(async () => { await db.$disconnect(); });
@@ -50,8 +52,9 @@ async function candidate(f: Awaited<ReturnType<typeof fixture>>) {
   // Eligibility excludes isTest records. This isolated, named synthetic row uses
   // isTest=false intentionally to exercise the actual permission gate.
   await db.creator.create({ data: { id, userId, displayName: "صانعة اصطناعية Synthetic creator", handle, countryCode: "GB", timeZone: "Asia/Kuwait", languages: ["ar"], dialects: ["ar-Gulf"], state: "PUBLISHED", isTest: false, brandVisible: true, publicConsentAt: f.now, availability: { status: "AVAILABLE", ...f.period, confirmedAt: f.now.toISOString() }, profileFacts: { ratesVisibility: "BRAND_ONLY", nicheSlugs: { value: ["beauty"], source: "SELF_REPORTED", evidenceAt: f.now.toISOString(), approvedAt: f.now.toISOString(), brandVisible: true, publicVisible: false } } } });
-  const ownershipIdentityHash = createHash("sha256").update(JSON.stringify({ confirmedOrigin: null, normalizedHandle: handle, platform: "INSTAGRAM", providerAccountId: null })).digest("hex");
-  const account = await db.socialAccount.create({ data: { creatorId: id, platform: "INSTAGRAM", handle, ownershipIdentityHash, ownershipStatus: "VERIFIED", ownershipReviewedBy: reviewerId, ownershipReviewedAt: f.now, intendedConfirmedAt: f.now, consentAt: f.now, factsApprovedAt: f.now, brandVisible: true, supportedFormats: ["STORY", "REEL"] } });
+  const account = await db.socialAccount.create({ data: { creatorId: id, platform: "INSTAGRAM", handle, intendedConfirmedAt: f.now, consentAt: f.now, factsApprovedAt: f.now, brandVisible: true, supportedFormats: ["STORY", "REEL"] } });
+  await reviewedOwnershipFixture(db, userId, reviewerId, account.id, "e2e", f.now);
+  await db.socialAccount.update({ where: { id: account.id }, data: { brandVisible: true } });
   await db.creator.update({ where: { id }, data: { primaryAccountId: account.id } });
   const dimension = (key: string) => ({ value: [{ key, percent: 100 }], visibility: "BRAND_ONLY" });
   const window = { startsAt: new Date(f.now.getTime() - 30 * 86400000).toISOString(), endsAt: f.now.toISOString(), timeZone: "Asia/Kuwait" };

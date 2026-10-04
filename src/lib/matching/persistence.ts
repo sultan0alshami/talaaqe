@@ -6,6 +6,8 @@ import { CampaignRequirementsSchema, parseBriefContent, type CampaignRequirement
 import { MoneySchema } from "@/lib/contracts/money";
 import { ArabicDialectSchema, AudienceAgeBucketSchema, AudienceGenderSchema, AvailabilitySchema, ContentLanguageSchema, CountryCodeSchema, DateRangeSchema, DealFormatSchema, FameIndustrySchema, UtcDateTimeSchema, VisibilitySchema } from "@/lib/contracts/vocabulary";
 import { NICHE_BY_SLUG, NICHE_SOURCE } from "@/lib/contracts/taxonomy";
+import { acceptedLicenceProof, acceptedOwnershipProof, currentCreatorOwner, lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
+import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
 import { FRESHNESS_MS, STRATEGY_ID } from "./benchmarks";
 import { prepareEligibility, shortlist } from "./strategy";
 import type { AudienceInput, Bucket, CampaignInput, CreatorInput, Evidence, Fact, MatchingAccount, MatchResult, PolicyOutcome, SafetyExclusion, ViewObservation } from "./types";
@@ -16,8 +18,8 @@ export class MatchingError extends Error {
 type Transaction = Prisma.TransactionClient;
 // Trusted server adapter: reads reviewed records in this transaction only. Never
 // request/model input; no provider/model calls or writes, including on GET.
-export type MatchingPolicyReader = (tx: Transaction, requirements: CampaignRequirementsDTO, creatorIds: readonly string[]) => Promise<{ version:string; outcomes:Record<string,PolicyOutcome[]>; safetyExclusions:Record<string,SafetyExclusion[]> }>;
-export type MatchingPersistenceOptions = { client?:PrismaClient; now?:Date; policyReader?:MatchingPolicyReader };
+export type MatchingPolicyReader = (tx: Transaction, requirements: CampaignRequirementsDTO, creatorIds: readonly string[], context?: { evidenceActors: EvidenceActorLocks; now: Date }) => Promise<{ version:string; outcomes:Record<string,PolicyOutcome[]>; safetyExclusions:Record<string,SafetyExclusion[]> }>;
+export type MatchingPersistenceOptions = { client?:PrismaClient; now?:Date; policyReader?:MatchingPolicyReader; evidenceActors?:EvidenceActorLocks };
 const KeySchema=z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/);
 const IdSchema=z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const RunCommandSchema=z.object({operationKey:KeySchema,expectedBriefVersion:z.number().int().positive(),expectedCampaignRevision:z.number().int().positive()}).strict();
@@ -57,10 +59,20 @@ async function owned(tx:Transaction,actorUserId:string,campaignId:string,write:b
   const brand=await tx.brand.findUnique({where:{userId:actorUserId},select:{id:true}});
   if(!brand)throw new MatchingError("NOT_FOUND",404);
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${brand.id} FOR SHARE`;
+  const currentBrand=await tx.brand.findUnique({where:{id:brand.id},select:{userId:true}});
+  if(currentBrand?.userId!==actorUserId)throw new MatchingError("NOT_FOUND",404);
   if(!await tx.campaign.findFirst({where:{id:campaignId,brandId:brand.id},select:{id:true}}))throw new MatchingError("NOT_FOUND",404);
   if(write)await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR SHARE`;
-  return tx.campaign.findUniqueOrThrow({where:{id:campaignId}});
+  const campaign=await tx.campaign.findUnique({where:{id:campaignId}});
+  if(!campaign || campaign.brandId!==brand.id)throw new MatchingError("NOT_FOUND",404);
+  return campaign;
+}
+async function matchingActors(tx:Transaction,actor:string,write:boolean) {
+  const rows=await tx.creator.findMany({where:{state:"PUBLISHED",isTest:false,brandVisible:true},select:{id:true},orderBy:{id:"asc"},take:MAX_CANDIDATES+1});
+  if(rows.length>MAX_CANDIDATES)throw new MatchingError("CANDIDATE_LIMIT_EXCEEDED",503);
+  const brand=await tx.brand.findUnique({where:{userId:actor},select:{id:true}});
+  return lockEvidenceActors(tx,{creatorIds:rows.map(r=>r.id),brandIds:brand?[brand.id]:[],otherOwnerIds:[actor],includePolicies:true,updateOwners:write});
 }
 async function approved(tx:Transaction,campaign:Campaign,actorUserId:string,command:MatchingRunCommand,now:Date) {
   if(campaign.revision!==command.expectedCampaignRevision || campaign.currentBriefVersion!==command.expectedBriefVersion)throw new MatchingError("STALE_VERSION");
@@ -132,39 +144,38 @@ function snapshotAccount(account:Prisma.SocialAccountGetPayload<{include:{correc
 }
 const MAX_CANDIDATES=500;
 async function candidates(tx:Transaction,requirements:CampaignRequirementsDTO,now:Date,options:MatchingPersistenceOptions,creatorId?:string):Promise<{inputs:CreatorInput[];identities:Record<string,MatchingCreatorIdentity>;readiness:string;policyVersion:string|null}> {
-  const candidateRows=await tx.creator.findMany({where:{...(creatorId?{id:creatorId}:{}),state:"PUBLISHED",isTest:false,brandVisible:true,OR:[{userId:null},{user:{active:true,role:"CREATOR",emailVerifiedAt:{not:null},isTest:false}}]},select:{id:true,userId:true,accounts:{select:{ownershipReviewedBy:true}},licences:{select:{reviewedBy:true}}},orderBy:{id:"asc"},take:MAX_CANDIDATES+1});
+  const initial=options.evidenceActors?null:await tx.creator.findMany({where:{...(creatorId?{id:creatorId}:{}),state:"PUBLISHED",isTest:false,brandVisible:true},select:{id:true},orderBy:{id:"asc"},take:MAX_CANDIDATES+1});
+  if(initial && initial.length>MAX_CANDIDATES)throw new MatchingError("CANDIDATE_LIMIT_EXCEEDED",503);
+  const actors=options.evidenceActors??await lockEvidenceActors(tx,{creatorIds:initial!.map(r=>r.id),includePolicies:true});
+  const candidateRows=await tx.creator.findMany({where:{id:creatorId?{in:actors.creatorOwners.has(creatorId)?[creatorId]:[]}:{in:[...actors.creatorOwners.keys()]},state:"PUBLISHED",isTest:false,brandVisible:true,OR:[{userId:null},{user:{active:true,role:"CREATOR",emailVerifiedAt:{not:null},isTest:false}}]},select:{id:true},orderBy:{id:"asc"},take:MAX_CANDIDATES+1});
   if(candidateRows.length>MAX_CANDIDATES)throw new MatchingError("CANDIDATE_LIMIT_EXCEEDED",503);
-  if(!candidateRows.length){const policy=options.policyReader?await options.policyReader(tx,requirements,[]):null;return {inputs:[],identities:{},readiness:requirements.mandatoryPolicyVersionIds.length && !policy?"POLICY_OUTCOMES_UNAVAILABLE":"READY",policyVersion:policy?.version??null};}
-  // Owner User -> reviewer User -> Creator -> Account -> facts. Groups are each
-  // sorted; the ownership ordering must also match manual review commands.
-  const ownerIds=[...new Set(candidateRows.flatMap(row=>row.userId?[row.userId]:[]))].sort();
-  const reviewerIds=[...new Set(candidateRows.flatMap(row=>[...row.accounts.flatMap(account=>account.ownershipReviewedBy?[account.ownershipReviewedBy]:[]),...row.licences.flatMap(licence=>licence.reviewedBy?[licence.reviewedBy]:[])]))].filter(id=>!ownerIds.includes(id)).sort(),ids=candidateRows.map(row=>row.id);
-  if(ownerIds.length)await tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ownerIds)}) ORDER BY id FOR SHARE`);
-  if(reviewerIds.length)await tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(reviewerIds)}) ORDER BY id FOR SHARE`);
+  if(!candidateRows.length){const policy=options.policyReader?await options.policyReader(tx,requirements,[],{evidenceActors:actors,now}):null;return {inputs:[],identities:{},readiness:requirements.mandatoryPolicyVersionIds.length && !policy?"POLICY_OUTCOMES_UNAVAILABLE":"READY",policyVersion:policy?.version??null};}
+  const ids=candidateRows.map(row=>row.id);
   await tx.$queryRaw(Prisma.sql`SELECT id FROM "Creator" WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
   await tx.$queryRaw(Prisma.sql`SELECT id FROM "SocialAccount" WHERE "creatorId" IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
+  await tx.$queryRaw(Prisma.sql`SELECT c.id FROM "OwnershipChallenge" c JOIN "SocialAccount" a ON a.id=c."accountId" WHERE a."creatorId" IN (${Prisma.join(ids)}) ORDER BY c.id FOR SHARE OF c`);
   await tx.$queryRaw(Prisma.sql`SELECT s.id FROM "MetricsSnapshot" s JOIN "SocialAccount" a ON a.id=s."accountId" WHERE a."creatorId" IN (${Prisma.join(ids)}) ORDER BY s.id FOR SHARE OF s`);
   await tx.$queryRaw(Prisma.sql`SELECT f.id FROM "FactCorrection" f JOIN "SocialAccount" a ON a.id=f."accountId" WHERE a."creatorId" IN (${Prisma.join(ids)}) ORDER BY f.id FOR SHARE OF f`);
   await tx.$queryRaw(Prisma.sql`SELECT id FROM "CreatorRate" WHERE "creatorId" IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
   await tx.$queryRaw(Prisma.sql`SELECT id FROM "AdvertisingLicence" WHERE "creatorId" IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
   const rows=await tx.creator.findMany({where:{id:{in:ids},state:"PUBLISHED",isTest:false,brandVisible:true},include:{user:{select:{active:true,role:true,emailVerifiedAt:true,isTest:true}},accounts:{include:{corrections:true}},rates:true,licences:true},orderBy:{id:"asc"}});
-  const reviewers=new Set((await tx.user.findMany({where:{id:{in:reviewerIds},active:true,role:"ADMIN"},select:{id:true}})).map(user=>user.id));
-  const assetIds=[...new Set(rows.flatMap(row=>row.licences.flatMap(licence=>licence.evidenceAssetId?[licence.evidenceAssetId]:[])))].sort();
-  if(assetIds.length)await tx.$queryRaw(Prisma.sql`SELECT id FROM "PrivateAsset" WHERE id IN (${Prisma.join(assetIds)}) ORDER BY id FOR SHARE`);
-  const licenceEvidence=await tx.privateAsset.findMany({where:{id:{in:assetIds},purpose:"ADVERTISING_LICENCE",deletedAt:null},select:{id:true,ownerUserId:true}});
-  const acceptedProof=(account:{platform:string;providerAccountId:string|null;handle:string;ownershipIdentityHash:string|null;ownershipReviewedBy:string|null})=>account.ownershipReviewedBy!==null && reviewers.has(account.ownershipReviewedBy) && account.ownershipIdentityHash===hash({platform:account.platform,providerAccountId:account.providerAccountId,normalizedHandle:account.handle,confirmedOrigin:null});
-  const policy=options.policyReader?await options.policyReader(tx,requirements,ids):null,inputs:CreatorInput[]=[],identities:Record<string,MatchingCreatorIdentity>={};
+  // Preserve internal fixed clocks; live reads use time after domain lock waits.
+  now=clock(options);
+  const proofs=new Set<string>();
+  for(const row of rows) if(row.userId && currentCreatorOwner(actors,row)) for(const account of row.accounts) if(await acceptedOwnershipProof(tx,account,row.userId,now,actors))proofs.add(account.id);
+  const policy=options.policyReader?await options.policyReader(tx,requirements,ids,{evidenceActors:actors,now}):null,inputs:CreatorInput[]=[],identities:Record<string,MatchingCreatorIdentity>={};
   for(const row of rows) {
     if(!CountryCodeSchema.safeParse(row.countryCode).success || !z.array(ContentLanguageSchema.unwrap()).max(20).safeParse(row.languages).success || !z.array(ArabicDialectSchema).max(12).safeParse(row.dialects).success)continue;
     const claimed=row.userId!==null;
-    if(claimed && (!row.user?.active || row.user.role!=="CREATOR" || !row.user.emailVerifiedAt || row.user.isTest || !past(row.publicConsentAt,now) || !row.primaryAccountId))continue;
+    if(!currentCreatorOwner(actors,row) || claimed && (!row.user?.active || row.user.role!=="CREATOR" || !past(row.user.emailVerifiedAt,now) || row.user.isTest || !past(row.publicConsentAt,now) || !row.primaryAccountId))continue;
     const primary=row.accounts.find(account=>account.id===row.primaryAccountId);
-    if(claimed && (!primary || primary.ownershipStatus!=="VERIFIED" || !acceptedProof(primary) || !past(primary.ownershipReviewedAt,now) || !past(primary.intendedConfirmedAt,now) || !past(primary.consentAt,now)))continue;
+    if(claimed && (!primary || !proofs.has(primary.id) || !past(primary.intendedConfirmedAt,now) || !past(primary.consentAt,now)))continue;
     const accounts:MatchingAccount[]=[];
     for(const account of row.accounts) {
-      if(!account.brandVisible || !past(account.factsApprovedAt,now) || !past(account.intendedConfirmedAt,now) || !past(account.consentAt,now) || claimed && (account.ownershipStatus!=="VERIFIED" || !acceptedProof(account) || !past(account.ownershipReviewedAt,now)))continue;
+      if(!account.brandVisible || !past(account.factsApprovedAt,now) || !past(account.intendedConfirmedAt,now) || !past(account.consentAt,now) || claimed && !proofs.has(account.id))continue;
       const snapshot=await tx.metricsSnapshot.findFirst({where:{accountId:account.id,mappingRevision:account.mappingRevision,reviewStatus:"VERIFIED",approvedAt:{not:null,lte:now},approvedBy:{not:null},excludedAt:null,observedAt:{gte:new Date(now.getTime()-FRESHNESS_MS),lte:now}},orderBy:[{observedAt:"desc"},{id:"asc"}]});
       if(!snapshot || snapshot.approvedAt!<snapshot.observedAt)continue;
+      if(snapshot.source==="SCREENSHOT_VERIFIED" && (!row.userId || !await acceptedScreenshotProof(tx,account,snapshot,row.userId,now,actors)))continue;
       const result=snapshotAccount(account,snapshot,row,now);
       if(result.audience.age && !result.audience.age.value.every(bucket=>AudienceAgeBucketSchema.safeParse(bucket.key).success))continue;
       if(result.audience.gender && !result.audience.gender.value.every(bucket=>AudienceGenderSchema.safeParse(bucket.key).success))continue;
@@ -175,7 +186,8 @@ async function candidates(tx:Transaction,requirements:CampaignRequirementsDTO,no
     const shareRates=profile.ratesVisibility==="PUBLIC" || profile.ratesVisibility==="BRAND_ONLY";
     const rates=shareRates?row.rates.flatMap(rate=>{const amount=MoneySchema.safeParse({amountMinor:rate.amountMinor.toString(),currencyCode:rate.currency});return amount.success?[{creatorId:row.id,platform:rate.platform,format:rate.format,amount:amount.data}]:[];}):[];
     const minimum=shareRates && row.currency && row.minimumMinor!==null?MoneySchema.safeParse({amountMinor:row.minimumMinor.toString(),currencyCode:row.currency}):null;
-    const licences=row.licences.filter(licence=>licence.status==="VERIFIED" && licence.policyVersion && licence.reviewMethod==="MANUAL_REVIEW" && licence.reviewedBy && reviewers.has(licence.reviewedBy) && past(licence.reviewedAt,now) && licence.reviewedAt!>=licence.createdAt && (!licence.validFrom || licence.validFrom<=new Date(requirements.period.startsAt)) && licence.evidenceAssetId && licenceEvidence.some(asset=>asset.id===licence.evidenceAssetId && (asset.ownerUserId===row.userId || asset.ownerUserId===licence.reviewedBy)) && licence.accountIds.length>0 && licence.accountIds.every(id=>row.accounts.some(account=>account.id===id && licence.platformScope.includes(account.platform)))).map(licence=>({id:licence.id,policyIds:[licence.policyVersion!],jurisdiction:licence.jurisdiction,status:"VERIFIED" as const,accountIds:licence.accountIds,reviewedAt:licence.reviewedAt!.toISOString(),expiresAt:licence.expiresAt?.toISOString()??null}));
+    const licences:CreatorInput["licences"]=[];
+    for(const licence of row.licences) if(licence.validFrom && licence.validFrom<=new Date(requirements.period.startsAt) && await acceptedLicenceProof(tx,row,licence,row.accounts,now,actors))licences.push({id:licence.id,policyIds:[licence.policyVersion!],jurisdiction:licence.jurisdiction,status:"VERIFIED",accountIds:licence.accountIds,reviewedAt:licence.reviewedAt!.toISOString(),expiresAt:licence.expiresAt!.toISOString()});
     const input:CreatorInput={id:row.id,claimStatus:claimed?"CLAIMED":"UNCLAIMED",hidden:false,suspended:false,isTest:false,eligible:true,brandVisible:true,residenceCountryCode:row.countryCode!,contentLanguages:row.languages,dialects:row.dialects,availability:{status:status.success?status.data:"UNKNOWN",period:period.success?period.data:null,confirmedAt:instant(availability.confirmedAt)},travelWilling:travel.willing===true,travelCountryCodes:z.array(CountryCodeSchema).max(50).safeParse(travel.countryCodes).success?travel.countryCodes as string[]:[],nicheSlugs:profileFact(profile,"nicheSlugs",SlugsSchema,row.id,now),fameIndustries:profileFact(profile,"fameIndustries",z.array(FameIndustrySchema).max(12),row.id,now),accounts,rates,minimumDeal:minimum?.success?minimum.data:null,minimumDealKnown:shareRates && (row.minimumMinor===null || minimum?.success===true),licences,policyOutcomes:policy?.outcomes[row.id]??[],safetyExclusions:policy?.safetyExclusions[row.id]??[]};
     try {if(!prepareEligibility(campaignInput(requirements),input,now.toISOString()).eligibility.eligible)continue;}catch{continue;}
     inputs.push(input);
@@ -188,10 +200,10 @@ async function candidates(tx:Transaction,requirements:CampaignRequirementsDTO,no
 // authorization and its transaction. Current visibility, proof, metrics, dates,
 // preferences and contributing-source checks are identical to matching; a direct
 // path gets no score, threshold, reservation, provider call or stored match.
-export async function loadEligibleCreator(tx:Transaction,requirements:CampaignRequirementsDTO,creatorId:string,now:Date,options:Pick<MatchingPersistenceOptions,"policyReader">={}):Promise<CreatorInput|null> {
+export async function loadEligibleCreator(tx:Transaction,requirements:CampaignRequirementsDTO,creatorId:string,now:Date,options:Pick<MatchingPersistenceOptions,"policyReader"|"evidenceActors"> & { liveClock?:boolean }={}):Promise<CreatorInput|null> {
   parse(IdSchema,creatorId);clock({now});
   const approvedRequirements=parse(CampaignRequirementsSchema,requirements);
-  const loaded=await candidates(tx,approvedRequirements,now,options,creatorId);
+  const loaded=await candidates(tx,approvedRequirements,now,{...options,...(options.liveClock?{}:{now})},creatorId);
   return loaded.inputs.find(input=>input.id===creatorId && input.claimStatus==="CLAIMED")??null;
 }
 
@@ -232,9 +244,10 @@ async function storeCommand(tx:Transaction,campaignId:string,actorUserId:string,
   await tx.matchCommand.create({data:{campaignId,actorUserId,operationKey:key,payloadHash,result:json(result)}});
 }
 export async function runCampaignMatching(actorUserId:string,campaignId:string,rawCommand:unknown,options:MatchingPersistenceOptions={}):Promise<MatchingRunDTO> {
-  const command=parse(RunCommandSchema,rawCommand),now=clock(options),payloadHash=hash({action:"RUN",...command,campaignId});
+  const command=parse(RunCommandSchema,rawCommand),payloadHash=hash({action:"RUN",...command,campaignId});clock(options);
   return (options.client??prisma).$transaction(async(tx)=>{
-    const campaign=await owned(tx,actorUserId,campaignId,true),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
+    options={...options,evidenceActors:await matchingActors(tx,actorUserId,true)};
+    const campaign=await owned(tx,actorUserId,campaignId,true),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
     if(previous) {const run=await tx.matchRun.findFirst({where:{id:previous.runId as string,campaignId}});if(!run)throw new MatchingError("NOT_FOUND",404);return project(tx,campaign,run,now,options,true);}
     const brief=await approved(tx,campaign,actorUserId,command,now),loaded=await candidates(tx,brief.requirements,now,options),matches:MatchResult[]=[];
     // One malformed profile cannot promote a synthetic fallback or break all
@@ -248,17 +261,19 @@ export async function runCampaignMatching(actorUserId:string,campaignId:string,r
   },{maxWait:10_000,timeout:20_000});
 }
 export async function getCampaignMatches(actorUserId:string,campaignId:string,runId?:string,options:MatchingPersistenceOptions={}):Promise<MatchingRunDTO|null> {
-  if(runId)parse(IdSchema,runId);const now=clock(options);
+  if(runId)parse(IdSchema,runId);clock(options);
   return (options.client??prisma).$transaction(async(tx)=>{
-    const campaign=await owned(tx,actorUserId,campaignId,false),run=runId?await tx.matchRun.findFirst({where:{id:runId,campaignId}}):await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});
+    options={...options,evidenceActors:await matchingActors(tx,actorUserId,false)};
+    const campaign=await owned(tx,actorUserId,campaignId,false),now=clock(options),run=runId?await tx.matchRun.findFirst({where:{id:runId,campaignId}}):await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});
     if(!run){if(runId)throw new MatchingError("NOT_FOUND",404);return null;}
     return project(tx,campaign,run,now,options,false);
   },{maxWait:10_000,timeout:20_000});
 }
 export async function decideCampaignMatch(actorUserId:string,campaignId:string,rawCommand:unknown,options:MatchingPersistenceOptions={}):Promise<MatchingDecisionDTO & {replayed:boolean}> {
-  const command=parse(DecisionCommandSchema,rawCommand),now=clock(options),payloadHash=hash({action:"DECISION",...command,campaignId});
+  const command=parse(DecisionCommandSchema,rawCommand),payloadHash=hash({action:"DECISION",...command,campaignId});clock(options);
   return (options.client??prisma).$transaction(async(tx)=>{
-    const campaign=await owned(tx,actorUserId,campaignId,true),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
+    options={...options,evidenceActors:await matchingActors(tx,actorUserId,true)};
+    const campaign=await owned(tx,actorUserId,campaignId,true),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
     if(previous)return {...previous,replayed:true} as MatchingDecisionDTO & {replayed:boolean};
     if(campaign.currentBriefVersion!==command.expectedBriefVersion || !["BRIEF_APPROVED","SHORTLISTED","IN_DEALS"].includes(campaign.status))throw new MatchingError("STALE_VERSION");
     const latest=await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});

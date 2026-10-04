@@ -55,6 +55,14 @@ for (const role of ["CREATOR", "BRAND"] as const) {
     await expect(page.getByText(label("انحفظت مسودتك الخاصة. تقدر ترجع لها بأي وقت.", "Your private draft is saved. You can resume anytime."), { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByLabel(role === "CREATOR" ? label("اسمك الظاهر", "Display name") : label("اسم الشركة", "Company name"), { exact: true })).toHaveValue("ملف عربي أصلي");
+    await page.goto(`/${role.toLowerCase()}/profile`);
+    await expect(page.getByRole("heading", { name: role === "CREATOR" ? label("ملفي", "My profile") : label("ملف الشركة", "Company profile"), exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ملف عربي أصلي", exact: true })).toBeVisible();
+    await expect(page.getByText("هذا النص يبقى بلغته الأصلية عند تبديل الواجهة.", { exact: true })).toBeVisible();
+    await expect(page.getByText(label("محفوظ بشكل خاص", "Saved privately"), { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole("link", { name: label("تعديل الملف", "Edit profile"), exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/${role.toLowerCase()}/onboarding$`));
     const languageToggle = page.getByRole("button", { name: english ? "Switch to Arabic" : "التبديل إلى الإنجليزية", exact: true });
     await expect(languageToggle).toBeVisible();
     await languageToggle.click();
@@ -64,9 +72,16 @@ for (const role of ["CREATOR", "BRAND"] as const) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const directory = path.join(workspace, ".infame", "artifacts"); mkdirSync(directory, { recursive: true });
     await page.screenshot({ path: path.join(directory, `${info.project.name}-${role.toLowerCase()}-private-onboarding.png`), fullPage: true });
+    await page.goto(`/${role.toLowerCase()}/profile`);
+    await expect(page.getByRole("heading", { name: "ملف عربي أصلي", exact: true })).toBeVisible();
+    await expect(page.getByText("هذا النص يبقى بلغته الأصلية عند تبديل الواجهة.", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: path.join(directory, `${info.project.name}-${role.toLowerCase()}-original-profile.png`), fullPage: true });
     await db.user.update({ where: { id: user.id }, data: { active: false } });
     expect((await page.request.get("/api/me")).status()).toBe(401);
     await page.goto(`/${role.toLowerCase()}/onboarding`);
+    await expect(page).toHaveURL(/\/login/);
+    await page.goto(`/${role.toLowerCase()}/profile`);
     await expect(page).toHaveURL(/\/login/);
   });
 }

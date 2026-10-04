@@ -11,7 +11,13 @@ export function domainHandler<A extends [Request, ...unknown[]]>(action: (...arg
     const headers = { "Cache-Control": "private, no-store", "X-Request-Id": requestId };
     try {
       assertMutationOrigin(args[0]);
-      return NextResponse.json({ data: await action(...args), requestId }, { headers });
+      const result = await action(...args);
+      if (result instanceof Response) {
+        const responseHeaders = new Headers(result.headers);
+        for (const [key, value] of Object.entries(headers)) responseHeaders.set(key, value);
+        return new Response(result.body, { status: result.status, statusText: result.statusText, headers: responseHeaders });
+      }
+      return NextResponse.json({ data: result, requestId }, { headers });
     } catch (error) {
       let status = 500, code = "INTERNAL_ERROR";
       if (error instanceof ApiError) { status = error.status; code = status === 401 ? "UNAUTHENTICATED" : status === 403 ? "FORBIDDEN" : status === 413 ? "PAYLOAD_TOO_LARGE" : "VALIDATION"; }

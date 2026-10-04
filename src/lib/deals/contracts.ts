@@ -4,6 +4,7 @@ import { OfferTermsSchema, type OfferTerms } from "@/lib/contracts/offers";
 import { InterfaceLanguageSchema, OriginalTextSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
 import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import type { MatchingPolicyReader } from "@/lib/matching/persistence";
+import type { EvidenceActorLocks } from "@/lib/evidence/readiness";
 
 export class DealError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "DealError"; }
@@ -14,7 +15,7 @@ export type DealPolicyEvidence = {
   licenceSnapshots: Prisma.JsonValue[];
   policyVersion: string;
 };
-export type DealPolicyContext = { requirements: CampaignRequirementsDTO; dealId: string | null; agreement?: AgreementContent };
+export type DealPolicyContext = { requirements: CampaignRequirementsDTO; dealId: string | null; agreement?: AgreementContent; evidenceActors?: EvidenceActorLocks };
 // Trusted server dependency only: neither request bodies nor model tool arguments
 // may provide this function/evidence. It reads current reviewed records in this tx.
 export type DealPolicyVerifier = (tx: Prisma.TransactionClient, actorUserId: string, campaignId: string,

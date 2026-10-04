@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AvailabilitySchema, ArabicDialectSchema, ContentLanguageSchema, ContentStyleSchema, CountryCodeSchema, FameIndustrySchema, LocationSchema, normalizeBrandSlug, normalizeInfameHandle, PLATFORM_FORMATS, PlatformSchema, DealFormatSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
 import { CurrencyCodeSchema, MoneySchema } from "@/lib/contracts/money";
 import { NICHE_BY_SLUG } from "@/lib/contracts/taxonomy";
+import { acceptedOwnershipProof, acceptedRepresentativeProof, currentBrandOwner, currentCreatorOwner, lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, OnboardingError, parse, persistCommand, record, requireRevision, stateOf, withOwnedDraft, type CommandContext, type DraftDTO, type Json, type Transaction } from "./drafts";
 
 const text = z.string().trim().min(1).max(500).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+$/);
@@ -37,12 +38,7 @@ function safeWebsite(value: string | null) {
   return url.href;
 }
 function profileFact(value: Json, now: Date) { return { value, source: "SELF_REPORTED", evidenceAt: now.toISOString(), approvedAt: now.toISOString(), brandVisible: true, publicVisible: true }; }
-function acceptedProof(account: { platform: string; handle: string; providerAccountId: string | null; ownershipStatus: string; ownershipIdentityHash: string | null; ownershipReviewedAt: Date | null; ownershipReviewedBy: string | null }, reviewers: ReadonlySet<string>, now = new Date()) {
-  return account.ownershipStatus === "VERIFIED" && account.ownershipReviewedBy !== null && reviewers.has(account.ownershipReviewedBy) && account.ownershipReviewedAt !== null && account.ownershipReviewedAt <= now && account.ownershipIdentityHash === canonicalHash({ platform: account.platform, normalizedHandle: account.handle, providerAccountId: account.providerAccountId, confirmedOrigin: null });
-}
-async function activeReviewers(client: Transaction | PrismaClient, ids: (string | null)[]): Promise<Set<string>> {
-  return new Set((await client.user.findMany({ where: { id: { in: [...new Set(ids.filter((id): id is string => id !== null))] }, active: true, role: "ADMIN" }, select: { id: true } })).map((user) => user.id));
-}
+const past = (date: Date | null, now: Date) => date !== null && date <= now;
 async function currentPortfolio(tx: Transaction, role: "CREATOR" | "BRAND", profileId: string): Promise<PortfolioDTO | null> {
   const portfolio = role === "CREATOR" ? await tx.portfolioVersion.findFirst({ where: { creatorId: profileId }, orderBy: { version: "desc" } }) : await tx.brandPortfolioVersion.findFirst({ where: { brandId: profileId }, orderBy: { version: "desc" } });
   if (!portfolio) return null;
@@ -76,14 +72,22 @@ export async function profileCommand(actorUserId: string, draftId: string, input
   checkedJson(input);
   if (context.channel !== "FORM") throw new OnboardingError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
   const command = parse(CommandSchema, input), operationKey = `profile:${command.operationKey}`, hash = canonicalHash(command);
+  let evidenceActors!: EvidenceActorLocks;
   return withOwnedDraft(client, actorUserId, draftId, async (tx, draft, role) => {
     const replay = await commandReplay<Omit<Result, "replayed">>(tx, draft, operationKey, hash);
     if (replay) return { ...replay, replayed: true };
     requireRevision(draft, command.expectedRevision);
-    const creator = role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId } }) : null;
-    const brand = role === "BRAND" ? await tx.brand.findUnique({ where: { userId: actorUserId } }) : null;
+    const reference = role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId }, select: { id: true } }) : await tx.brand.findUnique({ where: { userId: actorUserId }, select: { id: true } });
+    if (!reference) throw new OnboardingError("PROFILE_NOT_FOUND", 404);
+    if (role === "CREATOR") await tx.$queryRaw`SELECT id FROM "Creator" WHERE id=${reference.id} FOR UPDATE`;
+    else await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${reference.id} FOR UPDATE`;
+    const creator = role === "CREATOR" ? await tx.creator.findUnique({ where: { id: reference.id } }) : null;
+    const brand = role === "BRAND" ? await tx.brand.findUnique({ where: { id: reference.id } }) : null;
     const profile = creator ?? brand;
-    if (!profile) throw new OnboardingError("PROFILE_NOT_FOUND", 404);
+    if (!profile || profile.userId !== actorUserId) throw new OnboardingError("STALE_OWNER");
+    if (creator && !currentCreatorOwner(evidenceActors, creator) || brand && !currentBrandOwner(evidenceActors, brand)) throw new OnboardingError("STALE_OWNER");
+    if (creator) await tx.$queryRaw`SELECT id FROM "SocialAccount" WHERE "creatorId"=${creator.id} ORDER BY id FOR SHARE`;
+    else await tx.$queryRaw`SELECT id FROM "BusinessVerification" WHERE "brandId"=${brand!.id} ORDER BY id FOR SHARE`;
     const state = stateOf(draft), now = new Date();
     let portfolio: PortfolioDTO | null = null, step = draft.step;
     if (command.action === "SAVE_PROFILE") {
@@ -139,17 +143,16 @@ export async function profileCommand(actorUserId: string, draftId: string, input
       const value = parse(z.object({ consent: z.boolean(), portfolioVersion: z.number().int().positive(), visibleAccountIds: z.array(z.string().min(1).max(200)).max(100).refine((ids) => new Set(ids).size === ids.length).optional() }).strict(), command.payload);
       if (!value.consent) throw new OnboardingError("PUBLICATION_CONSENT_REQUIRED", 400);
       const user = await tx.user.findUniqueOrThrow({ where: { id: actorUserId } });
-      if (!user.emailVerifiedAt) throw new OnboardingError("EMAIL_VERIFICATION_REQUIRED");
+      if (!past(user.emailVerifiedAt, now)) throw new OnboardingError("EMAIL_VERIFICATION_REQUIRED");
       if (creator) {
         const primary = creator.primaryAccountId ? await tx.socialAccount.findUnique({ where: { id: creator.primaryAccountId } }) : null;
-        const reviewers = await activeReviewers(tx, [primary?.ownershipReviewedBy ?? null]);
-        if (!primary || primary.creatorId !== creator.id || !acceptedProof(primary, reviewers, now) || !primary.intendedConfirmedAt || !primary.consentAt) throw new OnboardingError("PRIMARY_OWNERSHIP_REQUIRED");
+        if (!primary || primary.creatorId !== creator.id || !past(primary.intendedConfirmedAt, now) || !past(primary.consentAt, now) || !await acceptedOwnershipProof(tx, primary, actorUserId, now, evidenceActors)) throw new OnboardingError("PRIMARY_OWNERSHIP_REQUIRED");
         if (!creator.countryCode || !creator.timeZone || !creator.languages.length || !creator.nicheIds.length || !creator.currency) throw new OnboardingError("PROFILE_ESSENTIALS_REQUIRED");
         if (record(creator.profileFacts).mappingHash !== canonicalHash(state.sources)) throw new OnboardingError("ACCOUNT_MAPPING_CHANGED");
       } else if (brand) {
         const rows = await tx.businessVerification.findMany({ where: { brandId: brand.id, kind: "REPRESENTATIVE", status: "VERIFIED", reviewedAt: { lte: now }, reviewedBy: { not: null }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } });
-        const reviewers = await activeReviewers(tx, rows.map((row) => row.reviewedBy));
-        const accepted = rows.find((row) => row.reviewedBy && reviewers.has(row.reviewedBy));
+        let accepted = false;
+        for (const row of rows) if (await acceptedRepresentativeProof(tx, brand, row, now, evidenceActors)) { accepted = true; break; }
         if (!accepted) throw new OnboardingError("REPRESENTATION_REQUIRED");
         const facts = record(brand.profileFacts);
         if (!brand.countryCode || !brand.timeZone || !Array.isArray(facts.languages) || !facts.languages.length || !Array.isArray(facts.targetMarkets) || !facts.targetMarkets.length || !CurrencyCodeSchema.safeParse(facts.preferredCurrency).success) throw new OnboardingError("PROFILE_ESSENTIALS_REQUIRED");
@@ -160,8 +163,8 @@ export async function profileCommand(actorUserId: string, draftId: string, input
       if (creator) {
         await tx.creator.update({ where: { id: creator.id }, data: { ...publication, brandVisible: true } });
         const accounts = await tx.socialAccount.findMany({ where: { creatorId: creator.id, ownershipStatus: "VERIFIED", intendedConfirmedAt: { not: null }, consentAt: { not: null } } });
-        const reviewers = await activeReviewers(tx, accounts.map((account) => account.ownershipReviewedBy));
-        const allowed = accounts.filter((account) => acceptedProof(account, reviewers, now)).map((account) => account.id);
+        const allowed: string[] = [];
+        for (const account of accounts) if (past(account.intendedConfirmedAt, now) && past(account.consentAt, now) && await acceptedOwnershipProof(tx, account, actorUserId, now, evidenceActors)) allowed.push(account.id);
         const ids = value.visibleAccountIds ?? [creator.primaryAccountId!];
         if (ids.some((id) => !allowed.includes(id))) throw new OnboardingError("ACCOUNT_PUBLICATION_NOT_ALLOWED", 400);
         await tx.socialAccount.updateMany({ where: { creatorId: creator.id }, data: { publicVisible: false, brandVisible: false } });
@@ -179,52 +182,85 @@ export async function profileCommand(actorUserId: string, draftId: string, input
     const result = await persistCommand(tx, draft, command.expectedRevision, operationKey, hash, { input: inputJson(state), step }, async (updated) => ({ draft: await draftDTO(tx, updated, role), ...(portfolio ? { portfolio } : {}) }));
     await tx.outboxEvent.create({ data: { deduplicationKey: `profile:${draft.id}:${command.operationKey}`, type: `profile.${command.action.toLowerCase()}`, payload: inputJson({ actorUserId, profileId: profile.id, role, revision: result.draft.revision }) } });
     return { ...result, replayed: false };
+  }, async (tx, role) => {
+    const profile = role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId }, select: { id: true } }) : await tx.brand.findUnique({ where: { userId: actorUserId }, select: { id: true } });
+    evidenceActors = await lockEvidenceActors(tx, { creatorIds: role === "CREATOR" && profile ? [profile.id] : [], brandIds: role === "BRAND" && profile ? [profile.id] : [], otherOwnerIds: [actorUserId] });
   });
 }
 
 export async function profileForOwner(actorUserId: string, client: PrismaClient = prisma) {
-  const user = await client.user.findUnique({ where: { id: actorUserId }, select: { id: true, active: true, role: true } });
-  if (!user?.active || (user.role !== "CREATOR" && user.role !== "BRAND")) throw new OnboardingError("FORBIDDEN", 403);
-  const creator = user.role === "CREATOR" ? await client.creator.findUnique({ where: { userId: actorUserId }, include: { accounts: true, rates: true } }) : null;
-  const brand = user.role === "BRAND" ? await client.brand.findUnique({ where: { userId: actorUserId } }) : null;
+  return client.$transaction(async tx => {
+  await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR SHARE`;
+  const initialUser = await tx.user.findUnique({ where: { id: actorUserId }, select: { active: true, role: true } });
+  if (!initialUser?.active || (initialUser.role !== "CREATOR" && initialUser.role !== "BRAND")) throw new OnboardingError("FORBIDDEN", 403);
+  const reference = initialUser.role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId }, select: { id: true } }) : await tx.brand.findUnique({ where: { userId: actorUserId }, select: { id: true } });
+  if (!reference) return null;
+  await lockEvidenceDomain(tx, initialUser.role === "CREATOR" ? "Creator" : "Brand", [reference.id]);
+  const user = await tx.user.findUnique({ where: { id: actorUserId }, select: { active: true, role: true } });
+  if (!user?.active || user.role !== initialUser.role) throw new OnboardingError("FORBIDDEN", 403);
+  const creator = user.role === "CREATOR" ? await tx.creator.findUnique({ where: { id: reference.id }, include: { accounts: true, rates: true } }) : null;
+  const brand = user.role === "BRAND" ? await tx.brand.findUnique({ where: { id: reference.id } }) : null;
   if (!creator && !brand) return null;
+  if ((creator ?? brand)?.userId !== actorUserId) return null;
   const profile = creator ? { id: creator.id, displayName: creator.displayName, handle: creator.handle, bio: creator.bio, state: creator.state, countryCode: creator.countryCode, city: creator.city, timeZone: creator.timeZone, languages: creator.languages, dialects: creator.dialects, nicheSlugs: creator.nicheIds, fameIndustries: creator.fameTags, contentStyles: creator.contentStyles, currency: creator.currency, minimumMinor: creator.minimumMinor?.toString() ?? null, availability: creator.availability, travel: creator.travel, facts: creator.profileFacts, primaryAccountId: creator.primaryAccountId, website: null }
     : { id: brand!.id, displayName: brand!.name, handle: brand!.slug, bio: brand!.description, state: brand!.state, countryCode: brand!.countryCode, city: brand!.city, timeZone: brand!.timeZone, languages: [], dialects: [], nicheSlugs: [], fameIndustries: [], contentStyles: [], currency: null, minimumMinor: null, availability: null, travel: null, facts: brand!.profileFacts, primaryAccountId: null, website: brand!.website };
-  const portfolio = await client.$transaction((tx) => currentPortfolio(tx, user.role as "CREATOR" | "BRAND", profile.id));
+  const portfolio = await currentPortfolio(tx, user.role as "CREATOR" | "BRAND", profile.id);
   return { role: user.role, profile, accounts: creator?.accounts.map((account) => ({ id: account.id, platform: account.platform, handle: account.handle, ownershipStatus: account.ownershipStatus, publicVisible: account.publicVisible, brandVisible: account.brandVisible, mappingRevision: account.mappingRevision, factsApprovedAt: account.factsApprovedAt?.toISOString() ?? null })) ?? [], rates: creator?.rates.map((rate) => ({ platform: rate.platform, format: rate.format, currencyCode: rate.currency, amountMinor: rate.amountMinor.toString() })) ?? [], portfolio };
+  }, { maxWait: 10_000, timeout: 20_000 });
 }
 export type OwnerProfileDTO = NonNullable<Awaited<ReturnType<typeof profileForOwner>>>;
 
-function profileReady(profile: Creator | Brand) { return profile.state === "PUBLISHED" && !profile.isTest && profile.publicConsentAt !== null; }
-export async function publicCreator(requestedHandle: string, client: Transaction | PrismaClient = prisma) {
+function profileReady(profile: Creator | Brand, now: Date) { return profile.state === "PUBLISHED" && !profile.isTest && past(profile.publicConsentAt, now); }
+function readTransaction<T>(client: Transaction | PrismaClient, operation: (tx: Transaction) => Promise<T>): Promise<T> {
+  return "$transaction" in client ? client.$transaction(operation, { maxWait: 10_000, timeout: 20_000 }) : operation(client);
+}
+export async function publicCreator(requestedHandle: string, client: Transaction | PrismaClient = prisma, locked?: EvidenceActorLocks) {
   let normalized: string;
   try { normalized = normalizeInfameHandle(requestedHandle); } catch { return null; }
-  const creator = await client.creator.findUnique({ where: { handle: normalized }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } }, accounts: true, portfolios: { orderBy: { version: "desc" }, take: 1 }, rates: true, work: { where: { approvedAt: { not: null }, publicVisible: true } } } });
-  if (!creator || !profileReady(creator) || !creator.user?.active || creator.user.role !== "CREATOR" || creator.user.isTest || !creator.user.emailVerifiedAt) return null;
-  const primary = creator.accounts.find((account) => account.id === creator.primaryAccountId);
-  const reviewers = await activeReviewers(client, creator.accounts.map((account) => account.ownershipReviewedBy));
-  if (!primary || !acceptedProof(primary, reviewers) || !primary.intendedConfirmedAt || !primary.consentAt) return null;
-  const draft = await client.onboardingDraft.findUnique({ where: { userId_kind: { userId: creator.userId!, kind: "CREATOR" } } });
-  if (draft && record(creator.profileFacts).mappingHash !== canonicalHash(stateOf(draft).sources)) return null;
-  const portfolio = creator.portfolios[0];
-  if (!portfolio?.approvedAt) return null;
-  const parsed = PortfolioContentSchema.safeParse(portfolio.content);
-  if (!parsed.success) return null;
-  return { id: creator.id, handle: creator.handle, displayName: creator.displayName, bio: parsed.data.bio, countryCode: creator.countryCode, languages: creator.languages, nicheSlugs: creator.nicheIds, portfolio: parsed.data,
-    accounts: creator.accounts.filter((account) => account.publicVisible && acceptedProof(account, reviewers) && account.intendedConfirmedAt && account.consentAt).map((account) => ({ platform: account.platform, handle: account.handle, ownership: "VERIFIED" as const })),
-    rates: record(creator.profileFacts).ratesVisibility === "PUBLIC" ? creator.rates.map((rate) => ({ platform: rate.platform, format: rate.format, currencyCode: rate.currency, amountMinor: rate.amountMinor.toString() })) : [],
-    work: creator.work.map((work) => ({ title: work.title, description: work.description, url: work.url })),
-  };
+  return readTransaction(client, async tx => {
+    const initial = await tx.creator.findUnique({ where: { handle: normalized }, select: { id: true } });
+    if (!initial) return null;
+    const actors = locked ?? await lockEvidenceActors(tx, { creatorIds: [initial.id] });
+    await lockEvidenceDomain(tx, "Creator", [initial.id]);
+    await tx.$queryRaw`SELECT id FROM "SocialAccount" WHERE "creatorId"=${initial.id} ORDER BY id FOR SHARE`;
+    await tx.$queryRaw`SELECT id FROM "PortfolioVersion" WHERE "creatorId"=${initial.id} ORDER BY id FOR SHARE`;
+    await tx.$queryRaw`SELECT id FROM "CreatorRate" WHERE "creatorId"=${initial.id} ORDER BY id FOR SHARE`;
+    await tx.$queryRaw`SELECT id FROM "CreatorWork" WHERE "creatorId"=${initial.id} ORDER BY id FOR SHARE`;
+    const creator = await tx.creator.findUnique({ where: { handle: normalized }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } }, accounts: true, portfolios: { orderBy: { version: "desc" }, take: 1 }, rates: true, work: { where: { approvedAt: { not: null }, publicVisible: true } } } });
+    const now = new Date();
+    if (!creator || creator.id !== initial.id || !currentCreatorOwner(actors, creator) || !creator.userId || !profileReady(creator, now) || !creator.user?.active || creator.user.role !== "CREATOR" || creator.user.isTest || !past(creator.user.emailVerifiedAt, now)) return null;
+    const primary = creator.accounts.find(a => a.id === creator.primaryAccountId);
+    if (!primary || !past(primary.intendedConfirmedAt, now) || !past(primary.consentAt, now) || !await acceptedOwnershipProof(tx, primary, creator.userId, now, actors)) return null;
+    // The owner lock prevents draft edits while this projection is assembled.
+    const draft = await tx.onboardingDraft.findUnique({ where: { userId_kind: { userId: creator.userId, kind: "CREATOR" } } });
+    if (draft && record(creator.profileFacts).mappingHash !== canonicalHash(stateOf(draft).sources)) return null;
+    const portfolio = creator.portfolios[0], parsed = PortfolioContentSchema.safeParse(portfolio?.content);
+    if (!portfolio || !past(portfolio.approvedAt, now) || !parsed.success) return null;
+    const accounts: { platform: typeof primary.platform; handle: string; ownership: "VERIFIED" }[] = [];
+    for (const account of creator.accounts) if (account.publicVisible && past(account.intendedConfirmedAt, now) && past(account.consentAt, now) && await acceptedOwnershipProof(tx, account, creator.userId, now, actors)) accounts.push({ platform: account.platform, handle: account.handle, ownership: "VERIFIED" });
+    return { id: creator.id, handle: creator.handle, displayName: creator.displayName, bio: parsed.data.bio, countryCode: creator.countryCode, languages: creator.languages, nicheSlugs: creator.nicheIds, portfolio: parsed.data, accounts,
+      rates: record(creator.profileFacts).ratesVisibility === "PUBLIC" ? creator.rates.map(rate => ({ platform: rate.platform, format: rate.format, currencyCode: rate.currency, amountMinor: rate.amountMinor.toString() })) : [],
+      work: creator.work.filter(work => past(work.approvedAt, now)).map(work => ({ title: work.title, description: work.description, url: work.url })) };
+  });
 }
-export async function publicBrand(requestedSlug: string, client: Transaction | PrismaClient = prisma) {
+export async function publicBrand(requestedSlug: string, client: Transaction | PrismaClient = prisma, locked?: EvidenceActorLocks) {
   let slug: string;
   try { slug = normalizeBrandSlug(requestedSlug); } catch { return null; }
-  const brand = await client.brand.findUnique({ where: { slug }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } }, verifications: true, portfolios: { orderBy: { version: "desc" }, take: 1 } } });
-  if (!brand || !profileReady(brand) || !brand.user.active || brand.user.role !== "BRAND" || brand.user.isTest || !brand.user.emailVerifiedAt) return null;
-  const now = new Date();
-  const reviewers = await activeReviewers(client, brand.verifications.map((verification) => verification.reviewedBy));
-  if (!brand.verifications.some((verification) => verification.kind === "REPRESENTATIVE" && verification.status === "VERIFIED" && verification.reviewedAt && verification.reviewedAt <= now && verification.reviewedBy && reviewers.has(verification.reviewedBy) && (!verification.expiresAt || verification.expiresAt > now))) return null;
-  const portfolio = brand.portfolios[0], parsed = PortfolioContentSchema.safeParse(portfolio?.content);
-  if (!portfolio?.approvedAt || !parsed.success) return null;
-  return { id: brand.id, slug: brand.slug, name: brand.name, description: parsed.data.bio, countryCode: brand.countryCode, website: brand.website, portfolio: parsed.data };
+  return readTransaction(client, async tx => {
+    const initial = await tx.brand.findUnique({ where: { slug }, select: { id: true } });
+    if (!initial) return null;
+    const actors = locked ?? await lockEvidenceActors(tx, { brandIds: [initial.id] });
+    await lockEvidenceDomain(tx, "Brand", [initial.id]);
+    await tx.$queryRaw`SELECT id FROM "BusinessVerification" WHERE "brandId"=${initial.id} ORDER BY id FOR SHARE`;
+    await tx.$queryRaw`SELECT id FROM "BrandPortfolioVersion" WHERE "brandId"=${initial.id} ORDER BY id FOR SHARE`;
+    const brand = await tx.brand.findUnique({ where: { slug }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } }, verifications: true, portfolios: { orderBy: { version: "desc" }, take: 1 } } });
+    const now = new Date();
+    if (!brand || brand.id !== initial.id || !currentBrandOwner(actors, brand) || !profileReady(brand, now) || !brand.user.active || brand.user.role !== "BRAND" || brand.user.isTest || !past(brand.user.emailVerifiedAt, now)) return null;
+    let accepted = false;
+    for (const verification of brand.verifications) if (await acceptedRepresentativeProof(tx, brand, verification, now, actors)) { accepted = true; break; }
+    if (!accepted) return null;
+    const portfolio = brand.portfolios[0], parsed = PortfolioContentSchema.safeParse(portfolio?.content);
+    if (!portfolio || !past(portfolio.approvedAt, now) || !parsed.success) return null;
+    return { id: brand.id, slug: brand.slug, name: brand.name, description: parsed.data.bio, countryCode: brand.countryCode, website: brand.website, portfolio: parsed.data };
+  });
 }

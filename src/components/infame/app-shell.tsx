@@ -58,7 +58,7 @@ export function AppShell({
           {
             key: "profile",
             label: { ar: "ملفي", en: "My profile" },
-            href: home + "/onboarding",
+            href: home + "/profile",
           },
           {
             key: "settings",

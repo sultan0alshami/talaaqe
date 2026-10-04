@@ -7,10 +7,11 @@ import { correctionDTO, snapshotDTO } from "./metrics";
 import { businessDTO, licenceDTO } from "./verifications";
 export async function getCreatorEvidence(actor: string, creatorId: string, options: EvidenceOptions) {
   parse(Id, creatorId);
-  return transaction(options, async tx => {
+  return transaction(options, actor, async (tx, _now, boundary) => {
     // These private owner loaders do not grant administrators implicit owner
     // access; administration has its own bounded, audited review queue.
     const creator = await creatorContext(tx, actor, creatorId);
+    await boundary.checkpoint();
     const accounts = await tx.socialAccount.findMany({ where: { creatorId: creator.id }, orderBy: { id: "asc" } });
     const ids = accounts.map(a => a.id);
     const challenges = await tx.ownershipChallenge.findMany({ where: { accountId: { in: ids }, ownerUserId: actor }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 100 });
@@ -26,8 +27,9 @@ export async function getCreatorEvidence(actor: string, creatorId: string, optio
 }
 export async function getBrandEvidence(actor: string, brandId: string, options: EvidenceOptions) {
   parse(Id, brandId);
-  return transaction(options, async tx => {
+  return transaction(options, actor, async (tx, _now, boundary) => {
     await brandContext(tx, actor, brandId);
+    await boundary.checkpoint();
     const verifications = await tx.businessVerification.findMany({ where: { brandId }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 100 });
     const assets = await tx.privateAsset.findMany({ where: { ownerUserId: actor, deletedAt: null }, orderBy: { createdAt: "desc" }, take: 100 });
     return { brandId, verifications: await Promise.all(verifications.map(v => businessDTO(tx, v))), assets: assets.map(assetDTO) };
@@ -37,8 +39,9 @@ export const EvidenceQueueQuerySchema = z.object({ kind: z.enum(["OWNERSHIP", "S
   status: z.enum(ReviewStatus).default("PENDING"), limit: z.number().int().min(1).max(50).default(25), cursor: Id.optional() }).strict();
 export async function listEvidenceReviewQueue(actor: string, query: unknown, options: EvidenceOptions) {
   const input = parse(EvidenceQueueQuerySchema, query);
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     await active(tx, actor, "ADMIN");
+    now = await boundary.checkpoint();
     const where = { status: input.status, ...(input.cursor ? { id: { gt: input.cursor } } : {}) }, take = input.limit + 1;
     const entries = input.kind === "OWNERSHIP" ? await Promise.all((await tx.ownershipChallenge.findMany({ where, orderBy: { id: "asc" }, take })).map(async c => ({ kind: input.kind, id: c.id, data: await ownershipChallengeDTO(tx, c) })))
       : input.kind === "SCREENSHOT" ? (await tx.metricsSnapshot.findMany({ where: { reviewStatus: input.status, source: "SELF_REPORTED", evidenceAssetId: { not: null }, excludedAt: null, ...(input.cursor ? { id: { gt: input.cursor } } : {}) }, orderBy: { id: "asc" }, take })).map(s => ({ kind: input.kind, id: s.id, data: snapshotDTO(s) }))

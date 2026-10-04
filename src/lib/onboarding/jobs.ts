@@ -3,6 +3,10 @@ import { PrismaClient, type OnboardingDraft, type SourceJob } from "@prisma/clie
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { EvidenceSourceSchema } from "@/lib/contracts/vocabulary";
+import type { WebsiteDependencies } from "@/lib/imports/website/types";
+import { websiteErrorCode, WEBSITE_TEXT_FIELDS } from "@/lib/imports/website/types";
+import { assertWebsiteCapability, collectConfirmedWebsite } from "@/lib/imports/website";
+import { validateWebsiteUrl } from "@/lib/imports/website/destination";
 import {
   canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, jobDTO,
   OnboardingError, parse, persistCommand, record, requireConsent, requireRevision, sourceKey, stateOf, withOwnedDraft,
@@ -13,7 +17,8 @@ const QueueSchema = CommandBaseSchema.extend({ sourceKey: z.string(), channel: z
 const fieldKey = z.string().regex(/^[A-Za-z][A-Za-z0-9_.-]{0,99}$/).refine((key) => !["constructor", "prototype", "__proto__"].includes(key));
 const FactValueSchema = z.union([z.string().max(10_000), z.number().finite(), z.boolean(), z.array(z.string().max(200)).max(100), z.record(z.string().max(100), z.number().finite()), z.null()]);
 const FactSchema = z.object({ fieldKey, value: FactValueSchema, unit: z.string().max(100).nullable(), source: EvidenceSourceSchema,
-  evidenceAt: z.string().datetime({ offset: true }), sourceReference: z.string().max(500).nullable() }).strict();
+  evidenceAt: z.string().datetime({ offset: true }).nullable(), sourceReference: z.string().max(500).nullable(),
+  retrievedAt: z.string().datetime({ offset: false }).optional(), sourceHash: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict();
 const ProgressSchema = z.object({ executionToken: z.string().regex(/^[a-f0-9]{64}$/), facts: z.array(FactSchema).max(100),
   completedItems: z.number().int().nonnegative().max(10_000), totalItems: z.number().int().nonnegative().max(10_000).nullable() });
 const CheckpointSchema = ProgressSchema.strict();
@@ -44,6 +49,7 @@ function requireExecution(job: SourceJob, token: string): StoredResult {
   return result;
 }
 function currentSource(draft: OnboardingDraft, job: SourceJob): boolean {
+  if (draft.completedAt) return false;
   const checkpoint = record(job.identity), key = typeof checkpoint.sourceKey === "string" ? checkpoint.sourceKey : "";
   const state = stateOf(draft), mapping = state.sources[key];
   if (!mapping || mapping.source !== job.source || mapping.revision !== job.revision || canonicalHash(mapping.identity) !== canonicalHash(checkpoint.identity ?? null)) return false;
@@ -120,14 +126,32 @@ function observations(job: SourceJob, progress: Progress): ProposedFact[] {
   if (progress.totalItems !== null && progress.completedItems > progress.totalItems) throw new OnboardingError("INVALID_PROGRESS", 400);
   const seen = new Set<string>();
   return progress.facts.map((fact) => {
-    const evidenceAt = new Date(fact.evidenceAt).toISOString();
-    if (new Date(evidenceAt).getTime() > Date.now()) throw new OnboardingError("INVALID_EVIDENCE_DATE", 400);
+    let evidenceAt: string | null;
+    if (job.source === "WEBSITE") {
+      const origin = record(record(job.identity).identity).confirmedOrigin;
+      if (fact.source !== "PUBLIC_IMPORT" || fact.evidenceAt !== null || fact.unit !== null || !WEBSITE_TEXT_FIELDS.some((field) => field === fact.fieldKey)
+        || !fact.retrievedAt || !fact.sourceHash || typeof origin !== "string" || !fact.sourceReference) throw new OnboardingError("INVALID_SOURCE_FACT", 400);
+      const maximum = fact.fieldKey === "website.pageTitle" ? 200 : fact.fieldKey === "website.pageDescription" ? 2_000 : 6_000;
+      if (fact.fieldKey === "website.pageHeadings") {
+        if (!Array.isArray(fact.value) || !fact.value.length || fact.value.length > 20 || fact.value.some((value) => typeof value !== "string" || !value.trim() || value.length > 200)) throw new OnboardingError("INVALID_SOURCE_FACT", 400);
+      } else if (typeof fact.value !== "string" || !fact.value.trim() || fact.value.length > maximum) throw new OnboardingError("INVALID_SOURCE_FACT", 400);
+      const retrieval = Date.parse(fact.retrievedAt);
+      if (!Number.isFinite(retrieval) || new Date(retrieval).toISOString() !== fact.retrievedAt || retrieval > Date.now() || !job.startedAt || retrieval < job.startedAt.getTime()) throw new OnboardingError("INVALID_RETRIEVAL_DATE", 400);
+      try { if (validateWebsiteUrl(fact.sourceReference, origin).href !== fact.sourceReference) throw new Error("noncanonical"); }
+      catch { throw new OnboardingError("INVALID_SOURCE_REFERENCE", 400); }
+      evidenceAt = null;
+    } else {
+      if (fact.evidenceAt === null || fact.retrievedAt !== undefined || fact.sourceHash !== undefined) throw new OnboardingError("INVALID_EVIDENCE_DATE", 400);
+      evidenceAt = new Date(fact.evidenceAt).toISOString();
+      if (new Date(evidenceAt).getTime() > Date.now()) throw new OnboardingError("INVALID_EVIDENCE_DATE", 400);
+    }
     if (fact.sourceReference) {
       let reference: URL;
       try { reference = new URL(fact.sourceReference); } catch { throw new OnboardingError("INVALID_SOURCE_REFERENCE", 400); }
       if (reference.protocol !== "https:" || reference.username || reference.password) throw new OnboardingError("INVALID_SOURCE_REFERENCE", 400);
     }
-    const id = canonicalHash({ jobId: job.id, fieldKey: fact.fieldKey, evidenceAt, source: fact.source, sourceReference: fact.sourceReference });
+    const id = canonicalHash({ jobId: job.id, fieldKey: fact.fieldKey, evidenceAt, source: fact.source, sourceReference: fact.sourceReference,
+      ...(job.source === "WEBSITE" ? { retrievedAt: fact.retrievedAt, sourceHash: fact.sourceHash } : {}) });
     if (seen.has(id)) throw new OnboardingError("DUPLICATE_OBSERVATION", 400);
     seen.add(id);
     return { ...fact, id, jobId: job.id, evidenceAt, reviewStatus: "PROPOSED", visibility: "PRIVATE" };
@@ -208,4 +232,39 @@ export async function failSourceJob(actorUserId: string, jobId: string, input: u
     const updated = await tx.sourceJob.update({ where: { id: job.id }, data: { status: "FAILED", completedAt: new Date(), errorCode: failure.errorCode, result: inputJson(storedResult(result)) } });
     return { job: jobDTO(updated), replayed: false };
   });
+}
+
+/** Server-only orchestration. Dependencies come from reviewed server setup,
+ * never request bodies, voice/model arguments or supplied execution tokens. */
+export async function runWebsiteSourceJob(actorUserId: string, jobId: string, dependencies: WebsiteDependencies = {}, client: PrismaClient = prisma): Promise<{ job: JobDTO; replayed: boolean }> {
+  const prepared = await withJob(client, actorUserId, jobId, async (tx, draft, role, job) => {
+    if (role !== "BRAND" || job.source !== "WEBSITE") throw new OnboardingError("INVALID_SOURCE", 400);
+    const stale = await staleIfNeeded(tx, draft, job);
+    if (stale) return { job: jobDTO(stale), replayed: true, input: null };
+    if (job.status !== "QUEUED") return { job: jobDTO(job), replayed: true, input: null };
+    try { assertWebsiteCapability(dependencies); }
+    catch {
+      const failed = await tx.sourceJob.update({ where: { id: job.id }, data: { status: "FAILED", errorCode: "CAPABILITY_UNAVAILABLE", completedAt: new Date() } });
+      return { job: jobDTO(failed), replayed: false, input: null };
+    }
+    const key = sourceKey(record(job.identity).sourceKey), state = stateOf(draft), consent = requireConsent(state, consentOf(draft), key);
+    const origin = state.sources[key].identity.confirmedOrigin;
+    if (!origin) throw new OnboardingError("INVALID_SOURCE", 400);
+    return { job: jobDTO(job), replayed: false, input: { sourceId: key, sourceRevision: job.revision, confirmedOrigin: origin, confirmedUrl: `${origin}/`, consentVersion: consent.consentVersion } };
+  });
+  if (!prepared.input) return { job: prepared.job, replayed: prepared.replayed };
+  const claim = await startSourceJob(actorUserId, jobId, client);
+  if (!claim.acquired || !claim.executionToken) return { job: claim.job, replayed: true };
+  let outcome;
+  try { outcome = await collectConfirmedWebsite(prepared.input, dependencies); assertWebsiteCapability(dependencies); }
+  catch (error) {
+    const errorCode = websiteErrorCode(error);
+    return failSourceJob(actorUserId, jobId, { executionToken: claim.executionToken, errorCode, billingUncertain: false }, client);
+  }
+  if (outcome.status === "FAILED") return failSourceJob(actorUserId, jobId, { executionToken: claim.executionToken,
+    errorCode: outcome.errors[0]?.code ?? "WEBSITE_IMPORT_FAILED", billingUncertain: false }, client);
+  const facts = outcome.pages.flatMap((page) => page.facts.map((fact) => ({ fieldKey: fact.fieldKey, value: fact.observedValue, unit: null,
+    source: "PUBLIC_IMPORT", evidenceAt: null, retrievedAt: fact.retrievedAt, sourceHash: fact.sourceHash, sourceReference: fact.sourceReference })));
+  return completeSourceJob(actorUserId, jobId, { executionToken: claim.executionToken, facts, status: outcome.status,
+    completedItems: outcome.completedItems, totalItems: outcome.totalItems }, client);
 }

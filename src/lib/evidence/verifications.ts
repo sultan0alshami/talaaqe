@@ -19,8 +19,9 @@ export async function licenceDTO(tx: Tx, l: AdvertisingLicence) { return { id: l
   reviewNote: l.reviewNote ? { text: l.reviewNote, language: await reviewLanguage(tx, "AdvertisingLicence", l.id, l.revision) } : null }; }
 export async function submitAdvertisingLicence(actor: string, input: unknown, options: EvidenceOptions) {
   const command = parse(Licence, input), hash = canonicalHash({ action: "SUBMIT_LICENCE", ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const creator = await creatorContext(tx, actor, command.creatorId);
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { licence: await licenceDTO(tx, await tx.advertisingLicence.findUniqueOrThrow({ where: { id: replay.resourceId } })), replayed: true };
     const bindings = [];
@@ -31,8 +32,11 @@ export async function submitAdvertisingLicence(actor: string, input: unknown, op
       requireMapping(account, binding.mappingRevision); bindings.push({ ...binding, identityHash: identityHash(account) });
     }
     const accounts = await tx.socialAccount.findMany({ where: { id: { in: bindings.map(b => b.accountId) } } });
+    now = await boundary.checkpoint();
     if (command.platformScope.some(p => !accounts.some(a => a.platform === p)) || Date.parse(command.expiresAt) <= now.getTime()) throw new EvidenceError("INVALID_SCOPE");
-    await usableAsset(tx, command.evidenceAssetId, actor, "ADVERTISING_LICENCE", options);
+    await usableAsset(tx, command.evidenceAssetId, actor, "ADVERTISING_LICENCE", options, boundary);
+    now = await boundary.checkpoint();
+    if (Date.parse(command.expiresAt) <= now.getTime()) throw new EvidenceError("INVALID_SCOPE");
     const licence = await tx.advertisingLicence.create({ data: { creatorId: creator.id, jurisdiction: command.jurisdiction, issuer: command.issuer,
       holderName: command.holderName, licenceNumber: command.licenceNumber, type: command.type, scope: command.scope, accountIds: bindings.map(b => b.accountId),
       platformScope: command.platformScope, evidenceAssetId: command.evidenceAssetId, validFrom: new Date(command.validFrom), expiresAt: new Date(command.expiresAt), createdAt: now, updatedAt: now } });
@@ -44,11 +48,12 @@ export async function submitAdvertisingLicence(actor: string, input: unknown, op
 }
 export async function reviewAdvertisingLicence(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(LicenceReview, input), hash = canonicalHash({ action: "REVIEW_LICENCE", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const initial = await tx.advertisingLicence.findUnique({ where: { id } }); if (!initial) throw new EvidenceError("NOT_FOUND", 404);
     const initialPolicy = command.policyVersionId ? await tx.policyVersion.findUnique({ where: { id: command.policyVersionId } }) : null;
     const creator = await creatorContext(tx, actor, initial.creatorId, true, initialPolicy?.reviewedBy ? [initialPolicy.reviewedBy] : []);
     await lock(tx, "AdvertisingLicence", id);
+    now = await boundary.checkpoint();
     const licence = await tx.advertisingLicence.findUniqueOrThrow({ where: { id } });
     const submission = await tx.evidenceCommand.findFirst({ where: { actorUserId: creator.userId!, resourceType: "AdvertisingLicence", resourceId: id }, orderBy: { createdAt: "asc" } });
     const metadata = record(submission?.resultJson);
@@ -59,6 +64,7 @@ export async function reviewAdvertisingLicence(actor: string, id: string, input:
       if (!account || account.creatorId !== creator.id || !licence.platformScope.includes(account.platform)) throw new EvidenceError("STALE_IDENTITY");
       requireMapping(account, binding.mappingRevision, binding.identityHash);
     }
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { licence: await licenceDTO(tx, licence), replayed: true };
     requireRevision(licence.revision, command.expectedRevision);
@@ -67,14 +73,18 @@ export async function reviewAdvertisingLicence(actor: string, id: string, input:
     if (command.decision === "VERIFIED") {
       if (!initialPolicy?.reviewedBy || !command.policyVersionId) throw new EvidenceError("POLICY_UNAVAILABLE", 503);
       await lock(tx, "PolicyVersion", command.policyVersionId, true);
+      now = await boundary.checkpoint();
       const policy = await tx.policyVersion.findUniqueOrThrow({ where: { id: command.policyVersionId } });
       const content = MarketPolicyContentSchema.safeParse(policy.content);
       if (policy.kind !== "MARKET" || policy.status !== "VERIFIED" || policy.reviewedBy !== initialPolicy.reviewedBy || !policy.reviewedAt || policy.reviewedAt > now || policy.reviewedAt < policy.createdAt
-        || !policy.evidenceAssetId || policy.expiresAt && policy.expiresAt < now || !content.success || !content.data.licencePolicyId || !policy.countryCodes.includes(licence.jurisdiction)
+        || !policy.evidenceAssetId || policy.expiresAt && policy.expiresAt <= now || !content.success || !content.data.licencePolicyId || !policy.countryCodes.includes(licence.jurisdiction)
         || content.data.marketCountryCode !== licence.jurisdiction || !creator.countryCode || !content.data.creatorCountryCodes.includes(creator.countryCode)) throw new EvidenceError("POLICY_UNAVAILABLE", 503);
       if (!licence.evidenceAssetId || !licence.expiresAt || licence.expiresAt <= now || !licence.validFrom || licence.validFrom > now) throw new EvidenceError("INVALID_EVIDENCE");
-      await usableAsset(tx, policy.evidenceAssetId, policy.reviewedBy, "LEGAL_POLICY_REVIEW", options);
-      await usableAsset(tx, licence.evidenceAssetId, creator.userId!, "ADVERTISING_LICENCE", options);
+      await usableAsset(tx, policy.evidenceAssetId, policy.reviewedBy, "LEGAL_POLICY_REVIEW", options, boundary);
+      await usableAsset(tx, licence.evidenceAssetId, creator.userId!, "ADVERTISING_LICENCE", options, boundary);
+      now = await boundary.checkpoint();
+      if (policy.expiresAt && policy.expiresAt <= now) throw new EvidenceError("POLICY_UNAVAILABLE", 503);
+      if (licence.expiresAt <= now || licence.validFrom > now) throw new EvidenceError("INVALID_EVIDENCE");
       policyVersion = content.data.licencePolicyId;
     }
     const updated = await tx.advertisingLicence.update({ where: { id }, data: { revision: { increment: 1 }, status: command.decision, policyVersion,
@@ -91,12 +101,15 @@ export async function businessDTO(tx: Tx, b: BusinessVerification) { return { id
   reviewNote: b.reviewNote ? { text: b.reviewNote, language: await reviewLanguage(tx, "BusinessVerification", b.id, b.revision) } : null }; }
 export async function submitBusinessVerification(actor: string, input: unknown, options: EvidenceOptions) {
   const command = parse(Business, input), hash = canonicalHash({ action: "SUBMIT_BUSINESS_PROOF", ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const brand = await brandContext(tx, actor, command.brandId);
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { verification: await businessDTO(tx, await tx.businessVerification.findUniqueOrThrow({ where: { id: replay.resourceId } })), replayed: true };
     if (command.jurisdiction !== brand.countryCode || command.expiresAt && Date.parse(command.expiresAt) <= now.getTime()) throw new EvidenceError("INVALID_SCOPE");
-    await usableAsset(tx, command.evidenceAssetId, actor, command.kind, options);
+    await usableAsset(tx, command.evidenceAssetId, actor, command.kind, options, boundary);
+    now = await boundary.checkpoint();
+    if (command.expiresAt && Date.parse(command.expiresAt) <= now.getTime()) throw new EvidenceError("INVALID_SCOPE");
     const verification = await tx.businessVerification.create({ data: { brandId: brand.id, kind: command.kind, jurisdiction: command.jurisdiction,
       identifier: command.identifier, evidenceAssetId: command.evidenceAssetId, expiresAt: command.expiresAt ? new Date(command.expiresAt) : null, createdAt: now, updatedAt: now } });
     await receipt(tx, actor, command.operationKey, hash, "BusinessVerification", verification.id, 1, now, { ownerUserId: actor, brandCountryCode: brand.countryCode, scopeHash: canonicalHash(businessScope(verification)) });
@@ -106,9 +119,10 @@ export async function submitBusinessVerification(actor: string, input: unknown, 
 }
 export async function reviewBusinessVerification(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(Review, input), hash = canonicalHash({ action: "REVIEW_BUSINESS_PROOF", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const initial = await tx.businessVerification.findUnique({ where: { id } }); if (!initial) throw new EvidenceError("NOT_FOUND", 404);
     const brand = await brandContext(tx, actor, initial.brandId, true); await lock(tx, "BusinessVerification", id);
+    now = await boundary.checkpoint();
     const verification = await tx.businessVerification.findUniqueOrThrow({ where: { id } });
     const submission = await tx.evidenceCommand.findFirst({ where: { actorUserId: brand.userId, resourceType: "BusinessVerification", resourceId: id }, orderBy: { createdAt: "asc" } }), metadata = record(submission?.resultJson);
     if (metadata.ownerUserId !== brand.userId || metadata.brandCountryCode !== brand.countryCode || metadata.scopeHash !== canonicalHash(businessScope(verification))) throw new EvidenceError("STALE_IDENTITY");
@@ -118,7 +132,9 @@ export async function reviewBusinessVerification(actor: string, id: string, inpu
     if (command.decision === "REVOKED" ? verification.status !== "VERIFIED" : !["PENDING", "NEEDS_RECHECK"].includes(verification.status)) throw new EvidenceError("INVALID_STATE");
     if (command.decision === "VERIFIED") {
       if (!verification.evidenceAssetId || verification.expiresAt && verification.expiresAt <= now) throw new EvidenceError("INVALID_EVIDENCE");
-      await usableAsset(tx, verification.evidenceAssetId, brand.userId, verification.kind, options);
+      await usableAsset(tx, verification.evidenceAssetId, brand.userId, verification.kind, options, boundary);
+      now = await boundary.checkpoint();
+      if (verification.expiresAt && verification.expiresAt <= now) throw new EvidenceError("INVALID_EVIDENCE");
     }
     const updated = await tx.businessVerification.update({ where: { id }, data: { revision: { increment: 1 }, status: command.decision, reviewedBy: actor, reviewedAt: now, reviewNote: command.note.text, updatedAt: now } });
     // Representation controls publication independently of local registration.

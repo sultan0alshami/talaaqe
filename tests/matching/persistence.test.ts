@@ -1,25 +1,26 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { decideCampaignMatch, getCampaignMatches, loadEligibleCreator, runCampaignMatching } from "@/lib/matching/persistence";
 import { CampaignRequirementsSchema } from "@/lib/campaigns/contracts";
+import { cleanupReviewedEvidence, reviewedLicenceFixture, reviewedOwnershipFixture, uploadSyntheticEvidence } from "../helpers/reviewed-evidence";
 
 // Intentional isolated-domain fixtures, never seed/live evidence. Named synthetic,
 // no providers, source SELF_REPORTED, cleaned after each guarded PostgreSQL test.
 const now = new Date("2026-10-04T08:00:00.000Z");
 const period = { startsAt:"2026-10-10T00:00:00.000Z", endsAt:"2026-10-20T00:00:00.000Z", timeZone:"Asia/Riyadh" };
-const campaigns: string[] = [], creators: string[] = [], users: string[] = [], assets: string[] = [];
+const campaigns: string[] = [], creators: string[] = [], users: string[] = [], assets: string[] = [], policies: string[] = [];
 const options = { now };
 async function actor(role: "BRAND" | "CREATOR" | "ADMIN" = "BRAND") {
   const id=randomUUID(); users.push(id);
   await prisma.user.create({data:{id,name:"Synthetic matching actor",email:`${id}@example.invalid`,passwordHash:"not-a-login-hash",role,emailVerifiedAt:now,isTest:false}});
   return id;
 }
-async function fixture(policy: {mandatoryIds?:string[];preferredIds?:string[];reviewed?:boolean}={}) {
+async function fixture(policy: {mandatoryIds?:string[];preferredIds?:string[];reviewed?:boolean;period?:typeof period}={}) {
   const owner=await actor(), campaignId=randomUUID(); campaigns.push(campaignId);
   const brand=await prisma.brand.create({data:{userId:owner,slug:`synthetic-${owner.slice(0,8)}`,name:"Synthetic matching brand",countryCode:"GB",isTest:false}});
-  const requirements={campaignId,version:1,originalLanguage:"ar",title:"حملة اصطناعية للاختبار",productService:"Synthetic product",goal:"AWARENESS",summary:"Synthetic requirements",brandCountryCode:"GB",marketCountryCodes:["SA"],targetAgeBuckets:["18-24"],targetGenders:["FEMALE"],targetCountryCodes:["SA"],targetCityKeys:["SA:riyadh"],contentLanguages:["ar"],dialects:["ar-Gulf"],nicheSlugs:["beauty"],deliverables:[{platform:"INSTAGRAM",format:"REEL",count:1}],budget:{amountMinor:"10000",currencyCode:"SAR"},desiredCreatorCount:1,impressionsTarget:10000,period,physicalPresenceRequired:false,presenceCountryCodes:[],travelAllowed:false,tone:"Synthetic",noGoTopics:[],preferredTiers:[],dataVerificationRequired:false,preferredLicencePolicyIds:policy.preferredIds??[],mandatoryPolicyVersionIds:policy.mandatoryIds??[],usageRights:"Synthetic no publication",kpis:[],assumptions:[],openQuestions:[]};
+  const requirements={campaignId,version:1,originalLanguage:"ar",title:"حملة اصطناعية للاختبار",productService:"Synthetic product",goal:"AWARENESS",summary:"Synthetic requirements",brandCountryCode:"GB",marketCountryCodes:["SA"],targetAgeBuckets:["18-24"],targetGenders:["FEMALE"],targetCountryCodes:["SA"],targetCityKeys:["SA:riyadh"],contentLanguages:["ar"],dialects:["ar-Gulf"],nicheSlugs:["beauty"],deliverables:[{platform:"INSTAGRAM",format:"REEL",count:1}],budget:{amountMinor:"10000",currencyCode:"SAR"},desiredCreatorCount:1,impressionsTarget:10000,period:policy.period??period,physicalPresenceRequired:false,presenceCountryCodes:[],travelAllowed:false,tone:"Synthetic",noGoTopics:[],preferredTiers:[],dataVerificationRequired:false,preferredLicencePolicyIds:policy.preferredIds??[],mandatoryPolicyVersionIds:policy.mandatoryIds??[],usageRights:"Synthetic no publication",kpis:[],assumptions:[],openQuestions:[]};
   await prisma.campaign.create({data:{id:campaignId,brandId:brand.id,title:requirements.title,input:{schemaVersion:1,fieldsRevision:1,fields:{budget:{amountMinor:"1",currencyCode:"JPY"}},proposals:[],clarificationCount:0},status:"BRIEF_APPROVED",currentBriefVersion:1}});
   await prisma.campaignBrief.create({data:{campaignId,version:1,inputRevision:1,approvedAt:now,approvedByUserId:owner,content:{schemaVersion:1,requirements,approvedByUserId:owner,inputRevision:1,policyReview:policy.reviewed===false?null:{reviewed:true,resolverVersion:"synthetic-no-mandatory-rules",reviewedAt:now.toISOString(),marketCountryCodes:["SA"],mandatoryPolicyVersionIds:requirements.mandatoryPolicyVersionIds}}}});
   return {owner,campaignId,requirements,command:{operationKey:randomUUID(),expectedBriefVersion:1,expectedCampaignRevision:1}};
@@ -29,34 +30,73 @@ async function candidate(overrides: {brandVisible?:boolean;isTest?:boolean;state
   const fact={value:["beauty"],source:"SELF_REPORTED",evidenceAt:now.toISOString(),approvedAt:now.toISOString(),brandVisible:true,publicVisible:false};
   await prisma.creator.create({data:{id,userId,handle:`synthetic_${id.replaceAll("-","").slice(0,18)}`,displayName:"Synthetic matching creator",countryCode:"GB",timeZone:"Asia/Riyadh",languages:["ar"],dialects:["ar-Gulf"],state:overrides.state??"PUBLISHED",isTest:overrides.isTest??false,brandVisible:overrides.brandVisible??true,publicConsentAt:now,availability:{status:"AVAILABLE",startsAt:period.startsAt,endsAt:period.endsAt,confirmedAt:now.toISOString()},travel:{willing:false,countryCodes:[]},profileFacts:{nicheSlugs:fact,ratesVisibility:"BRAND_ONLY"}}});
   const reviewerId=await actor("ADMIN"), handle=`synthetic_${id.slice(0,8)}`;
-  const ownershipIdentityHash=createHash("sha256").update(JSON.stringify({confirmedOrigin:null,normalizedHandle:handle,platform:"INSTAGRAM",providerAccountId:null})).digest("hex");
-  const account=await prisma.socialAccount.create({data:{creatorId:id,platform:"INSTAGRAM",handle,ownershipIdentityHash,ownershipStatus:overrides.ownershipStatus??"VERIFIED",ownershipReviewedBy:reviewerId,ownershipReviewedAt:now,intendedConfirmedAt:now,consentAt:now,factsApprovedAt:now,brandVisible:true,supportedFormats:["REEL"]}});
+  const account=await prisma.socialAccount.create({data:{creatorId:id,platform:"INSTAGRAM",handle,intendedConfirmedAt:now,consentAt:now,factsApprovedAt:now,brandVisible:true,supportedFormats:["REEL"]}});
+  const proof=overrides.ownershipStatus==="UNPROVED"?null:await reviewedOwnershipFixture(prisma,userId,reviewerId,account.id,"test",now);
+  await prisma.socialAccount.update({where:{id:account.id},data:{brandVisible:true}});
   await prisma.creator.update({where:{id},data:{primaryAccountId:account.id}});
   const dimension=(key:string)=>({value:[{key,percent:100}],visibility:"BRAND_ONLY"});
   const observedAt=overrides.observedAt??now;
   const window={startsAt:new Date(observedAt.getTime()-30*24*60*60*1000).toISOString(),endsAt:observedAt.toISOString(),timeZone:"Asia/Riyadh"};
   const snapshot=await prisma.metricsSnapshot.create({data:{accountId:account.id,source:"SELF_REPORTED",observedAt,mappingRevision:1,providerObservationId:`synthetic:${randomUUID()}`,approvedAt:now,approvedBy:"synthetic-review",reviewStatus:"VERIFIED",followers:BigInt(10000),...(!overrides.emptyMetrics?{engagementRate:"3.2",engagementContext:{unit:"PERCENT",window,definition:"Synthetic engagements/followers",visibility:"BRAND_ONLY"},formatMetrics:[{format:"REEL",value:10000,unit:"IMPRESSIONS",window,definition:"Synthetic mean impressions",visibility:"BRAND_ONLY"}],demographics:{age:dimension("18-24"),gender:dimension("FEMALE"),countries:dimension("SA"),cities:dimension("SA:riyadh")}}:{})}});
   await prisma.creatorRate.create({data:{creatorId:id,platform:"INSTAGRAM",format:"REEL",currency:"SAR",amountMinor:BigInt(10000)}});
-  return {id,userId,reviewerId,accountId:account.id,snapshotId:snapshot.id};
+  return {id,userId,reviewerId,accountId:account.id,snapshotId:snapshot.id,proof};
 }
 afterEach(async()=>{
   await prisma.campaign.deleteMany({where:{id:{in:campaigns.splice(0)}}});
   await prisma.creator.deleteMany({where:{id:{in:creators.splice(0)}}});
+  await prisma.policyVersion.deleteMany({where:{id:{in:policies.splice(0)}}});
+  await cleanupReviewedEvidence(prisma,users,"test");
   await prisma.privateAsset.deleteMany({where:{id:{in:assets.splice(0)}}});
   await prisma.user.deleteMany({where:{id:{in:users.splice(0)}}});
 });
 
 describe("owned explicit matching persistence on guarded PostgreSQL",()=>{
+  it.each(["RUN-owner","RUN-reviewer","GET-owner","GET-reviewer","DECIDE-owner","DECIDE-reviewer"] as const)("rechecks live licence expiry after %s lock waiting",async scenario=>{
+    const live=new Date(), expiry=new Date(live.getTime()+1200), testPeriod={startsAt:new Date(live.getTime()-30000).toISOString(),endsAt:new Date(live.getTime()-10000).toISOString(),timeZone:period.timeZone};
+    const f=await fixture({preferredIds:["synthetic-short-licence"],period:testPeriod}),c=await candidate(),reviewer=await actor("ADMIN");
+    await prisma.creator.update({where:{id:c.id},data:{availability:{status:"AVAILABLE",startsAt:new Date(live.getTime()-60000).toISOString(),endsAt:new Date(live.getTime()+86400000).toISOString(),confirmedAt:now.toISOString()}}});
+    const legal=await uploadSyntheticEvidence(prisma,reviewer,"LEGAL_POLICY_REVIEW","test",live),marketId=randomUUID();policies.push(marketId);
+    await prisma.policyVersion.create({data:{id:marketId,kind:"MARKET",countryCodes:["SA"],status:"VERIFIED",reviewedBy:reviewer,reviewedAt:live,createdAt:new Date(live.getTime()-60000),evidenceAssetId:legal.id,content:{schemaVersion:1,kind:"MARKET",marketCountryCode:"SA",brandCountryCodes:["GB"],creatorCountryCodes:["GB"],licenceRequired:true,licencePolicyId:"synthetic-short-licence",reviewReference:"Synthetic expiry boundary only",reviewedBasis:"FOUNDER_APPROVED_LEGAL_REVIEW"}}});
+    await reviewedLicenceFixture({client:prisma,owner:c.userId,reviewer,creatorId:c.id,accountIds:[c.accountId],marketVersionId:marketId,jurisdiction:"SA",target:"test",now:live,expiresAt:expiry});
+    const initial=await runCampaignMatching(f.owner,f.campaignId,f.command,{now:live});expect(initial.results.map(r=>r.creatorId)).toEqual([c.id]);
+    let release!:()=>void,ready!:()=>void;const barrier=new Promise<void>(r=>{release=r;}),locked=new Promise<void>(r=>{ready=r;});
+    const blockedId=scenario.endsWith("owner")?c.userId:reviewer;
+    const holding=prisma.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM "User" WHERE id=${blockedId} FOR UPDATE`;ready();await barrier;});
+    try {
+      await locked;expect(Date.now()).toBeLessThan(expiry.getTime());
+      const request=scenario.startsWith("RUN")?runCampaignMatching(f.owner,f.campaignId,{...f.command,operationKey:randomUUID()}):scenario.startsWith("GET")?getCampaignMatches(f.owner,f.campaignId,initial.runId):decideCampaignMatch(f.owner,f.campaignId,{operationKey:randomUUID(),expectedBriefVersion:1,runId:initial.runId,creatorId:c.id,expectedDecisionRevision:0,decision:"SAVED"});
+      const observed=request.then(value=>({value,error:null}),error=>({value:null,error}));
+      await new Promise(r=>setTimeout(r,Math.max(0,expiry.getTime()-Date.now()+30)));release();await holding;
+      const outcome=await observed;
+      if(scenario.startsWith("DECIDE")){expect(outcome.error).toMatchObject({code:"STALE_RUN"});expect(await prisma.matchDecisionRecord.count({where:{campaignId:f.campaignId}})).toBe(0);}
+      else {expect(outcome.error).toBeNull();expect(outcome.value && "results" in outcome.value ? outcome.value.results.map(r=>r.creatorId) : null).toEqual([]);}
+    } finally {release();await holding;}
+  });
+  it("redacts persisted matches and rejects new direct eligibility after proof deletion, lost journal, mapping change or owner transfer",async()=>{
+    const f=await fixture(), c=await candidate(), requirements=CampaignRequirementsSchema.parse(f.requirements), run=await runCampaignMatching(f.owner,f.campaignId,f.command,options);
+    expect(run.results.map(row=>row.creatorId)).toEqual([c.id]);
+    const load=()=>prisma.$transaction(tx=>loadEligibleCreator(tx,requirements,c.id,now));
+    const absent=async()=>{expect(await load()).toBeNull();expect((await getCampaignMatches(f.owner,f.campaignId,run.runId,options))?.results).toEqual([]);};
+    await prisma.privateAsset.update({where:{id:c.proof!.proofId},data:{deletedAt:now}});await absent();
+    await prisma.privateAsset.update({where:{id:c.proof!.proofId},data:{deletedAt:null}});
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{mappingRevision:2}});await absent();
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{mappingRevision:1}});
+    const replacement=await actor("CREATOR");await prisma.creator.update({where:{id:c.id},data:{userId:replacement}});await absent();
+    await prisma.creator.update({where:{id:c.id},data:{userId:c.userId}});
+    await prisma.evidenceCommand.deleteMany({where:{actorUserId:c.reviewerId,resourceType:"OwnershipChallenge",resourceId:c.proof!.challengeId}});await absent();
+    expect(await prisma.matchRun.count({where:{campaignId:f.campaignId}})).toBe(1);
+  });
   it("requires actual scoped licence evidence, supported review method and a current independent ADMIN reviewer",async()=>{
     const f=await fixture({preferredIds:["synthetic-licence-policy"]}), c=await candidate(), reviewer=await actor("ADMIN");
     const requirements=CampaignRequirementsSchema.parse(f.requirements);
-    const asset=await prisma.privateAsset.create({data:{ownerUserId:c.userId,purpose:"ADVERTISING_LICENCE",contentType:"text/plain",size:1,storageKey:`synthetic-licence:${randomUUID()}`,checksum:"synthetic-test-only-evidence"}});assets.push(asset.id);
-    const base={creatorId:c.id,issuer:"Synthetic test issuer",holderName:"Synthetic test holder",licenceNumber:"synthetic-test-only",jurisdiction:"SA",status:"VERIFIED" as const,policyVersion:"synthetic-licence-policy",reviewMethod:"MANUAL_REVIEW",reviewedBy:reviewer,reviewedAt:now,createdAt:new Date(now.getTime()-60000),expiresAt:new Date(period.endsAt),evidenceAssetId:asset.id,accountIds:[c.accountId],platformScope:["INSTAGRAM" as const]};
-    const licence=await prisma.advertisingLicence.create({data:base});
+    const legal=await uploadSyntheticEvidence(prisma,reviewer,"LEGAL_POLICY_REVIEW","test",now), marketId=randomUUID();policies.push(marketId);
+    await prisma.policyVersion.create({data:{id:marketId,kind:"MARKET",countryCodes:["SA"],status:"VERIFIED",reviewedBy:reviewer,reviewedAt:now,createdAt:new Date(now.getTime()-60000),evidenceAssetId:legal.id,expiresAt:new Date(period.endsAt),content:{schemaVersion:1,kind:"MARKET",marketCountryCode:"SA",brandCountryCodes:["GB"],creatorCountryCodes:["GB"],licenceRequired:true,licencePolicyId:"synthetic-licence-policy",reviewReference:"Synthetic reviewed fixture only",reviewedBasis:"FOUNDER_APPROVED_LEGAL_REVIEW"}}});
+    const reviewed=await reviewedLicenceFixture({client:prisma,owner:c.userId,reviewer,creatorId:c.id,accountIds:[c.accountId],marketVersionId:marketId,jurisdiction:"SA",target:"test",now,expiresAt:new Date(period.endsAt)});
+    const licence=await prisma.advertisingLicence.findUniqueOrThrow({where:{id:reviewed.licenceId}}),asset={id:reviewed.proofId},base=licence;
     const load=()=>prisma.$transaction(tx=>loadEligibleCreator(tx,requirements,c.id,now));
     expect((await load())?.id).toBe(c.id);
     const run=await runCampaignMatching(f.owner,f.campaignId,f.command,options);expect(run.results.map(row=>row.creatorId)).toEqual([c.id]);
-    for(const override of [{reviewMethod:"UNSUPPORTED"},{evidenceAssetId:null},{reviewedBy:c.userId},{platformScope:["YOUTUBE" as const]},{accountIds:[]}]) {
+    for(const override of [{reviewMethod:"UNSUPPORTED"},{evidenceAssetId:null},{reviewedBy:c.userId},{platformScope:["YOUTUBE" as const]},{accountIds:[]},{policyVersion:"unreviewed-raw-policy"}]) {
       await prisma.advertisingLicence.update({where:{id:licence.id},data:{...base,...override}});
       expect(await load()).toBeNull();
     }
@@ -70,6 +110,18 @@ describe("owned explicit matching persistence on guarded PostgreSQL",()=>{
     await prisma.privateAsset.update({where:{id:asset.id},data:{deletedAt:now}});
     expect(await load()).toBeNull();
     await prisma.privateAsset.update({where:{id:asset.id},data:{deletedAt:null}});
+    expect((await load())?.id).toBe(c.id);
+    // Keep ownership genuinely current while invalidating only licence bindings.
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{mappingRevision:2}});
+    await reviewedOwnershipFixture(prisma,c.userId,c.reviewerId,c.accountId,"test",now);
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{brandVisible:true}});
+    const original=await prisma.metricsSnapshot.findUniqueOrThrow({where:{id:c.snapshotId}});
+    await prisma.metricsSnapshot.create({data:{...original,id:randomUUID(),mappingRevision:2,providerObservationId:`synthetic-remapped:${randomUUID()}`,demographics:original.demographics===null?Prisma.DbNull:original.demographics,formatMetrics:original.formatMetrics===null?Prisma.DbNull:original.formatMetrics,engagementContext:original.engagementContext===null?Prisma.DbNull:original.engagementContext}});
+    expect(await load()).toBeNull();
+    // Restore the exact original reviewed account mapping, not the licence journal.
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{mappingRevision:1}});
+    await reviewedOwnershipFixture(prisma,c.userId,c.reviewerId,c.accountId,"test",now);
+    await prisma.socialAccount.update({where:{id:c.accountId},data:{brandVisible:true}});
     expect((await load())?.id).toBe(c.id);
     await prisma.user.update({where:{id:reviewer},data:{active:false}});
     expect(await load()).toBeNull();

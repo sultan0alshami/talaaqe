@@ -204,6 +204,8 @@ Voice starts after interaction; mic permission only for speaking; listening+typi
 
 Creator publish requires email/consent/valid reserved unique handle/essentials/accepted primary ownership; imported additional unproved identity stays private. Brand publish requires email/representative proof/slug/explicit visible sections. Portfolio never invents customers/collaborations/rates/awards/licences/demographics/results. Draft save is available before proof; failed generation renders editable deterministic approved-fact template without another model call.
 
+Website observation clarification (2026-10-04): for a `WEBSITE` job, the allowlisted public text fields `website.pageTitle`, `website.pageDescription`, `website.pageHeadings` and `website.pageText` may preserve `evidenceAt:null` when the original publication/measurement instant is unknown. They must carry a separate actual nonfuture UTC `retrievedAt`, exact same-origin public HTTPS citation and raw-response SHA256 `sourceHash`. These private `PROPOSED`/`PUBLIC_IMPORT` observations cannot establish metrics, ownership, licence or business verification. All social/analytics measurement observations still require a validated known evidence date; retrieval never freshens them. This is a JSON observation contract clarification, not a schema reset or a change to confidence/metric freshness rules.
+
 ## 6. Campaign and approved brief contract
 
 ```ts

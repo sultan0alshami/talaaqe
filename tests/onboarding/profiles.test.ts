@@ -1,12 +1,14 @@
 import { randomBytes } from "node:crypto";
+import type { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { signup } from "@/lib/identity";
 import { createOrResumeDraft, applyDraftCommand, canonicalHash } from "@/lib/onboarding/drafts";
 import { profileCommand, profileForOwner, publicCreator, publicBrand } from "@/lib/onboarding/profiles";
+import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
 
 const users: string[] = [];
-afterAll(async () => { await prisma.creator.deleteMany({ where: { userId: { in: users } } }); await prisma.user.deleteMany({ where: { id: { in: users } } }); });
+afterAll(async () => { await prisma.creator.deleteMany({ where: { userId: { in: users } } }); await cleanupReviewedEvidence(prisma, users, "test"); await prisma.user.deleteMany({ where: { id: { in: users } } }); });
 async function fixture(role: "CREATOR" | "BRAND") {
   const suffix = randomBytes(6).toString("hex");
   const user = await signup({ name: "Synthetic ملف عربي", email: `profile-${suffix}@example.invalid`, password: "Profile fixture password 19", role });
@@ -23,6 +25,36 @@ function profile(handle: string) {
   return { displayName: "اختبار إنفيم", infameHandle: handle, bio: "محتوى أصلي", location: { countryCode: "EG", cityKey: null, cityLabel: "القاهرة", timeZone: "Africa/Cairo" }, languages: ["ar"], dialects: [], nicheSlugs: ["tech"], fameIndustries: [], contentStyles: [], preferredCurrency: "KWD", minimumMinor: "12005", availability: { status: "AVAILABLE", startsAt: "2026-10-01T00:00:00.000Z", endsAt: "2027-10-01T00:00:00.000Z" }, travelWilling: false, ratesVisibility: "BRAND_ONLY", rates: [{ platform: "INSTAGRAM", format: "REEL", currencyCode: "KWD", amountMinor: "12005" }], primarySourceKey: null };
 }
 describe("owner profile and explicit publication", () => {
+  it.each(["CREATOR", "BRAND"] as const)("rechecks %s ownership before projecting a new owner's private portfolio", async role => {
+    const f = await fixture(role), replacement = randomBytes(12).toString("hex");
+    users.push(replacement);
+    await prisma.user.create({ data: { id: replacement, email: `replacement-${replacement}@example.invalid`, passwordHash: "test-only-no-login", name: "Synthetic replacement owner", role } });
+    let ready!: () => void, release!: () => void;
+    const selected = new Promise<void>(resolve => { ready = resolve; }), unblocked = new Promise<void>(resolve => { release = resolve; });
+    const reading = prisma.$extends({ query: {
+      creator: { async findUnique({ args, query }) { const result = await query(args); if (role === "CREATOR" && args.where.userId === f.user.id) { ready(); await unblocked; } return result; } },
+      brand: { async findUnique({ args, query }) { const result = await query(args); if (role === "BRAND" && args.where.userId === f.user.id) { ready(); await unblocked; } return result; } },
+    } });
+    const projection = profileForOwner(f.user.id, reading as unknown as PrismaClient);
+    const observed = projection.then(value => ({ value }), error => ({ error }));
+    try {
+      await selected;
+      const content = { title: "Synthetic private replacement profile", bio: "Private content supplied only by the replacement owner", sections: [], method: "APPROVED_FACT_TEMPLATE" };
+      await prisma.$transaction(async tx => {
+        if (role === "CREATOR") {
+          const creator = await tx.creator.update({ where: { userId: f.user.id }, data: { userId: replacement, bio: content.bio } });
+          await tx.portfolioVersion.create({ data: { creatorId: creator.id, version: 1, inputRevision: 1, content } });
+        } else {
+          const brand = await tx.brand.update({ where: { userId: f.user.id }, data: { userId: replacement, description: content.bio } });
+          await tx.brandPortfolioVersion.create({ data: { brandId: brand.id, version: 1, inputRevision: 1, content } });
+        }
+      });
+      release();
+      const result = await observed;
+      expect("error" in result).toBe(false);
+      expect("value" in result && result.value === null).toBe(true);
+    } finally { release(); await observed; }
+  });
   it("saves exact private profile/rates, replays safely, rejects stale and preserves original Arabic", async () => {
     const f = await fixture("CREATOR"), command = { operationKey: "save-one", expectedRevision: f.draft.revision, action: "SAVE_PROFILE", payload: profile(f.handle) };
     const result = await profileCommand(f.user.id, f.draft.id, command);
@@ -46,8 +78,12 @@ describe("owner profile and explicit publication", () => {
     await expect(publish()).rejects.toMatchObject({ code: "PRIMARY_OWNERSHIP_REQUIRED" });
     const creator = await prisma.creator.findUniqueOrThrow({ where: { userId: f.user.id } });
     const admin = await reviewer();
-    const account = await prisma.socialAccount.create({ data: { creatorId: creator.id, platform: "INSTAGRAM", handle: f.handle, ownershipStatus: "VERIFIED", ownershipIdentityHash: canonicalHash({ platform: "INSTAGRAM", normalizedHandle: f.handle, providerAccountId: null, confirmedOrigin: null }), ownershipReviewedBy: admin.id, intendedConfirmedAt: new Date(), consentAt: new Date(), ownershipReviewedAt: new Date(), supportedFormats: ["REEL"] } });
+    const account = await prisma.socialAccount.create({ data: { creatorId: creator.id, platform: "INSTAGRAM", handle: f.handle, intendedConfirmedAt: new Date(), consentAt: new Date(), supportedFormats: ["REEL"] } });
     await prisma.creator.update({ where: { id: creator.id }, data: { primaryAccountId: account.id } });
+    const identity = { platform: "INSTAGRAM", normalizedHandle: f.handle, providerAccountId: null, confirmedOrigin: null };
+    await prisma.socialAccount.update({ where: { id: account.id }, data: { ownershipStatus: "VERIFIED", ownershipReviewedBy: admin.id, ownershipReviewedAt: new Date(), ownershipIdentityHash: canonicalHash(identity) } });
+    await expect(publish()).rejects.toMatchObject({ code: "PRIMARY_OWNERSHIP_REQUIRED" });
+    const proof = await reviewedOwnershipFixture(prisma, f.user.id, admin.id, account.id, "test", new Date());
     await expect(publish()).rejects.toMatchObject({ code: "PORTFOLIO_APPROVAL_REQUIRED" });
     result = await profileCommand(f.user.id, f.draft.id, { operationKey: "generate", expectedRevision: result.draft.revision, action: "GENERATE_PORTFOLIO", payload: {} });
     result = await profileCommand(f.user.id, f.draft.id, { operationKey: "approve", expectedRevision: result.draft.revision, action: "APPROVE_PORTFOLIO", payload: { portfolioVersion: 1, content: result.portfolio?.content } });
@@ -58,6 +94,10 @@ describe("owner profile and explicit publication", () => {
     expect(JSON.stringify(visible)).not.toContain(f.user.email);
     expect(JSON.stringify(visible)).not.toContain("ownershipProofAssetId");
     expect(visible?.rates).toHaveLength(0);
+    await prisma.privateAsset.update({ where: { id: proof.proofId }, data: { deletedAt: new Date() } });
+    await expect(publish()).rejects.toMatchObject({ code: "PRIMARY_OWNERSHIP_REQUIRED" });
+    expect(await publicCreator(f.handle)).toBeNull();
+    await prisma.privateAsset.update({ where: { id: proof.proofId }, data: { deletedAt: null } });
     await profileCommand(f.user.id, f.draft.id, { operationKey: "hide", expectedRevision: result.draft.revision, action: "HIDE", payload: {} });
     expect(await publicCreator(f.handle)).toBeNull();
   });
@@ -97,7 +137,11 @@ describe("owner profile and explicit publication", () => {
     let r = await profileCommand(f.user.id, f.draft.id, { operationKey: "save", expectedRevision: f.draft.revision, action: "SAVE_PROFILE", payload: profile(f.handle) });
     await prisma.user.update({ where: { id: f.user.id }, data: { emailVerifiedAt: new Date(), isTest: false } });
     const creator = await prisma.creator.update({ where: { userId: f.user.id }, data: { isTest: false } });
-    const account = async (platform: "INSTAGRAM" | "TIKTOK") => prisma.socialAccount.create({ data: { creatorId: creator.id, platform, handle: f.handle, ownershipStatus: "VERIFIED", ownershipIdentityHash: canonicalHash({ platform, normalizedHandle: f.handle, providerAccountId: null, confirmedOrigin: null }), ownershipReviewedBy: admin.id, ownershipReviewedAt: new Date(), intendedConfirmedAt: new Date(), consentAt: new Date() } });
+    const account = async (platform: "INSTAGRAM" | "TIKTOK") => {
+      const row = await prisma.socialAccount.create({ data: { creatorId: creator.id, platform, handle: f.handle, intendedConfirmedAt: new Date(), consentAt: new Date() } });
+      await reviewedOwnershipFixture(prisma, f.user.id, admin.id, row.id, "test", new Date());
+      return row;
+    };
     const primary = await account("INSTAGRAM"), extra = await account("TIKTOK");
     await prisma.creator.update({ where: { id: creator.id }, data: { primaryAccountId: primary.id } });
     r = await profileCommand(f.user.id, f.draft.id, { operationKey: "generate", expectedRevision: r.draft.revision, action: "GENERATE_PORTFOLIO", payload: {} });

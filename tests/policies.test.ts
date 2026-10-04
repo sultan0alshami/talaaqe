@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { campaignFields } from "./campaigns/fixtures";
 import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import { resolveCampaignPolicyReview, reviewedMatchingPolicies } from "@/lib/policies";
+import { cleanupReviewedEvidence, reviewedLicenceFixture, uploadSyntheticEvidence } from "./helpers/reviewed-evidence";
 
 const users: string[] = [], policies: string[] = [], assets: string[] = [];
 const now = new Date("2026-10-04T08:00:00.000Z"), createdAt = new Date("2026-10-01T08:00:00.000Z"), reviewedAt = new Date("2026-10-02T08:00:00.000Z");
@@ -13,7 +14,7 @@ function requirements(overrides: Partial<CampaignRequirementsDTO> = {}): Campaig
 async function fixture(required = false) {
   const adminId = randomUUID(); users.push(adminId);
   await prisma.user.create({ data: { id: adminId, role: "ADMIN", active: true, isTest: true, email: `${adminId}@example.invalid`, passwordHash: "test-only-no-login", name: "Synthetic policy reviewer" } });
-  const evidence = await prisma.privateAsset.create({ data: { ownerUserId: adminId, purpose: "LEGAL_POLICY_REVIEW", contentType: "text/plain", size: 1, storageKey: `synthetic-policy/${randomUUID()}`, checksum: "0".repeat(64) } }); assets.push(evidence.id);
+  const evidence = await uploadSyntheticEvidence(prisma, adminId, "LEGAL_POLICY_REVIEW", "test", reviewedAt);
   const policyId = `synthetic-market-${randomUUID()}`; policies.push(policyId);
   await prisma.policyVersion.create({ data: { id: policyId, kind: "MARKET", countryCodes: ["KW"], createdAt, status: "VERIFIED", reviewedAt, reviewedBy: adminId, evidenceAssetId: evidence.id,
     content: { schemaVersion: 1, kind: "MARKET", marketCountryCode: "KW", brandCountryCodes: ["KW"], creatorCountryCodes: ["KW"], licenceRequired: required, licencePolicyId: required ? "synthetic-licence-v1" : null,
@@ -24,6 +25,7 @@ afterEach(async () => {
   await prisma.policyVersion.deleteMany({ where: { id: { in: policies } } });
   await prisma.privateAsset.deleteMany({ where: { id: { in: assets } } });
   await prisma.creator.deleteMany({ where: { userId: { in: users } } });
+  await cleanupReviewedEvidence(prisma, users, "test");
   await prisma.user.deleteMany({ where: { id: { in: users } } });
   users.length = 0; policies.length = 0; assets.length = 0;
 });
@@ -52,9 +54,8 @@ describe("reviewed market policy registry on guarded PostgreSQL", () => {
     expect((await load()).outcomes[creator.id][0].status).toBe("UNKNOWN");
     await prisma.creator.update({ where: { id: creator.id }, data: { countryCode: "KW" } });
     expect((await load()).outcomes[creator.id][0].status).toBe("FAIL");
-    const evidence = await prisma.privateAsset.create({ data: { ownerUserId: userId, purpose: "ADVERTISING_LICENCE", contentType: "text/plain", size: 1, storageKey: `synthetic-licence/${randomUUID()}`, checksum: "1".repeat(64) } }); assets.push(evidence.id);
-    const licence = await prisma.advertisingLicence.create({ data: { creatorId: creator.id, jurisdiction: "KW", issuer: "Synthetic issuer", holderName: "Synthetic holder", licenceNumber: "synthetic-only", accountIds: [account.id], platformScope: ["INSTAGRAM"], evidenceAssetId: evidence.id,
-      status: "VERIFIED", reviewedBy: f.adminId, reviewedAt, createdAt, reviewMethod: "MANUAL_REVIEW", policyVersion: "synthetic-licence-v1", expiresAt: new Date("2026-12-01T00:00:00.000Z") } });
+    const reviewed = await reviewedLicenceFixture({ client: prisma, owner: userId, reviewer: f.adminId, creatorId: creator.id, accountIds: [account.id], marketVersionId: f.policyId, jurisdiction: "KW", target: "test", now: reviewedAt, expiresAt: new Date("2026-12-01T00:00:00.000Z") });
+    const licence = { id: reviewed.licenceId };
     expect((await load()).outcomes[creator.id][0].status).toBe("PASS");
     await prisma.advertisingLicence.update({ where: { id: licence.id }, data: { accountIds: [] } });
     expect((await load()).outcomes[creator.id][0].status).toBe("FAIL");

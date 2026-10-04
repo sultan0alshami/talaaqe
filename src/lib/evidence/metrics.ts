@@ -4,6 +4,7 @@ import { AudienceAgeBucketSchema, AudienceGenderSchema, CountryCodeSchema, DateR
 import { accountContext, canonicalHash, event, Id, identityHash, inputJson, Key, lock, Note, parse, previous, receipt, record, requireMapping, requireRevision, Revision, transaction, type EvidenceOptions, type Tx } from "./common";
 import { usableAsset } from "./assets";
 import { EvidenceError } from "./storage";
+import { snapshotScopeHash } from "./metrics-readiness";
 const Count = z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v => BigInt(v) <= BigInt(Number.MAX_SAFE_INTEGER));
 const Percent = z.number().finite().min(0).max(100);
 const Context = z.object({ unit: z.literal("PERCENT"), window: DateRangeSchema, definition: z.string().trim().min(1).max(500), visibility: VisibilitySchema.default("PRIVATE") }).strict();
@@ -47,9 +48,10 @@ async function snapshotBinding(tx: Tx, id: string, owner: string) {
 }
 export async function approveMetricsSnapshot(actor: string, id: string, input: unknown, options: EvidenceOptions): Promise<{ snapshot: MetricsSnapshotDTO; replayed: boolean }> {
   parse(Id, id); const command = parse(ApproveSnapshot, input), hash = canonicalHash({ action: "APPROVE_SCREENSHOT_FIELDS", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const initial = await tx.metricsSnapshot.findUnique({ where: { id } }); if (!initial) throw new EvidenceError("NOT_FOUND", 404);
     const { creator, account } = await accountContext(tx, actor, initial.accountId); await lock(tx, "MetricsSnapshot", id);
+    now = await boundary.checkpoint();
     let snapshot = await tx.metricsSnapshot.findUniqueOrThrow({ where: { id } });
     const binding = await snapshotBinding(tx, id, actor), metadata = record(binding?.resultJson);
     requireMapping(account, command.expectedMappingRevision, typeof metadata.identityHash === "string" ? metadata.identityHash : "missing");
@@ -78,14 +80,16 @@ function validateMetrics(command: z.infer<typeof Submit>, platform: keyof typeof
 }
 export async function submitMetricsScreenshot(actor: string, input: unknown, options: EvidenceOptions) {
   const command = parse(Submit, input), hash = canonicalHash({ action: "SUBMIT_SCREENSHOT", ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const { account, creator } = await accountContext(tx, actor, command.accountId);
+    now = await boundary.checkpoint();
     requireMapping(account, command.expectedMappingRevision);
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { snapshot: snapshotDTO(await tx.metricsSnapshot.findUniqueOrThrow({ where: { id: replay.resourceId } })), replayed: true };
     requireRevision(account.evidenceRevision, command.expectedEvidenceRevision);
     const metrics = validateMetrics(command, account.platform, now);
-    await usableAsset(tx, command.evidenceAssetId, actor, "SCREENSHOT", options);
+    await usableAsset(tx, command.evidenceAssetId, actor, "SCREENSHOT", options, boundary);
+    now = await boundary.checkpoint();
     const snapshot = await tx.metricsSnapshot.create({ data: { accountId: account.id, mappingRevision: account.mappingRevision, source: "SELF_REPORTED", observedAt: new Date(command.observedAt),
       importedAt: now, evidenceAssetId: command.evidenceAssetId, ...(metrics.followers !== undefined ? { followers: BigInt(metrics.followers) } : {}),
       ...(metrics.averageViews !== undefined ? { averageViews: BigInt(metrics.averageViews) } : {}), ...(metrics.engagementRate !== undefined ? { engagementRate: new Prisma.Decimal(metrics.engagementRate) } : {}),
@@ -96,16 +100,20 @@ export async function submitMetricsScreenshot(actor: string, input: unknown, opt
       ...(metrics.engagementContext ? { engagementContext: inputJson({ ...metrics.engagementContext, visibility: "PUBLIC" }) } : {}) } });
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 },
       fieldVisibility: inputJson({ ...record(account.fieldVisibility), ...Object.fromEntries(metricFields(snapshot).map(k => [k, "PRIVATE"])) }) } }); await clearPublication(tx, creator.id);
-    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", snapshot.id, account.evidenceRevision + 1, now, { identityHash: identityHash(account), ownerUserId: actor });
+    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", snapshot.id, account.evidenceRevision + 1, now, {
+      identityHash: identityHash(account), ownerUserId: actor, accountId: account.id, mappingRevision: account.mappingRevision,
+      snapshotScopeHash: snapshotScopeHash(snapshot), submittedMetrics: metrics, expectedEvidenceRevision: command.expectedEvidenceRevision,
+    });
     await event(tx, actor, command.operationKey, "facts.screenshot_submitted", "MetricsSnapshot", snapshot.id, account.evidenceRevision + 1, now, { accountId: account.id });
     return { snapshot: snapshotDTO(snapshot), replayed: false };
   });
 }
 export async function reviewMetricsScreenshot(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(Review, input), hash = canonicalHash({ action: "REVIEW_SCREENSHOT", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const initial = await tx.metricsSnapshot.findUnique({ where: { id } }); if (!initial) throw new EvidenceError("NOT_FOUND", 404);
     const { account, creator } = await accountContext(tx, actor, initial.accountId, true); await lock(tx, "MetricsSnapshot", id);
+    now = await boundary.checkpoint();
     const snapshot = await tx.metricsSnapshot.findUniqueOrThrow({ where: { id } });
     const submission = await snapshotBinding(tx, id, creator.userId!);
     requireMapping(account, snapshot.mappingRevision, typeof record(submission?.resultJson).identityHash === "string" ? record(submission?.resultJson).identityHash as string : "missing");
@@ -117,12 +125,17 @@ export async function reviewMetricsScreenshot(actor: string, id: string, input: 
       if (snapshot.source !== "SCREENSHOT_VERIFIED" || snapshot.reviewStatus !== "VERIFIED") throw new EvidenceError("INVALID_STATE");
       const updated = await tx.metricsSnapshot.update({ where: { id }, data: { reviewStatus: "REVOKED", excludedAt: now } });
       await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 } } }); await clearPublication(tx, creator.id);
-      await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", id, account.evidenceRevision + 1, now, { noteLanguage: command.note.language, identityHash: identityHash(account), ownerUserId: creator.userId });
+      await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", id, account.evidenceRevision + 1, now, {
+        noteLanguage: command.note.language, identityHash: identityHash(account), ownerUserId: creator.userId, accountId: account.id,
+        mappingRevision: account.mappingRevision, snapshotScopeHash: snapshotScopeHash(updated), parentId: id,
+        decision: command.decision, note: command.note, expectedEvidenceRevision: command.expectedEvidenceRevision,
+      });
       await event(tx, actor, command.operationKey, "facts.screenshot_reviewed", "MetricsSnapshot", id, account.evidenceRevision + 1, now, { accountId: account.id, status: command.decision });
       return { snapshot: snapshotDTO(updated), replayed: false };
     }
     if (snapshot.source !== "SELF_REPORTED" || !["PENDING", "VERIFIED"].includes(snapshot.reviewStatus) || snapshot.excludedAt || !snapshot.evidenceAssetId || snapshot.observedAt > now) throw new EvidenceError("INVALID_STATE");
-    await usableAsset(tx, snapshot.evidenceAssetId, creator.userId!, "SCREENSHOT", options);
+    await usableAsset(tx, snapshot.evidenceAssetId, creator.userId!, "SCREENSHOT", options, boundary);
+    now = await boundary.checkpoint();
     let result = snapshot;
     if (command.decision === "VERIFIED") {
       result = await tx.metricsSnapshot.create({ data: { accountId: account.id, mappingRevision: snapshot.mappingRevision, source: "SCREENSHOT_VERIFIED",
@@ -134,7 +147,11 @@ export async function reviewMetricsScreenshot(actor: string, id: string, input: 
     }
     await tx.metricsSnapshot.update({ where: { id }, data: { reviewStatus: command.decision === "VERIFIED" ? "VERIFIED" : "REJECTED", excludedAt: now } });
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 } } }); await clearPublication(tx, creator.id);
-    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", result.id, account.evidenceRevision + 1, now, { noteLanguage: command.note.language, identityHash: identityHash(account), ownerUserId: creator.userId });
+    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", result.id, account.evidenceRevision + 1, now, {
+      noteLanguage: command.note.language, identityHash: identityHash(account), ownerUserId: creator.userId, accountId: account.id,
+      mappingRevision: account.mappingRevision, snapshotScopeHash: snapshotScopeHash(result), parentId: id,
+      decision: command.decision, note: command.note, expectedEvidenceRevision: command.expectedEvidenceRevision,
+    });
     await event(tx, actor, command.operationKey, "facts.screenshot_reviewed", "MetricsSnapshot", result.id, account.evidenceRevision + 1, now, { accountId: account.id, status: command.decision });
     return { snapshot: snapshotDTO(result), replayed: false };
   });
@@ -160,8 +177,9 @@ export function correctionDTO(c: FactCorrection) { const value = record(c.value)
   context: value.context ?? null, approvedAt: c.approvedAt?.toISOString() ?? null, visibility: c.publicVisible ? "PUBLIC" : c.brandVisible ? "BRAND_ONLY" : "PRIVATE" }; }
 export async function submitFactCorrection(actor: string, input: unknown, options: EvidenceOptions) {
   const command = parse(Correction, input), hash = canonicalHash({ action: "SUBMIT_CORRECTION", ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const { account, creator } = await accountContext(tx, actor, command.accountId); requireMapping(account, command.expectedMappingRevision);
+    now = await boundary.checkpoint();
     const replay = await previous(tx, actor, command.operationKey, hash);
     if (replay) return { correction: correctionDTO(await tx.factCorrection.findUniqueOrThrow({ where: { id: replay.resourceId } })), replayed: true };
     requireRevision(account.evidenceRevision, command.expectedEvidenceRevision); correctionValue(command, account.platform, now);
@@ -177,9 +195,10 @@ export async function submitFactCorrection(actor: string, input: unknown, option
 const Approve = z.object({ operationKey: Key, expectedRevision: Revision, expectedMappingRevision: Revision, visibility: VisibilitySchema }).strict();
 export async function approveFactCorrection(actor: string, id: string, input: unknown, options: EvidenceOptions) {
   parse(Id, id); const command = parse(Approve, input), hash = canonicalHash({ action: "APPROVE_CORRECTION", id, ...command });
-  return transaction(options, async (tx, now) => {
+  return transaction(options, actor, async (tx, now, boundary) => {
     const initial = await tx.factCorrection.findUnique({ where: { id } }); if (!initial) throw new EvidenceError("NOT_FOUND", 404);
     const { account, creator } = await accountContext(tx, actor, initial.accountId); await lock(tx, "FactCorrection", id);
+    now = await boundary.checkpoint();
     const correction = await tx.factCorrection.findUniqueOrThrow({ where: { id } }), row = record(correction.value);
     requireMapping(account, command.expectedMappingRevision, typeof row.identityHash === "string" ? row.identityHash : "missing");
     if (row.mappingRevision !== account.mappingRevision || correction.reportedBy !== actor || correction.createdAt > now) throw new EvidenceError("STALE_IDENTITY");

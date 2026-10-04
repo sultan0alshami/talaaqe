@@ -8,9 +8,12 @@ export class EvidenceError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "EvidenceError"; }
 }
 export type EvidenceContentType = "image/png" | "image/jpeg" | "image/webp" | "application/pdf";
+export type EvidenceCreationReceipt = { created: boolean };
 export type EvidenceStorage = {
   kind: "LOCAL" | "SUPABASE";
-  put(key: string, bytes: Uint8Array, contentType: EvidenceContentType): Promise<void>;
+  // A receipt confers cleanup ownership only for a confirmed new object.
+  // Uncertain writes throw; existing immutable bytes never confer ownership.
+  put(key: string, bytes: Uint8Array, contentType: EvidenceContentType): Promise<EvidenceCreationReceipt>;
   get(key: string): Promise<Uint8Array>;
   remove(key: string): Promise<void>;
 };
@@ -69,12 +72,13 @@ export async function createLocalEvidenceStorage(options: { taskId: string; targ
       inspectEvidence(bytes, contentType);
       try {
         const filename = await objectPath(key, true);
-        try { await writeFile(filename, bytes, { flag: "wx", mode: 0o600 }); }
+        try { await writeFile(filename, bytes, { flag: "wx", mode: 0o600 }); return { created: true }; }
         catch (e) {
           if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
           if (byteChecksum(await readFile(filename)) !== byteChecksum(bytes)) throw new EvidenceError("STORAGE_CONFLICT");
+          return { created: false };
         }
-      } catch (e) { storageFailure(e); }
+      } catch (e) { return storageFailure(e); }
     },
     async get(key) {
       try { const filename = await objectPath(key, false), stat = await lstat(filename);
@@ -116,9 +120,10 @@ export function createSupabaseEvidenceStorage(options: { url: string; serviceKey
       keyParts(key); inspectEvidence(bytes, contentType); await privateBucket();
       const response = await request(`object/${options.bucket}/${key}`, { method: "POST", headers: { "Content-Type": contentType, "x-upsert": "false", "cache-control": "max-age=0" }, body: Buffer.from(bytes) });
       if (!response.ok) {
-        if ((response.status === 400 || response.status === 409) && byteChecksum(await download(key)) === byteChecksum(bytes)) return;
+        if ((response.status === 400 || response.status === 409) && byteChecksum(await download(key)) === byteChecksum(bytes)) return { created: false };
         throw new EvidenceError(response.status === 400 || response.status === 409 ? "STORAGE_CONFLICT" : "ASSET_BYTES_UNAVAILABLE", response.status === 400 || response.status === 409 ? 409 : 503);
       }
+      return { created: true };
     },
     async get(key) { keyParts(key); await privateBucket(); return download(key); },
     async remove(key) { keyParts(key); await privateBucket(); const response = await request(`object/${options.bucket}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prefixes: [key] }) }); if (!response.ok) throw new EvidenceError("ASSET_BYTES_UNAVAILABLE", 503); },

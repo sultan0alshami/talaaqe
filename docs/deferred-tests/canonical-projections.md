@@ -1,10 +1,10 @@
-# Pending canonical public proof witnesses
+# Restored canonical public proof witnesses
 
-The exact, unchanged test source is preserved in `canonical-projections.test.ts.txt`. It was moved out of automatic Vitest/TypeScript discovery for the founder's current visual reuse phase. No assertions were changed or skipped. No runtime red/green result has been observed: process creation failed before the attempted guarded test command started.
+The exact, unchanged source is preserved in `canonical-projections.test.ts.txt` and restored to active `tests/evidence/canonical-projections.test.ts`. Both copies have SHA-256 `F0885E027C6CA3C0DB30E03FFE1F4D977EFEDD2CC659A5A45EF2D4993CBA5BE6`. The earlier failed process start was not a behavioral result. After activation, all five original witnesses actually failed on the guarded target, then passed after the metadata-only proof integration. They also pass in the current 69-test focused proof/session/matching/deal run. No assertion was changed or skipped.
 
-Current security gap: canonical `publicCreator` and `publicBrand` projections still use status/hash/reviewer checks instead of current owner-bound accepted challenge, private proof metadata and representative submission journal checks. Canonical publication, matching, deals and scoped licence adoption remain pending as recorded in `docs/PROGRESS.md`. Visual reuse acceptance must not be called proof/security or full MVP acceptance.
+Canonical `publicCreator` and `publicBrand`, publication, matching, deals and scoped licence reads now use current owner-bound accepted challenge/private asset/journal metadata with current active reviewers. Later witnesses reproduced and closed ownership asset/identity substitution, screenshot observation substitution, resource expiry during lock waits and owner transfer during private reads. Owner/admin evidence interfaces and live provider/legal acceptance remain separate work.
 
-Before resuming the canonical proof phase, move this file back to `tests/evidence/canonical-projections.test.ts` unchanged and run it first against the exact guarded disposable test target. Implement the assigned metadata-only proof gates and transactional owner/reviewer/domain read locks; then verify the preserved witnesses and related publication/matching/deal checks.
+Independent review and full integration/browser gate evidence are recorded in `docs/PROGRESS.md`. Proof consumers never fetch private bytes or providers; they validate the metadata produced by the private review mutation and fail closed when original receipt metadata is missing.
 
 Preserved acceptance cases:
 

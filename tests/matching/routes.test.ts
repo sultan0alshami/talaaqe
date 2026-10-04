@@ -1,9 +1,10 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { campaignFields } from "../campaigns/fixtures";
 import { resolveCampaignPolicyReview } from "@/lib/policies";
 import { CampaignRequirementsSchema } from "@/lib/campaigns/contracts";
+import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
 const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getSession }));
 import { GET as read, POST as run } from "@/app/api/campaigns/[id]/matches/route";
@@ -47,8 +48,9 @@ async function candidate() {
   // isTest=false intentionally exercises production eligibility only inside the
   // exact guarded task database; name/source remain explicitly synthetic.
   await prisma.creator.create({ data: { id, userId, displayName: "Synthetic permitted API creator", handle, countryCode: "GB", timeZone: "Asia/Kuwait", languages: ["ar"], dialects: ["ar-Gulf"], state: "PUBLISHED", isTest: false, brandVisible: true, publicConsentAt: now, availability: { status: "AVAILABLE", ...campaignFields.period, confirmedAt: now.toISOString() }, profileFacts: { ratesVisibility: "BRAND_ONLY", nicheSlugs: { value: ["beauty"], source: "SELF_REPORTED", evidenceAt: now.toISOString(), approvedAt: now.toISOString(), brandVisible: true, publicVisible: false } } } });
-  const ownershipIdentityHash = createHash("sha256").update(JSON.stringify({ confirmedOrigin: null, normalizedHandle: handle, platform: "INSTAGRAM", providerAccountId: null })).digest("hex");
-  const account = await prisma.socialAccount.create({ data: { creatorId: id, platform: "INSTAGRAM", handle, ownershipIdentityHash, ownershipStatus: "VERIFIED", ownershipReviewedBy: reviewerId, ownershipReviewedAt: now, intendedConfirmedAt: now, consentAt: now, factsApprovedAt: now, brandVisible: true, supportedFormats: ["STORY"] } });
+  const account = await prisma.socialAccount.create({ data: { creatorId: id, platform: "INSTAGRAM", handle, intendedConfirmedAt: now, consentAt: now, factsApprovedAt: now, brandVisible: true, supportedFormats: ["STORY"] } });
+  await reviewedOwnershipFixture(prisma, userId, reviewerId, account.id, "test", now);
+  await prisma.socialAccount.update({ where: { id: account.id }, data: { brandVisible: true } });
   await prisma.creator.update({ where: { id }, data: { primaryAccountId: account.id } });
   const dimension = (key: string) => ({ value: [{ key, percent: 100 }], visibility: "BRAND_ONLY" });
   const window = { startsAt: new Date(now.getTime() - 30 * 86400000).toISOString(), endsAt: now.toISOString(), timeZone: "Asia/Kuwait" };
@@ -60,6 +62,7 @@ afterEach(async () => {
   await prisma.campaign.deleteMany({ where: { id: { in: campaigns.splice(0) } } });
   await prisma.creator.deleteMany({ where: { id: { in: creators.splice(0) } } });
   await prisma.policyVersion.deleteMany({ where: { id: { in: policies.splice(0) } } });
+  await cleanupReviewedEvidence(prisma, users, "test");
   await prisma.privateAsset.deleteMany({ where: { id: { in: assets.splice(0) } } });
   await prisma.user.deleteMany({ where: { id: { in: users.splice(0) } } });
 });

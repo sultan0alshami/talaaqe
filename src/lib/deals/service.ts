@@ -8,11 +8,13 @@ import { OfferTermsSchema, validateOfferTerms, type OfferTerms } from "@/lib/con
 import { CountryCodeSchema, DateRangeSchema, OriginalTextSchema } from "@/lib/contracts/vocabulary";
 import { canonicalHash, inputJson, record } from "@/lib/onboarding/drafts";
 import { loadEligibleCreator } from "@/lib/matching/persistence";
+import { acceptedOwnershipProof, lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
+import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
 import { AgreementContentSchema, CreateDealSchema, DealCommandSchema, DealError,
   type DealCommand, type DealOptions, type DealPolicyContext, type DealPolicyEvidence } from "./contracts";
 
 type Tx = Prisma.TransactionClient;
-type Context = { brand: Brand; creator: Creator; campaign: Campaign; brandUserId: string; creatorUserId: string | null; originalCreatorUserId?: string; role: "BRAND" | "CREATOR" };
+type Context = { brand: Brand; creator: Creator; campaign: Campaign; brandUserId: string; creatorUserId: string | null; originalCreatorUserId?: string; role: "BRAND" | "CREATOR"; evidenceActors: EvidenceActorLocks };
 const Id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const ACTIVE = ["OFFERED", "COUNTERED", "ACCEPTED", "AGREED", "DELIVERED"] as const;
 const WEEK = 7 * 24 * 3600_000;
@@ -28,16 +30,9 @@ async function context(tx: Tx, actor: string, campaignId: string, creatorId: str
   const reference = await tx.campaign.findUnique({ where: { id: campaignId }, select: { brand: { select: { id: true, userId: true } } } });
   const target = await tx.creator.findUnique({ where: { id: creatorId }, select: { userId: true } });
   if (!reference || !target) throw new DealError("NOT_FOUND", 404);
-  // The campaign's brand is the shared anchor with campaign/matching services.
-  // Creator-first locking would invert their Brand User -> Campaign -> Creator
-  // ordering. Actual participant identities and roles are reloaded after locks.
-  if (write) await tx.$queryRaw`SELECT id FROM "User" WHERE id=${reference.brand.userId} FOR UPDATE`;
-  else await tx.$queryRaw`SELECT id FROM "User" WHERE id=${reference.brand.userId} FOR SHARE`;
-  const creatorUsers = [...new Set([target.userId, originalCreatorUserId].filter((id): id is string => !!id && id !== reference.brand.userId))].sort();
-  for (const creatorUserId of creatorUsers) {
-    if (write) await tx.$queryRaw`SELECT id FROM "User" WHERE id=${creatorUserId} FOR UPDATE`;
-    else await tx.$queryRaw`SELECT id FROM "User" WHERE id=${creatorUserId} FOR SHARE`;
-  }
+  // All current/historical owners, then evidence/policy reviewers, precede
+  // domain locks. The captured identity sets are checked after waiting.
+  const evidenceActors = await lockEvidenceActors(tx, { creatorIds: [creatorId], brandIds: [reference.brand.id], otherOwnerIds: originalCreatorUserId ? [originalCreatorUserId] : [], includePolicies: true, updateOwners: write });
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${reference.brand.id} FOR SHARE`;
   await tx.$queryRaw`SELECT id FROM "Creator" WHERE id=${creatorId} FOR SHARE`;
   if (write) await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR UPDATE`;
@@ -51,13 +46,13 @@ async function context(tx: Tx, actor: string, campaignId: string, creatorId: str
   if (actor !== brand.userId && actor !== creator.userId && actor !== originalCreatorUserId) throw new DealError("NOT_FOUND", 404);
   const role = actor === brand.userId ? "BRAND" : "CREATOR";
   if (user.role !== role) throw new DealError("FORBIDDEN", 403);
-  return { brand, creator, campaign, brandUserId: brand.userId, creatorUserId: creator.userId, originalCreatorUserId, role };
+  return { brand, creator, campaign, brandUserId: brand.userId, creatorUserId: creator.userId, originalCreatorUserId, role, evidenceActors };
 }
 // Domain-only helper for the private draft service. Server transports invoke the
 // public commands, never supply a transaction callback or trusted policy context.
 export const dealParticipantContext = context;
 async function owned<T>(actor: string, dealId: string, options: DealOptions, write: boolean, operation: (tx: Tx, deal: Deal, ctx: Context, now: Date) => Promise<T>): Promise<T> {
-  parse(Id, dealId); const client = options.client ?? prisma, now = clock(options);
+  parse(Id, dealId); const client = options.client ?? prisma; clock(options);
   return client.$transaction(async tx => {
     const reference = await tx.deal.findUnique({ where: { id: dealId }, select: { campaignId: true, creatorId: true } });
     if (!reference) {
@@ -78,7 +73,7 @@ async function owned<T>(actor: string, dealId: string, options: DealOptions, wri
     else await tx.$queryRaw`SELECT id FROM "Deal" WHERE id=${dealId} FOR SHARE`;
     const deal = await tx.deal.findUniqueOrThrow({ where: { id: dealId } });
     if (deal.brandId !== ctx.brand.id || deal.creatorId !== ctx.creator.id || deal.campaignId !== ctx.campaign.id) throw new DealError("STALE_PARTICIPANTS");
-    return operation(tx, deal, ctx, now);
+    return operation(tx, deal, ctx, clock(options));
   }, { maxWait: 10_000, timeout: 20_000 });
 }
 async function requirements(tx: Tx, ctx: Context, version: number, current: boolean, now: Date): Promise<CampaignRequirementsDTO> {
@@ -96,11 +91,12 @@ async function executable(tx: Tx, ctx: Context, terms: OfferTerms, requirements:
   const users = await tx.user.findMany({ where: { id: { in: [ctx.brandUserId, creator.userId] } } });
   if (users.some(user => !user.active || user.isTest || !past(user.emailVerifiedAt, now)) || users.find(u => u.id === creator.userId)?.role !== "CREATOR" || users.find(u => u.id === ctx.brandUserId)?.role !== "BRAND") throw new DealError("CREATOR_NOT_EXECUTABLE");
   await tx.$queryRaw`SELECT id FROM "SocialAccount" WHERE "creatorId"=${creator.id} ORDER BY id FOR SHARE`;
+  await tx.$queryRaw`SELECT s.id FROM "MetricsSnapshot" s JOIN "SocialAccount" a ON a.id=s."accountId" WHERE a."creatorId"=${creator.id} ORDER BY s.id FOR SHARE OF s`;
+  await tx.$queryRaw`SELECT c.id FROM "OwnershipChallenge" c JOIN "SocialAccount" a ON a.id=c."accountId" WHERE a."creatorId"=${creator.id} ORDER BY c.id FOR SHARE OF c`;
   const accounts = await tx.socialAccount.findMany({ where: { creatorId: creator.id } });
-  const reviewers = new Set((await tx.user.findMany({ where: { id: { in: accounts.flatMap(a => a.ownershipReviewedBy ? [a.ownershipReviewedBy] : []) }, role: "ADMIN", active: true }, select: { id: true } })).map(u => u.id));
-  const proof = (account: typeof accounts[number]) => account.ownershipStatus === "VERIFIED" && account.ownershipReviewedBy !== null && reviewers.has(account.ownershipReviewedBy)
-    && past(account.ownershipReviewedAt, now) && past(account.intendedConfirmedAt, now) && past(account.consentAt, now)
-    && account.ownershipIdentityHash === canonicalHash({ platform: account.platform, providerAccountId: account.providerAccountId, normalizedHandle: account.handle, confirmedOrigin: null });
+  const proofs = new Set<string>();
+  for (const account of accounts) if (past(account.intendedConfirmedAt, now) && past(account.consentAt, now) && await acceptedOwnershipProof(tx, account, creator.userId, now, ctx.evidenceActors)) proofs.add(account.id);
+  const proof = (account: typeof accounts[number]) => proofs.has(account.id);
   const primary = accounts.find(a => a.id === creator.primaryAccountId);
   if (!primary || !proof(primary)) throw new DealError("CREATOR_NOT_EXECUTABLE");
   const usable: typeof accounts = [];
@@ -108,7 +104,7 @@ async function executable(tx: Tx, ctx: Context, terms: OfferTerms, requirements:
     if (!account.brandVisible || !past(account.factsApprovedAt, now) || !proof(account)) continue;
     const snapshot = await tx.metricsSnapshot.findFirst({ where: { accountId: account.id, mappingRevision: account.mappingRevision, reviewStatus: "VERIFIED", approvedBy: { not: null },
       approvedAt: { not: null, lte: now }, excludedAt: null, observedAt: { gte: new Date(now.getTime() - 90 * 24 * 3600_000), lte: now } }, orderBy: [{ observedAt: "desc" }, { id: "asc" }] });
-    if (snapshot && snapshot.approvedAt! >= snapshot.observedAt) usable.push(account);
+    if (snapshot && snapshot.approvedAt! >= snapshot.observedAt && (snapshot.source !== "SCREENSHOT_VERIFIED" || await acceptedScreenshotProof(tx, account, snapshot, creator.userId, now, ctx.evidenceActors))) usable.push(account);
   }
   for (const row of terms.deliverables) {
     if (!usable.some(a => a.platform === row.platform && a.supportedFormats.includes(row.format))) throw new DealError("UNSUPPORTED_DELIVERABLE");
@@ -125,7 +121,7 @@ async function executable(tx: Tx, ctx: Context, terms: OfferTerms, requirements:
   }
   // Identical current permission, source, tier, preferred licence and reviewed
   // safety eligibility for MATCH and direct execution, without producing a score.
-  if (!await loadEligibleCreator(tx, requirements, creator.id, now, { policyReader: options.policyReader })) throw new DealError("CREATOR_NOT_ELIGIBLE");
+  if (!await loadEligibleCreator(tx, requirements, creator.id, now, { policyReader: options.policyReader, evidenceActors: ctx.evidenceActors, liveClock: options.now === undefined })) throw new DealError("CREATOR_NOT_ELIGIBLE");
 }
 function termsFor(value: unknown, r: CampaignRequirementsDTO): OfferTerms {
   try { const terms = validateOfferTerms(value, { currencyCode: r.budget.currencyCode });
@@ -135,7 +131,7 @@ function termsFor(value: unknown, r: CampaignRequirementsDTO): OfferTerms {
 }
 async function verify(tx: Tx, actor: string, ctx: Context, terms: OfferTerms, stage: "OFFER" | "ACCEPT" | "CONFIRM", options: DealOptions, trusted: DealPolicyContext, language?: "ar" | "en"): Promise<DealPolicyEvidence> {
   if (!options.policyVerifier) throw new DealError("POLICY_UNAVAILABLE", 503);
-  const evidence = await options.policyVerifier(tx, actor, ctx.campaign.id, ctx.creator.id, terms, stage, language, trusted);
+  const evidence = await options.policyVerifier(tx, actor, ctx.campaign.id, ctx.creator.id, terms, stage, language, { ...trusted, evidenceActors: ctx.evidenceActors });
   if (!evidence?.governingTerms || evidence.governingTerms.id !== terms.governingTermsVersionId || !["ar", "en"].includes(evidence.governingTerms.language)
     || !evidence.governingTerms.content.trim() || !evidence.policyVersion || !Array.isArray(evidence.licenceSnapshots) || !Array.isArray(evidence.marketPolicyVersions)) throw new DealError("POLICY_UNAVAILABLE", 503);
   inputJson(evidence); return evidence;
@@ -202,9 +198,10 @@ export async function dealDTO(tx: Tx, deal: Deal, actor: string, now: Date) {
 }
 export type DealDTO = Awaited<ReturnType<typeof dealDTO>>;
 export async function createDealOffer(actor: string, input: unknown, options: DealOptions = {}): Promise<{ deal: DealDTO; replayed: boolean }> {
-  const command = parse(CreateDealSchema, input), now = clock(options), hash = canonicalHash({ action: "CREATE", ...command });
+  const command = parse(CreateDealSchema, input), hash = canonicalHash({ action: "CREATE", ...command }); clock(options);
   return (options.client ?? prisma).$transaction(async tx => {
     const ctx = await context(tx, actor, command.campaignId, command.creatorId, true);
+    const now = clock(options);
     if (ctx.role !== "BRAND") throw new DealError("ROLE_ONLY", 403);
     const replayId = await replay(tx, actor, command.operationKey, hash);
     if (replayId) return { deal: await dealDTO(tx, await tx.deal.findUniqueOrThrow({ where: { id: replayId } }), actor, now), replayed: true };
