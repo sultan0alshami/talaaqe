@@ -110,7 +110,7 @@ export function DashboardShell({
               href={item.href}
               aria-current={active ? "page" : undefined}
               onClick={mobile ? () => setMenuOpen(false) : undefined}
-              className={`flex min-h-12 w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-start text-sm no-underline hover:bg-muted ${active ? "bg-accent font-bold text-foreground" : "font-medium text-muted-foreground"}`}
+              className={`flex min-h-11 w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-start text-sm no-underline hover:bg-muted ${active ? "bg-accent font-bold text-foreground" : "font-medium text-muted-foreground"}`}
             >
               <span
                 aria-hidden="true"
@@ -148,7 +148,7 @@ export function DashboardShell({
     );
   }
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col text-[15px]">
       <a
         href="#infame-main"
         className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-5 focus:py-3 focus:text-primary-foreground"
@@ -195,21 +195,23 @@ export function DashboardShell({
           <Link
             href="/"
             aria-label={copy("إنفيم، الموقع الرئيسي", "Infame, main website")}
-            className="flex min-h-11 shrink-0 items-center gap-[9px] text-[17px] font-bold no-underline"
+            className="flex min-h-11 shrink-0 items-center gap-[9px] text-[17px] font-bold no-underline lg:min-h-[34px]"
           >
             <span
               aria-hidden="true"
               className="infame-brand-dot hidden sm:inline-block"
+              style={{ width: 30, height: 29 }}
             />
             <span>{isAr ? BRAND.nameAr : BRAND.name}</span>
           </Link>
-          <span className="hidden rounded-full bg-muted px-2.5 py-[3px] text-xs font-semibold text-muted-foreground xl:inline">
+          <span className="hidden rounded-full bg-muted px-2.5 py-[3px] text-[11.5px] font-semibold text-muted-foreground lg:inline">
             {roleLabel}
           </span>
           <div className="ms-auto flex min-w-0 items-center gap-1 lg:gap-3">
             <Button
               variant="ghost"
               size="icon"
+              className="lg:size-[34px]"
               onClick={changeTheme}
               aria-label={
                 theme === "light"
@@ -227,25 +229,26 @@ export function DashboardShell({
               variant="secondary"
               onClick={toggleLang}
               lang={isAr ? "en" : "ar"}
-              className="h-11 min-w-11 rounded-full border border-border px-3 text-[12.5px] font-semibold"
+              className="h-11 min-w-11 rounded-full border border-border px-[13px] text-[12.5px] font-semibold lg:h-[34px]"
               aria-label={copy("التبديل إلى الإنجليزية", "Switch to Arabic")}
             >
               {isAr ? "EN" : "عربي"}
             </Button>
             <Link
               href="/"
-              className="hidden min-h-11 items-center text-[13px] font-semibold text-muted-foreground no-underline hover:text-foreground lg:inline-flex"
+              className="hidden min-h-11 items-center text-[13px] font-semibold text-muted-foreground no-underline hover:text-foreground lg:inline-flex lg:min-h-[34px]"
             >
               {copy("العودة للموقع", "Back to website")} ↗
             </Link>
             <Button
               variant="ghost"
-              size="icon"
+              className="px-2 text-[13px] font-semibold text-muted-foreground lg:h-[34px] lg:px-0"
               onClick={logout}
               disabled={busy}
               aria-label={copy("تسجيل الخروج", "Sign out")}
             >
-              <LogOut aria-hidden="true" className="rtl:rotate-180" />
+              <LogOut aria-hidden="true" className="sm:hidden rtl:rotate-180" />
+              <span className="hidden sm:inline">{copy("تسجيل الخروج", "Log out")}</span>
             </Button>
             <div
               title={userName || title}
@@ -261,7 +264,7 @@ export function DashboardShell({
       </header>
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-[232px] shrink-0 flex-col gap-[3px] border-e border-border bg-card px-3 py-[18px] lg:flex">
-          <div className="break-words px-3 pb-2.5 text-xs font-bold text-muted-foreground">
+          <div className="break-words px-3 pb-2.5 text-[11.5px] font-bold text-muted-foreground">
             <bdi>{title}</bdi>
           </div>
           {navigation()}

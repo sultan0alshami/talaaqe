@@ -2,6 +2,8 @@
 
 This isolated Talaqee-derived checkout implements the handoffs in docs/handoff/. Read those specifications and docs/CONTRACTS.md before domain changes. User instructions override historical specs. The original source checkout is read-only.
 
+Current founder direction (2026-10-04, D019a): reuse Talaqee's full platform interface and page composition with Infame name/colors, then add Infame features within that structure. Do not replace it with a new dashboard design. Keep the approved public site at `/` and a second Talaqee-derived Infame website at `/classic`.
+
 Keep inherited history/migrations. Reuse audited Next App Router, server pages/client screens, Prisma, auth/API/ownership, bilingual interface and Anthropic foundations. Developer-procurement contracts, demo fallbacks, paired business content, inline-style mandates and fresh-fork/no-migrations scripts are superseded. User content is stored once in its original language; UI translations are separate.
 
 The coordinator owns schema/migrations, auth, shared contracts/env/brand, dependencies, primitives/shells, dictionary composition, CI/deployment. Domain workers own explicitly assigned paths. You share the checkout: preserve other agents' work; ask the coordinator before editing a shared path. Independent reviews return findings to the owner.

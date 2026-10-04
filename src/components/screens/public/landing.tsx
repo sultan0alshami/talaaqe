@@ -5,8 +5,8 @@ import { useI18n } from "@/lib/i18n";
 import { fmtNum } from "@/lib/format";
 import { BRIEF, PROVIDERS } from "@/lib/talaqi-data";
 
-const NAVY = "#1B3568";
-const TEAL = "#14969E";
+const NAVY = "var(--foreground)";
+const TEAL = "var(--foreground)";
 
 export interface LandingCategory {
   id: string;
@@ -34,14 +34,14 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
     arrow: i < 4,
   }));
   const tiles = [
-    { bg: "#EEF3FB", fg: NAVY },
-    { bg: "#E8F5F6", fg: "#0E7A81" },
-    { bg: "#F7F0E3", fg: "#8A6D33" },
-    { bg: "#E8F5F6", fg: "#0E7A81" },
-    { bg: "#EEF3FB", fg: NAVY },
+    { bg: "var(--muted)", fg: NAVY },
+    { bg: "var(--muted)", fg: "var(--foreground)" },
+    { bg: "var(--muted)", fg: "var(--foreground)" },
+    { bg: "var(--muted)", fg: "var(--foreground)" },
+    { bg: "var(--muted)", fg: NAVY },
   ];
   const howSteps = t.how.map((h, i) => ({ n: i + 1, t: h.t, d: h.d, tileBg: tiles[i].bg, tileFg: tiles[i].fg }));
-  const dots = [TEAL, NAVY, "#C6A15B", TEAL, NAVY, "#C6A15B", TEAL, NAVY];
+  const dots = [TEAL, NAVY, "var(--infame-gold)", TEAL, NAVY, "var(--infame-gold)", TEAL, NAVY];
   const features = t.features.map((f, i) => ({ t: f.t, d: f.d, dot: dots[i] }));
   const plans = t.plans.map((p, i) => ({
     n: p.n,
@@ -51,11 +51,11 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
     hot: p.hot,
     href: i === 3 ? "/signup?role=provider" : "/signup?role=client",
     featList: p.feats,
-    bg: p.hot ? "linear-gradient(160deg, #1B3568, #0F5E64)" : "#fff",
-    fg: p.hot ? "#fff" : "#1A2438",
-    border: p.hot ? "1px solid transparent" : "1px solid #E4E9F1",
-    check: p.hot ? "#7FE3E9" : TEAL,
-    btnBg: p.hot ? "#fff" : "#F0F3F8",
+    bg: p.hot ? "linear-gradient(160deg, var(--foreground), #0F5E64)" : "var(--card)",
+    fg: p.hot ? "var(--card)" : "var(--foreground)",
+    border: p.hot ? "1px solid transparent" : "1px solid var(--border)",
+    check: p.hot ? "var(--primary)" : TEAL,
+    btnBg: p.hot ? "var(--card)" : "var(--muted)",
   }));
 
   // Hero mock strings
@@ -68,7 +68,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
   return (
     <div>
       {/* ============ HERO ============ */}
-      <div style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #F2F7F9 70%, #F6F8FB 100%)", borderBottom: "1px solid #E4E9F1" }}>
+      <div style={{ background: "linear-gradient(180deg, var(--card) 0%, var(--muted) 70%, var(--background) 100%)", borderBottom: "1px solid var(--border)" }}>
         <div
           style={{
             ...container,
@@ -85,9 +85,9 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                background: "#E8F5F6",
-                border: "1px solid #C6E7E9",
-                color: "#0E7A81",
+                background: "var(--muted)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "6px 14px",
@@ -98,23 +98,23 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: TEAL, display: "inline-block" }} />
               {t.heroBadge}
             </div>
-            <h1 style={{ fontSize: 46, lineHeight: 1.35, fontWeight: 700, margin: "0 0 18px", color: "#14213A" }}>
+            <h1 style={{ fontSize: 46, lineHeight: 1.35, fontWeight: 700, margin: "0 0 18px", color: "var(--foreground)" }}>
               {t.heroTitle1}
               <br />
               <span style={{ color: TEAL }}>{t.heroTitle2}</span>
             </h1>
-            <p style={{ fontSize: 17, color: "#4A5A76", margin: "0 0 10px", maxWidth: 540 }}>{t.heroSub}</p>
-            <p dir={dirOpp} style={{ fontSize: 13.5, color: "#93A1B8", margin: "0 0 30px", maxWidth: 540 }}>
+            <p style={{ fontSize: 17, color: "var(--muted-foreground)", margin: "0 0 10px", maxWidth: 540 }}>{t.heroSub}</p>
+            <p dir={dirOpp} style={{ fontSize: 13.5, color: "var(--muted-foreground)", margin: "0 0 30px", maxWidth: 540 }}>
               {t.heroSubEn}
             </p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <Link
                 href="/signup?role=client"
-                className="hover:bg-[#24437F]! hover:-translate-y-px"
+                className="hover:bg-[var(--foreground)]! hover:-translate-y-px"
                 style={{
                   ...ctaLinkBase,
                   background: NAVY,
-                  color: "#fff",
+                  color: "var(--card)",
                   fontSize: 16,
                   fontWeight: 600,
                   padding: "15px 30px",
@@ -126,12 +126,12 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               </Link>
               <Link
                 href="/signup?role=provider"
-                className="hover:border-[#1B3568]!"
+                className="hover:border-[var(--foreground)]!"
                 style={{
                   ...ctaLinkBase,
-                  background: "#fff",
+                  background: "var(--card)",
                   color: NAVY,
-                  border: "1.5px solid #D5DDE9",
+                  border: "1.5px solid var(--border)",
                   fontSize: 16,
                   fontWeight: 600,
                   padding: "15px 30px",
@@ -144,17 +144,17 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
             <div style={{ display: "flex", gap: 36, marginTop: 44 }}>
               <div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: NAVY }}>+380</div>
-                <div style={{ fontSize: 13, color: "#7684A0" }}>{t.statBriefs}</div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{t.statBriefs}</div>
               </div>
-              <div style={{ width: 1, background: "#E4E9F1" }} />
+              <div style={{ width: 1, background: "var(--border)" }} />
               <div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: NAVY }}>+320</div>
-                <div style={{ fontSize: 13, color: "#7684A0" }}>{t.statProviders}</div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{t.statProviders}</div>
               </div>
-              <div style={{ width: 1, background: "#E4E9F1" }} />
+              <div style={{ width: 1, background: "var(--border)" }} />
               <div>
                 <div style={{ fontSize: 26, fontWeight: 700, color: TEAL }}>87%</div>
-                <div style={{ fontSize: 13, color: "#7684A0" }}>{t.statMatch}</div>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{t.statMatch}</div>
               </div>
             </div>
           </div>
@@ -163,8 +163,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
           <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "tq-rise .7s ease both" }}>
             <div
               style={{
-                background: "#fff",
-                border: "1px solid #E4E9F1",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: 16,
                 padding: "18px 20px",
                 boxShadow: "0 12px 32px rgba(20,40,80,.08)",
@@ -178,7 +178,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   width: 34,
                   height: 34,
                   borderRadius: 10,
-                  background: "#F0F3F8",
+                  background: "var(--muted)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -190,20 +190,20 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                 أ
               </div>
               <div>
-                <div style={{ fontSize: 12, color: "#93A1B8", marginBottom: 2 }}>{t.pipe1}</div>
+                <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 2 }}>{t.pipe1}</div>
                 <div style={{ fontSize: 14.5, fontWeight: 500 }}>&quot;{t.chatStarter1}&quot;</div>
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ width: 2, height: 18, background: "linear-gradient(#14969E, #C6E7E9)" }} />
+              <div style={{ width: 2, height: 18, background: "linear-gradient(var(--foreground), var(--border))" }} />
             </div>
             <div
               style={{
-                background: "linear-gradient(135deg, #1B3568, #14969E)",
+                background: "linear-gradient(135deg, var(--foreground), var(--foreground))",
                 borderRadius: 16,
                 padding: "18px 20px",
                 boxShadow: "0 16px 40px rgba(20,150,158,.28)",
-                color: "#fff",
+                color: "var(--card)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, opacity: 0.85, marginBottom: 8 }}>
@@ -212,7 +212,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                     width: 7,
                     height: 7,
                     borderRadius: "50%",
-                    background: "#7FE3E9",
+                    background: "var(--primary)",
                     display: "inline-block",
                     animation: "tq-pulse 1.6s infinite",
                   }}
@@ -230,12 +230,12 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ width: 2, height: 18, background: "linear-gradient(#C6E7E9, #C6A15B)" }} />
+              <div style={{ width: 2, height: 18, background: "linear-gradient(var(--border), var(--infame-gold))" }} />
             </div>
             <div
               style={{
-                background: "#fff",
-                border: "1px solid #E4E9F1",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: 16,
                 padding: "16px 20px",
                 boxShadow: "0 12px 32px rgba(20,40,80,.08)",
@@ -250,7 +250,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   height: 40,
                   borderRadius: 12,
                   background: NAVY,
-                  color: "#fff",
+                  color: "var(--card)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -262,11 +262,11 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{heroMatchName}</div>
-                <div style={{ fontSize: 12.5, color: "#7684A0" }}>{heroMatchRole}</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{heroMatchRole}</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#0E7A81" }}>94%</div>
-                <div style={{ fontSize: 11, color: "#93A1B8" }}>{t.matchScore}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)" }}>94%</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{t.matchScore}</div>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
         <div style={{ ...container, padding: "0 24px 56px" }}>
           <div
             style={{
-              background: "#14213A",
+              background: "var(--foreground)",
               borderRadius: 18,
               padding: "22px 32px",
               display: "flex",
@@ -295,7 +295,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                       height: 30,
                       borderRadius: "50%",
                       background: "rgba(20,150,158,.25)",
-                      color: "#7FE3E9",
+                      color: "var(--primary)",
                       fontSize: 13.5,
                       fontWeight: 700,
                       display: "flex",
@@ -305,7 +305,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   >
                     {p.n}
                   </span>
-                  <span style={{ color: "#fff", fontSize: 14.5, fontWeight: 600 }}>{p.label}</span>
+                  <span style={{ color: "var(--card)", fontSize: 14.5, fontWeight: 600 }}>{p.label}</span>
                 </div>
                 {p.arrow && <span style={{ color: "#3D5378", fontSize: 16 }}>{arrowChar}</span>}
               </div>
@@ -317,11 +317,11 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       {/* ============ PROBLEM / SOLUTION ============ */}
       <div style={{ ...container, padding: "88px 24px 0" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, alignItems: "stretch" }}>
-          <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 20, padding: 36 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 36 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "#B0433A", letterSpacing: ".04em", marginBottom: 10 }}>
               {t.oldJourney} — {t.oldSteps}
             </div>
-            <h2 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 20px", color: "#14213A" }}>{t.problemTitle}</h2>
+            <h2 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 20px", color: "var(--foreground)" }}>{t.problemTitle}</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {t.problems.map((text, i) => (
                 <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -343,22 +343,22 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   >
                     ✕
                   </span>
-                  <span style={{ color: "#4A5A76", fontSize: 15 }}>{text}</span>
+                  <span style={{ color: "var(--muted-foreground)", fontSize: 15 }}>{text}</span>
                 </div>
               ))}
             </div>
           </div>
           <div
             style={{
-              background: "linear-gradient(160deg, #1B3568, #0F5E64)",
+              background: "linear-gradient(160deg, var(--foreground), #0F5E64)",
               borderRadius: 20,
               padding: 36,
-              color: "#fff",
+              color: "var(--card)",
               display: "flex",
               flexDirection: "column",
             }}
           >
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#7FE3E9", letterSpacing: ".04em", marginBottom: 10 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--primary)", letterSpacing: ".04em", marginBottom: 10 }}>
               {t.newJourney} — {t.newSteps}
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 20px" }}>{t.solutionTitle}</h2>
@@ -369,7 +369,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                 className="hover:-translate-y-px"
                 style={{
                   ...ctaLinkBase,
-                  background: "#fff",
+                  background: "var(--card)",
                   color: NAVY,
                   fontSize: 15,
                   fontWeight: 700,
@@ -387,15 +387,15 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       {/* ============ HOW IT WORKS ============ */}
       <div id="tq-how" style={{ ...container, padding: "96px 24px 0", scrollMarginTop: 80 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "#14213A" }}>{t.howTitle}</h2>
-          <p style={{ color: "#7684A0", fontSize: 16, margin: 0 }}>{t.howSub}</p>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)" }}>{t.howTitle}</h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 16, margin: 0 }}>{t.howSub}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 18 }}>
           {howSteps.map((h) => (
             <div
               key={h.n}
               className="transition-all duration-200 hover:shadow-[0_12px_30px_rgba(20,40,80,.1)] hover:-translate-y-[3px]"
-              style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, padding: "26px 22px", position: "relative" }}
+              style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: "26px 22px", position: "relative" }}
             >
               <div
                 style={{
@@ -414,8 +414,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               >
                 {h.n}
               </div>
-              <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 6, color: "#14213A" }}>{h.t}</div>
-              <div style={{ fontSize: 13.5, color: "#7684A0", lineHeight: 1.7 }}>{h.d}</div>
+              <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 6, color: "var(--foreground)" }}>{h.t}</div>
+              <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", lineHeight: 1.7 }}>{h.d}</div>
             </div>
           ))}
         </div>
@@ -423,13 +423,13 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
 
       {/* ============ VALUE ============ */}
       <div style={{ ...container, padding: "96px 24px 0" }}>
-        <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 40px", color: "#14213A", textAlign: "center" }}>{t.valueTitle}</h2>
+        <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 40px", color: "var(--foreground)", textAlign: "center" }}>{t.valueTitle}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28 }}>
-          <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 20, padding: 34 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 34 }}>
             <div
               style={{
                 display: "inline-block",
-                background: "#EEF3FB",
+                background: "var(--muted)",
                 color: NAVY,
                 fontSize: 13,
                 fontWeight: 700,
@@ -446,12 +446,12 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               ))}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 20, padding: 34 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: 34 }}>
             <div
               style={{
                 display: "inline-block",
-                background: "#F7F0E3",
-                color: "#8A6D33",
+                background: "var(--muted)",
+                color: "var(--foreground)",
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "6px 16px",
@@ -473,19 +473,19 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       {/* ============ FEATURES ============ */}
       <div id="tq-features" style={{ ...container, padding: "96px 24px 0", scrollMarginTop: 80 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "#14213A" }}>{t.featuresTitle}</h2>
-          <p style={{ color: "#7684A0", fontSize: 16, margin: 0 }}>{t.featuresSub}</p>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)" }}>{t.featuresTitle}</h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 16, margin: 0 }}>{t.featuresSub}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
           {features.map((f, i) => (
             <div
               key={i}
-              className="transition-all duration-200 hover:border-[#14969E]!"
-              style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, padding: 24 }}
+              className="transition-all duration-200 hover:border-[var(--foreground)]!"
+              style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: 24 }}
             >
               <div style={{ width: 12, height: 12, borderRadius: 4, background: f.dot, marginBottom: 16, transform: "rotate(45deg)" }} />
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 5, color: "#14213A" }}>{f.t}</div>
-              <div style={{ fontSize: 13, color: "#7684A0" }}>{f.d}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 5, color: "var(--foreground)" }}>{f.t}</div>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{f.d}</div>
             </div>
           ))}
         </div>
@@ -494,20 +494,20 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       {/* ============ CATEGORIES ============ */}
       <div id="tq-cats" style={{ ...container, padding: "96px 24px 0", scrollMarginTop: 80 }}>
         <div style={{ textAlign: "center", marginBottom: 42 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "#14213A" }}>{t.catsTitle}</h2>
-          <p style={{ color: "#7684A0", fontSize: 16, margin: 0 }}>{t.catsSub}</p>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)" }}>{t.catsTitle}</h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 16, margin: 0 }}>{t.catsSub}</p>
         </div>
         {categories.length === 0 ? (
-          <p style={{ textAlign: "center", color: "#93A1B8", fontSize: 14, margin: 0 }}>—</p>
+          <p style={{ textAlign: "center", color: "var(--muted-foreground)", fontSize: 14, margin: 0 }}>—</p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {categories.map((c) => (
               <div
                 key={c.id}
-                className="hover:border-[#1B3568]! hover:shadow-[0_6px_18px_rgba(20,40,80,.07)]"
+                className="hover:border-[var(--foreground)]! hover:shadow-[0_6px_18px_rgba(20,40,80,.07)]"
                 style={{
-                  background: "#fff",
-                  border: "1px solid #E4E9F1",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: 14,
                   padding: "16px 20px",
                   display: "flex",
@@ -517,8 +517,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   cursor: "pointer",
                 }}
               >
-                <span style={{ fontSize: 14.5, fontWeight: 600, color: "#2C3A54" }}>{isAr ? c.nameAr : c.nameEn}</span>
-                <span style={{ fontSize: 12, color: "#93A1B8", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--foreground)" }}>{isAr ? c.nameAr : c.nameEn}</span>
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>
                   {fmtNum(c.count)} {t.catProject}
                 </span>
               </div>
@@ -530,8 +530,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       {/* ============ PRICING ============ */}
       <div id="tq-pricing" style={{ ...container, padding: "96px 24px 0", scrollMarginTop: 80 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "#14213A" }}>{t.pricingTitle}</h2>
-          <p style={{ color: "#7684A0", fontSize: 16, margin: 0 }}>{t.pricingSub}</p>
+          <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)" }}>{t.pricingTitle}</h2>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 16, margin: 0 }}>{t.pricingSub}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18, alignItems: "stretch" }}>
           {plans.map((pl, i) => (
@@ -554,8 +554,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                     position: "absolute",
                     top: -12,
                     insetInlineStart: 24,
-                    background: "#C6A15B",
-                    color: "#fff",
+                    background: "var(--infame-gold)",
+                    color: "var(--card)",
                     fontSize: 11.5,
                     fontWeight: 700,
                     padding: "4px 14px",
@@ -604,11 +604,11 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
       <div style={{ ...container, padding: "96px 24px" }}>
         <div
           style={{
-            background: "linear-gradient(135deg, #14213A, #1B3568 55%, #14969E 130%)",
+            background: "linear-gradient(135deg, var(--foreground), var(--foreground) 55%, var(--foreground) 130%)",
             borderRadius: 24,
             padding: "64px 40px",
             textAlign: "center",
-            color: "#fff",
+            color: "var(--card)",
           }}
         >
           <h2 style={{ fontSize: 34, fontWeight: 700, margin: "0 0 12px", lineHeight: 1.5 }}>{t.closingTitle}</h2>
@@ -619,7 +619,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               className="hover:-translate-y-px"
               style={{
                 ...ctaLinkBase,
-                background: "#fff",
+                background: "var(--card)",
                 color: NAVY,
                 fontSize: 16,
                 fontWeight: 700,
@@ -635,7 +635,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
               style={{
                 ...ctaLinkBase,
                 background: "rgba(255,255,255,.12)",
-                color: "#fff",
+                color: "var(--card)",
                 border: "1px solid rgba(255,255,255,.35)",
                 fontSize: 16,
                 fontWeight: 600,
@@ -661,8 +661,8 @@ function ValueRow({ text }: { text: string }) {
           width: 22,
           height: 22,
           borderRadius: "50%",
-          background: "#E8F5F6",
-          color: "#0E7A81",
+          background: "var(--muted)",
+          color: "var(--foreground)",
           fontSize: 12,
           fontWeight: 700,
           display: "flex",
@@ -673,7 +673,7 @@ function ValueRow({ text }: { text: string }) {
       >
         ✓
       </span>
-      <span style={{ fontSize: 15.5, color: "#2C3A54", fontWeight: 500 }}>{text}</span>
+      <span style={{ fontSize: 15.5, color: "var(--foreground)", fontWeight: 500 }}>{text}</span>
     </div>
   );
 }

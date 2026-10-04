@@ -11,13 +11,13 @@ type CategoryRow = { id: string; nameAr: string; nameEn: string; count: number }
 type SkillRow = { id: string; name: string; categoryId: string; categoryAr: string; categoryEn: string };
 
 const inputStyle: React.CSSProperties = {
-  border: "1px solid #E4E9F1",
+  border: "1px solid var(--border)",
   borderRadius: 10,
   padding: "8px 12px",
   fontSize: 13,
   fontWeight: 600,
-  color: "#2C3A54",
-  background: "#fff",
+  color: "var(--foreground)",
+  background: "var(--card)",
   outline: "none",
 };
 
@@ -91,12 +91,12 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
         {categories.map((c) => (
           <div
             key={c.id}
-            style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 14, padding: "18px 20px" }}
+            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 20px" }}
           >
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: "#2C3A54", marginBottom: 3 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--foreground)", marginBottom: 3 }}>
               {pick(c.nameAr, c.nameEn)}
             </div>
-            <div style={{ fontSize: 12.5, color: "#93A1B8" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>
               {fmtNum(c.count)} {t.catProject}
             </div>
           </div>
@@ -111,8 +111,8 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
             onClick={() => setCatFormOpen((v) => !v)}
             className="hover:bg-[#E1E9F6]"
             style={{
-              background: "#EEF3FB",
-              color: "#1B3568",
+              background: "var(--muted)",
+              color: "var(--foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 12.5,
@@ -127,8 +127,8 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
             onClick={() => setSkillFormOpen((v) => !v)}
             className="hover:bg-[#D3EDEF]"
             style={{
-              background: "#E8F5F6",
-              color: "#0E7A81",
+              background: "var(--muted)",
+              color: "var(--foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 12.5,
@@ -146,8 +146,8 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
       {catFormOpen && (
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #E4E9F1",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 16,
             marginBottom: 14,
@@ -173,10 +173,10 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
           <button
             onClick={addCategory}
             disabled={busy === "cat"}
-            className="hover:bg-[#24437F]"
+            className="hover:bg-[var(--foreground)]"
             style={{
-              background: "#1B3568",
-              color: "#fff",
+              background: "var(--foreground)",
+              color: "var(--card)",
               border: "none",
               cursor: "pointer",
               fontSize: 12.5,
@@ -195,8 +195,8 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
       {skillFormOpen && (
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #E4E9F1",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: 14,
             padding: 16,
             marginBottom: 14,
@@ -227,10 +227,10 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
           <button
             onClick={addSkill}
             disabled={busy === "skill"}
-            className="hover:bg-[#14969E]"
+            className="hover:bg-[var(--foreground)]"
             style={{
-              background: "#0E7A81",
-              color: "#fff",
+              background: "var(--foreground)",
+              color: "var(--card)",
               border: "none",
               cursor: "pointer",
               fontSize: 12.5,
@@ -248,8 +248,8 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
       {/* Skill chip cloud */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 22,
           display: "flex",
@@ -257,7 +257,7 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
           gap: 9,
         }}
       >
-        {skills.length === 0 && <span style={{ fontSize: 13.5, color: "#93A1B8" }}>—</span>}
+        {skills.length === 0 && <span style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>—</span>}
         {skills.map((sk) => (
           <span
             key={sk.id}
@@ -265,23 +265,23 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "#FBFCFE",
-              border: "1px solid #E4E9F1",
+              background: "var(--background)",
+              border: "1px solid var(--border)",
               borderRadius: 999,
               padding: "6px 7px 6px 14px",
               whiteSpace: "nowrap",
               opacity: busy === sk.id ? 0.5 : 1,
             }}
           >
-            <span dir="ltr" style={{ fontSize: 13, fontWeight: 600, color: "#2C3A54", whiteSpace: "nowrap" }}>
+            <span dir="ltr" style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", whiteSpace: "nowrap" }}>
               {sk.name}
             </span>
             <span
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#7684A0",
-                background: "#F0F3F8",
+                color: "var(--muted-foreground)",
+                background: "var(--muted)",
                 borderRadius: 999,
                 padding: "2px 10px",
                 whiteSpace: "nowrap",
@@ -299,7 +299,7 @@ export function CategoriesScreen({ categories, skills }: { categories: CategoryR
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 700,
-                color: "#93A1B8",
+                color: "var(--muted-foreground)",
                 padding: "0 2px",
                 lineHeight: 1,
               }}

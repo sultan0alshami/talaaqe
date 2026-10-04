@@ -56,9 +56,9 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 async function ownedFixture(language: "ar" | "en" = "ar") {
-  const f = await fixture(),
-    password = `Synthetic deal ${randomUUID()}`,
-    current = new Date();
+  const current = new Date(),
+    f = await fixture(2, "10001", { now: current, target: "e2e" }),
+    password = `Synthetic deal ${randomUUID()}`;
   // Eligibility's isTest=false rows exist only in this guarded disposable E2E
   // database and are unmistakably named synthetic. Domain-only test review is
   // used to seed histories; production routes always use actual registry checks.
@@ -75,7 +75,6 @@ async function ownedFixture(language: "ar" | "en" = "ar") {
   await db.socialAccount.update({
     where: { id: f.target.accountId },
     data: {
-      ownershipReviewedAt: current,
       factsApprovedAt: current,
       intendedConfirmedAt: current,
       consentAt: current,
@@ -123,7 +122,10 @@ async function ownedFixture(language: "ar" | "en" = "ar") {
       },
     },
   });
-  f.options.now = current;
+  // `current` is the observation instant captured before asynchronous setup.
+  // Campaign approval keeps its actual server timestamp; deal commands must
+  // evaluate after that approval and the remaining fixture writes complete.
+  f.options.now = new Date();
   const brand = await db.user.findUniqueOrThrow({
       where: { id: f.brandUserId },
     }),

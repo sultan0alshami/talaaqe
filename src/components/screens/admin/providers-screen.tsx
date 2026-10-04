@@ -49,24 +49,24 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
     status === "APPROVED"
       ? { label: t.verified, bg: "#E9F6EF", fg: "#1F7A4D" }
       : status === "PENDING"
-        ? { label: t.pendingTag, bg: "#FDF9F0", fg: "#8A6D33" }
+        ? { label: t.pendingTag, bg: "var(--muted)", fg: "var(--foreground)" }
         : { label: t.rejectedLbl, bg: "#FBEDEB", fg: "#B0433A" };
 
   return (
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>{t.aProvidersTitle}</h1>
-      <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
         <div
           style={{
             padding: "13px 24px",
             display: "grid",
             gridTemplateColumns: GRID,
             gap: 12,
-            background: "#FAFBFD",
-            borderBottom: "1px solid #EEF1F6",
+            background: "var(--background)",
+            borderBottom: "1px solid var(--border)",
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#7684A0",
+            color: "var(--muted-foreground)",
           }}
         >
           <span>{t.thProvider}</span>
@@ -77,7 +77,7 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
           <span>{t.thVerified}</span>
         </div>
         {providers.length === 0 && (
-          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "#93A1B8" }}>—</div>
+          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
         )}
         {providers.map((p) => {
           const status = p.id in resolved ? resolved[p.id] : p.verifiedStatus;
@@ -85,14 +85,14 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
           return (
             <div
               key={p.id}
-              className="hover:bg-[#FAFBFD]"
+              className="hover:bg-[var(--background)]"
               style={{
                 padding: "13px 24px",
                 display: "grid",
                 gridTemplateColumns: GRID,
                 gap: 12,
                 alignItems: "center",
-                borderBottom: "1px solid #F3F5F9",
+                borderBottom: "1px solid var(--border)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
@@ -102,7 +102,7 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
                     height: 34,
                     borderRadius: 10,
                     background: p.avatarColor,
-                    color: "#fff",
+                    color: "var(--card)",
                     fontSize: 14,
                     fontWeight: 700,
                     display: "flex",
@@ -128,7 +128,7 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
                   <div
                     style={{
                       fontSize: 11.5,
-                      color: "#93A1B8",
+                      color: "var(--muted-foreground)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -138,10 +138,10 @@ export function ProvidersScreen({ providers }: { providers: ProviderRow[] }) {
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: 13, color: "#4A5A76" }}>{pick(p.typeAr, p.typeEn)}</span>
-              <span style={{ fontSize: 13, color: "#4A5A76" }}>{pick(p.cityAr, p.cityEn)}</span>
-              <span style={{ fontSize: 13, color: "#4A5A76" }}>★ {p.rating}</span>
-              <span style={{ fontSize: 13, color: "#4A5A76" }}>{fmtBudget(p.priceMin, p.priceMax)}</span>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{pick(p.typeAr, p.typeEn)}</span>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{pick(p.cityAr, p.cityEn)}</span>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>★ {p.rating}</span>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{fmtBudget(p.priceMin, p.priceMax)}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <span
                   style={{

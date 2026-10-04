@@ -10,15 +10,15 @@ import { fmtBudget } from "@/lib/format";
 import { BRIEF } from "@/lib/talaqi-data";
 
 const card: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: 26,
 };
 const sectionLabel: React.CSSProperties = {
   fontSize: 12.5,
   fontWeight: 700,
-  color: "#93A1B8",
+  color: "var(--muted-foreground)",
   letterSpacing: ".05em",
   marginBottom: 8,
 };
@@ -51,13 +51,13 @@ export function BriefScreen({
     return (
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ ...card, padding: "48px 32px", textAlign: "center" }}>
-          <p style={{ margin: "0 0 18px", fontSize: 14.5, color: "#7684A0" }}>{t.newProjectSub}</p>
+          <p style={{ margin: "0 0 18px", fontSize: 14.5, color: "var(--muted-foreground)" }}>{t.newProjectSub}</p>
           <button
-            onClick={() => router.push("/client/chat")}
+            onClick={() => router.push("/brand/campaigns/new")}
             className="hover:bg-[#E1E9F6]"
             style={{
-              background: "#EEF3FB",
-              color: "#1B3568",
+              background: "var(--muted)",
+              color: "var(--foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 13.5,
@@ -164,7 +164,7 @@ export function BriefScreen({
             style={{
               fontSize: 12.5,
               fontWeight: 700,
-              color: "#14969E",
+              color: "var(--foreground)",
               letterSpacing: ".04em",
               marginBottom: 6,
             }}
@@ -180,7 +180,7 @@ export function BriefScreen({
               style={{
                 fontSize: 22,
                 fontWeight: 700,
-                border: "1.5px solid #14969E",
+                border: "1.5px solid var(--foreground)",
                 borderRadius: 10,
                 padding: "8px 14px",
                 width: 480,
@@ -210,11 +210,11 @@ export function BriefScreen({
           <button
             onClick={() => void toggleEdit()}
             disabled={saving}
-            className="hover:border-[#1B3568]"
+            className="hover:border-[var(--foreground)]"
             style={{
-              background: "#fff",
-              color: "#1B3568",
-              border: "1.5px solid #D5DDE9",
+              background: "var(--card)",
+              color: "var(--foreground)",
+              border: "1.5px solid var(--border)",
               cursor: "pointer",
               fontSize: 13.5,
               fontWeight: 600,
@@ -227,10 +227,10 @@ export function BriefScreen({
           <button
             onClick={() => void approve()}
             disabled={approving}
-            className="hover:bg-[#24437F]"
+            className="hover:bg-[var(--foreground)]"
             style={{
-              background: "#1B3568",
-              color: "#fff",
+              background: "var(--foreground)",
+              color: "var(--card)",
               border: "none",
               cursor: "pointer",
               fontSize: 13.5,
@@ -260,7 +260,7 @@ export function BriefScreen({
           <div style={card}>
             <div style={sectionLabel}>{t.bSummary}</div>
             {!editing ? (
-              <p style={{ margin: "0 0 18px", fontSize: 15, lineHeight: 1.9, color: "#2C3A54" }}>
+              <p style={{ margin: "0 0 18px", fontSize: 15, lineHeight: 1.9, color: "var(--foreground)" }}>
                 {summaryView}
               </p>
             ) : (
@@ -270,7 +270,7 @@ export function BriefScreen({
                 rows={4}
                 style={{
                   width: "100%",
-                  border: "1.5px solid #14969E",
+                  border: "1.5px solid var(--foreground)",
                   borderRadius: 10,
                   padding: "10px 14px",
                   fontSize: 14.5,
@@ -282,7 +282,7 @@ export function BriefScreen({
               />
             )}
             <div style={sectionLabel}>{t.bObjective}</div>
-            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.9, color: "#4A5A76" }}>
+            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.9, color: "var(--muted-foreground)" }}>
               {pick(brief.objectiveAr, brief.objectiveEn)}
             </p>
           </div>
@@ -298,8 +298,8 @@ export function BriefScreen({
                       width: 20,
                       height: 20,
                       borderRadius: 6,
-                      background: "#EEF3FB",
-                      color: "#1B3568",
+                      background: "var(--muted)",
+                      color: "var(--foreground)",
                       fontSize: 11.5,
                       fontWeight: 700,
                       display: "flex",
@@ -311,20 +311,20 @@ export function BriefScreen({
                   >
                     {i + 1}
                   </span>
-                  <span style={{ fontSize: 14.5, color: "#2C3A54" }}>{s}</span>
+                  <span style={{ fontSize: 14.5, color: "var(--foreground)" }}>{s}</span>
                 </div>
               ))}
             </div>
-            <div style={{ height: 1, background: "#EEF1F6", margin: "20px 0" }} />
+            <div style={{ height: 1, background: "var(--border)", margin: "20px 0" }} />
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{t.bDeliverables}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {deliverables.map((d, i) => (
                 <span
                   key={i}
                   style={{
-                    background: "#F2F7F9",
-                    border: "1px solid #DCEBEE",
-                    color: "#0E7A81",
+                    background: "var(--muted)",
+                    border: "1px solid var(--border)",
+                    color: "var(--foreground)",
                     fontSize: 13,
                     fontWeight: 600,
                     padding: "6px 14px",
@@ -349,20 +349,20 @@ export function BriefScreen({
                         width: 11,
                         height: 11,
                         borderRadius: "50%",
-                        background: "#14969E",
+                        background: "var(--foreground)",
                         flexShrink: 0,
                         marginTop: 5,
                       }}
                     />
                     {i < brief.milestones.length - 1 && (
-                      <span style={{ width: 2, flex: 1, background: "#DCEBEE" }} />
+                      <span style={{ width: 2, flex: 1, background: "var(--border)" }} />
                     )}
                   </div>
                   <div style={{ paddingBottom: 18 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0E7A81" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
                       {pick(m.tAr, m.tEn)}
                     </div>
-                    <div style={{ fontSize: 14, color: "#4A5A76" }}>{pick(m.dAr, m.dEn)}</div>
+                    <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{pick(m.dAr, m.dEn)}</div>
                   </div>
                 </div>
               ))}
@@ -375,10 +375,10 @@ export function BriefScreen({
           {/* Dark gradient card */}
           <div
             style={{
-              background: "linear-gradient(150deg, #1B3568, #0F5E64)",
+              background: "linear-gradient(150deg, var(--foreground), #0F5E64)",
               borderRadius: 18,
               padding: 24,
-              color: "#fff",
+              color: "var(--card)",
             }}
           >
             <div style={darkLabel}>{t.bBudget}</div>
@@ -432,7 +432,7 @@ export function BriefScreen({
                 style={{
                   height: "100%",
                   width: `${brief.complexityPct}%`,
-                  background: "#C6A15B",
+                  background: "var(--infame-gold)",
                   borderRadius: 999,
                 }}
               />
@@ -448,8 +448,8 @@ export function BriefScreen({
                   key={i}
                   dir="ltr"
                   style={{
-                    background: "#EEF3FB",
-                    color: "#1B3568",
+                    background: "var(--muted)",
+                    color: "var(--foreground)",
                     fontSize: 12.5,
                     fontWeight: 600,
                     padding: "5px 13px",
@@ -465,7 +465,7 @@ export function BriefScreen({
           {/* Provider type + criteria */}
           <div style={{ ...card, padding: 22 }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{t.bProviderType}</div>
-            <div style={{ fontSize: 14, color: "#4A5A76", marginBottom: 16 }}>
+            <div style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 16 }}>
               {pick(brief.providerTypeAr, brief.providerTypeEn)}
             </div>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>{t.bCriteria}</div>
@@ -478,10 +478,10 @@ export function BriefScreen({
                     gap: 9,
                     alignItems: "flex-start",
                     fontSize: 13.5,
-                    color: "#4A5A76",
+                    color: "var(--muted-foreground)",
                   }}
                 >
-                  <span style={{ color: "#14969E", fontWeight: 700 }}>✓</span>
+                  <span style={{ color: "var(--foreground)", fontWeight: 700 }}>✓</span>
                   {c}
                 </div>
               ))}
@@ -492,18 +492,18 @@ export function BriefScreen({
           {missing.length > 0 && (
             <div
               style={{
-                background: "#FDF9F0",
-                border: "1px solid #EFE2C6",
+                background: "var(--muted)",
+                border: "1px solid var(--border)",
                 borderRadius: 18,
                 padding: 22,
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#8A6D33", marginBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)", marginBottom: 10 }}>
                 {t.bMissing}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {missing.map((q, i) => (
-                  <div key={i} style={{ fontSize: 13.5, color: "#6E5A31" }}>
+                  <div key={i} style={{ fontSize: 13.5, color: "var(--foreground)" }}>
                     ؟ {q}
                   </div>
                 ))}

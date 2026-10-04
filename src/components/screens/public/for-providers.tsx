@@ -9,13 +9,13 @@ export function ForProvidersScreen() {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "76px 24px 96px" }}>
       <div style={{ textAlign: "center", maxWidth: 700, margin: "0 auto 52px" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#14969E", letterSpacing: ".05em", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", letterSpacing: ".05em", marginBottom: 12 }}>
           {t.fpKicker}
         </div>
-        <h1 style={{ fontSize: 40, fontWeight: 700, margin: "0 0 18px", color: "#14213A", lineHeight: 1.4 }}>
+        <h1 style={{ fontSize: 40, fontWeight: 700, margin: "0 0 18px", color: "var(--foreground)", lineHeight: 1.4 }}>
           {t.fpTitle}
         </h1>
-        <p style={{ fontSize: 16.5, color: "#4A5A76", margin: 0, lineHeight: 1.9 }}>{t.fpLead}</p>
+        <p style={{ fontSize: 16.5, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.9 }}>{t.fpLead}</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 48 }}>
@@ -23,8 +23,8 @@ export function ForProvidersScreen() {
           <div
             key={i}
             style={{
-              background: "#fff",
-              border: "1px solid #E4E9F1",
+              background: "var(--card)",
+              border: "1px solid var(--border)",
               borderRadius: 18,
               padding: 28,
               display: "flex",
@@ -37,8 +37,8 @@ export function ForProvidersScreen() {
                 width: 26,
                 height: 26,
                 borderRadius: "50%",
-                background: "#F7F0E3",
-                color: "#8A6D33",
+                background: "var(--muted)",
+                color: "var(--foreground)",
                 fontSize: 13,
                 fontWeight: 700,
                 display: "flex",
@@ -52,7 +52,7 @@ export function ForProvidersScreen() {
             </span>
             <div>
               <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 5 }}>{b.t}</div>
-              <div style={{ fontSize: 14, color: "#7684A0", lineHeight: 1.8 }}>{b.d}</div>
+              <div style={{ fontSize: 14, color: "var(--muted-foreground)", lineHeight: 1.8 }}>{b.d}</div>
             </div>
           </div>
         ))}
@@ -63,10 +63,10 @@ export function ForProvidersScreen() {
           <div
             key={i}
             style={{
-              background: "linear-gradient(160deg, #1B3568, #0F5E64)",
+              background: "linear-gradient(160deg, var(--foreground), #0F5E64)",
               borderRadius: 18,
               padding: "28px 24px",
-              color: "#fff",
+              color: "var(--card)",
             }}
           >
             <div
@@ -75,7 +75,7 @@ export function ForProvidersScreen() {
                 height: 34,
                 borderRadius: 11,
                 background: "rgba(255,255,255,.14)",
-                color: "#7FE3E9",
+                color: "var(--primary)",
                 fontSize: 15,
                 fontWeight: 700,
                 display: "flex",
@@ -95,11 +95,11 @@ export function ForProvidersScreen() {
       <div style={{ textAlign: "center" }}>
         <Link
           href="/signup?role=provider"
-          className="hover:bg-[#14969E]!"
+          className="hover:bg-[var(--foreground)]!"
           style={{
             display: "inline-block",
-            background: "#0E7A81",
-            color: "#fff",
+            background: "var(--foreground)",
+            color: "var(--card)",
             cursor: "pointer",
             fontSize: 16,
             fontWeight: 700,

@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, realpath, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { MAX_EVIDENCE_BYTES } from "./limits";
+export { MAX_EVIDENCE_BYTES } from "./limits";
 
 export class EvidenceError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "EvidenceError"; }
 }
-export const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
 export type EvidenceContentType = "image/png" | "image/jpeg" | "image/webp" | "application/pdf";
 export type EvidenceStorage = {
   kind: "LOCAL" | "SUPABASE";

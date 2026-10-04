@@ -10,13 +10,13 @@ export function ForClientsScreen() {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "76px 24px 96px" }}>
       <div style={{ textAlign: "center", maxWidth: 700, margin: "0 auto 52px" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#14969E", letterSpacing: ".05em", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", letterSpacing: ".05em", marginBottom: 12 }}>
           {t.fcKicker}
         </div>
-        <h1 style={{ fontSize: 40, fontWeight: 700, margin: "0 0 18px", color: "#14213A", lineHeight: 1.4 }}>
+        <h1 style={{ fontSize: 40, fontWeight: 700, margin: "0 0 18px", color: "var(--foreground)", lineHeight: 1.4 }}>
           {t.fcTitle}
         </h1>
-        <p style={{ fontSize: 16.5, color: "#4A5A76", margin: 0, lineHeight: 1.9 }}>{t.fcLead}</p>
+        <p style={{ fontSize: 16.5, color: "var(--muted-foreground)", margin: 0, lineHeight: 1.9 }}>{t.fcLead}</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 48 }}>
@@ -24,8 +24,8 @@ export function ForClientsScreen() {
           <div
             key={i}
             style={{
-              background: "#fff",
-              border: "1px solid #E4E9F1",
+              background: "var(--card)",
+              border: "1px solid var(--border)",
               borderRadius: 18,
               padding: 28,
               display: "flex",
@@ -38,8 +38,8 @@ export function ForClientsScreen() {
                 width: 26,
                 height: 26,
                 borderRadius: "50%",
-                background: "#E8F5F6",
-                color: "#0E7A81",
+                background: "var(--muted)",
+                color: "var(--foreground)",
                 fontSize: 13,
                 fontWeight: 700,
                 display: "flex",
@@ -53,7 +53,7 @@ export function ForClientsScreen() {
             </span>
             <div>
               <div style={{ fontSize: 16.5, fontWeight: 700, marginBottom: 5 }}>{b.t}</div>
-              <div style={{ fontSize: 14, color: "#7684A0", lineHeight: 1.8 }}>{b.d}</div>
+              <div style={{ fontSize: 14, color: "var(--muted-foreground)", lineHeight: 1.8 }}>{b.d}</div>
             </div>
           </div>
         ))}
@@ -61,7 +61,7 @@ export function ForClientsScreen() {
 
       <div
         style={{
-          background: "#14213A",
+          background: "var(--foreground)",
           borderRadius: 18,
           padding: "22px 32px",
           display: "flex",
@@ -81,7 +81,7 @@ export function ForClientsScreen() {
                   height: 30,
                   borderRadius: "50%",
                   background: "rgba(20,150,158,.25)",
-                  color: "#7FE3E9",
+                  color: "var(--primary)",
                   fontSize: 13.5,
                   fontWeight: 700,
                   display: "flex",
@@ -91,7 +91,7 @@ export function ForClientsScreen() {
               >
                 {i + 1}
               </span>
-              <span style={{ color: "#fff", fontSize: 14.5, fontWeight: 600 }}>{label}</span>
+              <span style={{ color: "var(--card)", fontSize: 14.5, fontWeight: 600 }}>{label}</span>
             </div>
             {i < pipeSteps.length - 1 && <span style={{ color: "#3D5378", fontSize: 16 }}>{arrowChar}</span>}
           </div>
@@ -101,11 +101,11 @@ export function ForClientsScreen() {
       <div style={{ textAlign: "center" }}>
         <Link
           href="/signup?role=client"
-          className="hover:bg-[#24437F]!"
+          className="hover:bg-[var(--foreground)]!"
           style={{
             display: "inline-block",
-            background: "#1B3568",
-            color: "#fff",
+            background: "var(--foreground)",
+            color: "var(--card)",
             cursor: "pointer",
             fontSize: 16,
             fontWeight: 700,

@@ -5,18 +5,18 @@ import { useI18n } from "@/lib/i18n";
 import { fmtNum } from "@/lib/format";
 import { ANALYTICS } from "@/lib/talaqi-data";
 
-const DIST_COLORS = ["#14969E", "#1B3568", "#C6A15B", "#93A1B8"];
+const DIST_COLORS = ["var(--foreground)", "var(--foreground)", "var(--infame-gold)", "var(--muted-foreground)"];
 
 const whiteCard16: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 16,
   padding: 22,
 };
 
 const whiteCard18: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: 24,
 };
@@ -48,29 +48,29 @@ export function AnalyticsScreen({
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.anTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.anSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.anSub}</p>
       </div>
 
       {/* KPI row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 18 }}>
         <div
           style={{
-            background: "linear-gradient(150deg, #1B3568, #0F5E64)",
+            background: "linear-gradient(150deg, var(--foreground), #0F5E64)",
             borderRadius: 16,
             padding: 22,
-            color: "#fff",
+            color: "var(--card)",
           }}
         >
           <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 6 }}>{t.anAvgScore}</div>
           <div style={{ fontSize: 30, fontWeight: 700 }}>{avg}%</div>
         </div>
         <div style={whiteCard16}>
-          <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{t.anAccept}</div>
-          <div style={{ fontSize: 30, fontWeight: 700, color: "#0E7A81" }}>{accept}%</div>
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{t.anAccept}</div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--foreground)" }}>{accept}%</div>
         </div>
         <div style={whiteCard16}>
-          <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{t.anTime}</div>
-          <div style={{ fontSize: 30, fontWeight: 700, color: "#1B3568" }}>{pick(timeAr, timeEn)}</div>
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{t.anTime}</div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--foreground)" }}>{pick(timeAr, timeEn)}</div>
         </div>
       </div>
 
@@ -82,10 +82,10 @@ export function AnalyticsScreen({
             {dist.map((d, i) => (
               <div key={d.rEn}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
-                  <span style={{ fontWeight: 600, color: "#2C3A54" }}>{pick(d.rAr, d.rEn)}</span>
-                  <span style={{ color: "#93A1B8" }}>{fmtNum(d.v)}%</span>
+                  <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{pick(d.rAr, d.rEn)}</span>
+                  <span style={{ color: "var(--muted-foreground)" }}>{fmtNum(d.v)}%</span>
                 </div>
-                <div style={{ height: 9, background: "#F0F3F8", borderRadius: 999, overflow: "hidden" }}>
+                <div style={{ height: 9, background: "var(--muted)", borderRadius: 999, overflow: "hidden" }}>
                   <div
                     style={{
                       height: "100%",
@@ -107,17 +107,17 @@ export function AnalyticsScreen({
                 key={i}
                 style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}
               >
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1B3568" }}>{fmtNum(v)}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--foreground)" }}>{fmtNum(v)}</span>
                 <div
                   style={{
                     width: "100%",
                     maxWidth: 34,
                     height: Math.max(12, Math.round((v / wMax) * 120)),
-                    background: v === wMax ? "#1B3568" : "#8ED4D9",
+                    background: v === wMax ? "var(--foreground)" : "#8ED4D9",
                     borderRadius: "8px 8px 3px 3px",
                   }}
                 />
-                <span style={{ fontSize: 11, color: "#93A1B8" }}>{days[i]}</span>
+                <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{days[i]}</span>
               </div>
             ))}
           </div>
@@ -128,18 +128,18 @@ export function AnalyticsScreen({
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{t.anRevT}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
         <div style={whiteCard16}>
-          <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{t.revMrr}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: "#1B3568" }}>
-            {rev.mrr} <span style={{ fontSize: 13, fontWeight: 500, color: "#93A1B8" }}>{t.perProject}</span>
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{t.revMrr}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: "var(--foreground)" }}>
+            {rev.mrr} <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted-foreground)" }}>{t.perProject}</span>
           </div>
         </div>
         <div style={whiteCard16}>
-          <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{t.revSubs}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: "#1B3568" }}>{rev.subs}</div>
+          <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{t.revSubs}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: "var(--foreground)" }}>{rev.subs}</div>
         </div>
-        <div style={{ background: "#F7F0E3", border: "1px solid #EFE2C6", borderRadius: 16, padding: 22 }}>
-          <div style={{ fontSize: 13, color: "#8A6D33", marginBottom: 6 }}>{t.revGrowth}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: "#8A6D33" }}>{rev.growth}</div>
+        <div style={{ background: "var(--muted)", border: "1px solid var(--border)", borderRadius: 16, padding: 22 }}>
+          <div style={{ fontSize: 13, color: "var(--foreground)", marginBottom: 6 }}>{t.revGrowth}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: "var(--foreground)" }}>{rev.growth}</div>
         </div>
       </div>
     </div>

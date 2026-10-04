@@ -15,9 +15,9 @@ const LIVE_FALLBACK = {
 };
 
 const chipStyle: React.CSSProperties = {
-  background: "#fff",
-  border: "1.5px solid #C6E7E9",
-  color: "#0E7A81",
+  background: "var(--card)",
+  border: "1.5px solid var(--border)",
+  color: "var(--foreground)",
   cursor: "pointer",
   fontSize: 13.5,
   fontWeight: 600,
@@ -30,8 +30,8 @@ function TypingDots() {
     <div style={{ display: "flex" }}>
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 16,
           padding: "14px 20px",
           display: "flex",
@@ -45,7 +45,7 @@ function TypingDots() {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              background: "#14969E",
+              background: "var(--foreground)",
               animation: `tq-blink 1.2s ${delay}s infinite`,
             }}
           />
@@ -69,9 +69,9 @@ function Bubble({ msg, text }: { msg: ChatMessage; text: string }) {
       <div
         style={{
           maxWidth: "78%",
-          background: ai ? "#fff" : "#1B3568",
-          color: ai ? "#2C3A54" : "#fff",
-          border: ai ? "1px solid #E4E9F1" : "none",
+          background: ai ? "var(--card)" : "var(--foreground)",
+          color: ai ? "var(--foreground)" : "var(--card)",
+          border: ai ? "1px solid var(--border)" : "none",
           // Physical corner radii preserved as-is (prototype §2.2.2 / shells §5.13).
           borderRadius: ai ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
           padding: "13px 18px",
@@ -252,8 +252,8 @@ export function ChatScreen({
       {/* Header card */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: "18px 18px 0 0",
           padding: "16px 22px",
           display: "flex",
@@ -266,11 +266,11 @@ export function ChatScreen({
             width: 42,
             height: 42,
             borderRadius: 13,
-            background: "linear-gradient(135deg, #1B3568, #14969E)",
+            background: "linear-gradient(135deg, var(--foreground), var(--foreground))",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fff",
+            color: "var(--card)",
             fontWeight: 700,
             fontSize: 17,
           }}
@@ -282,7 +282,7 @@ export function ChatScreen({
           <div
             style={{
               fontSize: 12.5,
-              color: "#7684A0",
+              color: "var(--muted-foreground)",
               display: "flex",
               alignItems: "center",
               gap: 6,
@@ -300,12 +300,12 @@ export function ChatScreen({
             {t.chatSub} — {t.chatOnline}
           </div>
         </div>
-        <div style={{ display: "flex", background: "#F0F3F8", borderRadius: 999, padding: 3, gap: 2 }}>
+        <div style={{ display: "flex", background: "var(--muted)", borderRadius: 999, padding: 3, gap: 2 }}>
           <button
             onClick={() => setLiveMode(false)}
             style={{
-              background: !liveMode ? "#fff" : "transparent",
-              color: !liveMode ? "#1B3568" : "#7684A0",
+              background: !liveMode ? "var(--card)" : "transparent",
+              color: !liveMode ? "var(--foreground)" : "var(--muted-foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 12,
@@ -319,8 +319,8 @@ export function ChatScreen({
           <button
             onClick={setLive}
             style={{
-              background: liveMode ? "#fff" : "transparent",
-              color: liveMode ? "#0E7A81" : "#7684A0",
+              background: liveMode ? "var(--card)" : "transparent",
+              color: liveMode ? "var(--foreground)" : "var(--muted-foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 12,
@@ -339,8 +339,8 @@ export function ChatScreen({
         ref={boxRef}
         style={{
           flex: 1,
-          background: "#FBFCFE",
-          borderInline: "1px solid #E4E9F1",
+          background: "var(--background)",
+          borderInline: "1px solid var(--border)",
           padding: "24px 22px",
           overflowY: "auto",
           overflowX: "hidden",
@@ -353,8 +353,8 @@ export function ChatScreen({
           <div
             style={{
               alignSelf: "center",
-              background: "#E8F5F6",
-              color: "#0E7A81",
+              background: "var(--muted)",
+              color: "var(--foreground)",
               fontSize: 12,
               fontWeight: 600,
               padding: "5px 16px",
@@ -383,7 +383,7 @@ export function ChatScreen({
               <button
                 key={s}
                 onClick={() => void send(s)}
-                className="hover:bg-[#E8F5F6] hover:border-[#14969E]"
+                className="hover:bg-[var(--muted)] hover:border-[var(--foreground)]"
                 style={{ ...chipStyle, alignSelf: "flex-start" }}
               >
                 {s}
@@ -403,7 +403,7 @@ export function ChatScreen({
               gap: 8,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#93A1B8", letterSpacing: ".02em" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: ".02em" }}>
               {t.pickAnswer}
             </div>
             {quickChips.map((c, i) => {
@@ -412,19 +412,19 @@ export function ChatScreen({
                 <button
                   key={i}
                   onClick={() => void send(label)}
-                  className="hover:border-[#14969E]! hover:bg-[#F2FBFB]"
+                  className="hover:border-[var(--foreground)]! hover:bg-[var(--muted)]"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                     textAlign: "start",
-                    background: "#fff",
+                    background: "var(--card)",
                     border: "1.5px solid #D6E6E8",
                     borderRadius: 12,
                     padding: "12px 15px",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#1B3568",
+                    color: "var(--foreground)",
                     cursor: "pointer",
                     boxShadow: "0 1px 3px rgba(20,40,80,.04)",
                   }}
@@ -434,7 +434,7 @@ export function ChatScreen({
                       width: 18,
                       height: 18,
                       borderRadius: "50%",
-                      border: "2px solid #14969E",
+                      border: "2px solid var(--foreground)",
                       flexShrink: 0,
                       display: "inline-block",
                     }}
@@ -453,8 +453,8 @@ export function ChatScreen({
               disabled={generating}
               className="hover:-translate-y-px"
               style={{
-                background: "linear-gradient(120deg, #1B3568, #14969E)",
-                color: "#fff",
+                background: "linear-gradient(120deg, var(--foreground), var(--foreground))",
+                color: "var(--card)",
                 border: "none",
                 cursor: "pointer",
                 fontSize: 15,
@@ -473,8 +473,8 @@ export function ChatScreen({
       {/* Composer */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderTop: "none",
           borderRadius: "0 0 18px 18px",
           padding: "14px 16px",
@@ -489,24 +489,24 @@ export function ChatScreen({
             if (e.key === "Enter") sendDraft();
           }}
           placeholder={t.chatPlaceholder}
-          className="focus:border-[#14969E]!"
+          className="focus:border-[var(--foreground)]!"
           style={{
             flex: 1,
-            border: "1.5px solid #E4E9F1",
+            border: "1.5px solid var(--border)",
             borderRadius: 11,
             padding: "12px 16px",
             fontSize: 14.5,
             outline: "none",
-            background: "#FBFCFE",
+            background: "var(--background)",
           }}
         />
         <button
           onClick={sendDraft}
           disabled={typing}
-          className="hover:bg-[#24437F]"
+          className="hover:bg-[var(--foreground)]"
           style={{
-            background: "#1B3568",
-            color: "#fff",
+            background: "var(--foreground)",
+            color: "var(--card)",
             border: "none",
             cursor: "pointer",
             fontSize: 14,

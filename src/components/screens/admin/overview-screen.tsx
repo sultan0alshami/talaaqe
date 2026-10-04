@@ -18,13 +18,13 @@ type PendingProvider = {
 };
 
 const card: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: 24,
 };
 
-const BAR_COLORS = ["#14969E", "#1B3568", "#C6A15B", "#14969E", "#1B3568", "#C6A15B"];
+const BAR_COLORS = ["var(--foreground)", "var(--foreground)", "var(--infame-gold)", "var(--foreground)", "var(--foreground)", "var(--infame-gold)"];
 
 export function OverviewScreen({
   users,
@@ -74,10 +74,10 @@ export function OverviewScreen({
     { label: t.aProjects, v: fmtNum(projects) },
   ];
   const stats2 = [
-    { label: t.aWeekly, v: fmtNum(weekly), bg: "#fff", bd: "#E4E9F1", lc: "#7684A0", vc: "#1B3568" },
-    { label: t.aBriefs, v: fmtNum(briefs), bg: "#E8F5F6", bd: "#C6E7E9", lc: "#0E7A81", vc: "#0E7A81" },
-    { label: t.aPending, v: fmtNum(pending), bg: "#FDF9F0", bd: "#EFE2C6", lc: "#8A6D33", vc: "#8A6D33" },
-    { label: t.aMatchRate, v: `${matchRate}%`, bg: "#EEF3FB", bd: "#D5DDE9", lc: "#1B3568", vc: "#1B3568" },
+    { label: t.aWeekly, v: fmtNum(weekly), bg: "var(--card)", bd: "var(--border)", lc: "var(--muted-foreground)", vc: "var(--foreground)" },
+    { label: t.aBriefs, v: fmtNum(briefs), bg: "var(--muted)", bd: "var(--border)", lc: "var(--foreground)", vc: "var(--foreground)" },
+    { label: t.aPending, v: fmtNum(pending), bg: "var(--muted)", bd: "var(--border)", lc: "var(--foreground)", vc: "var(--foreground)" },
+    { label: t.aMatchRate, v: `${matchRate}%`, bg: "var(--muted)", bd: "var(--border)", lc: "var(--foreground)", vc: "var(--foreground)" },
   ];
   const maxCat = Math.max(...topCats.map((c) => c.v), 1);
   // "Last updated" — clock read only after mount so SSR and hydration render
@@ -93,14 +93,14 @@ export function OverviewScreen({
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.adminTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 13.5 }}>{lastUpdated}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 13.5 }}>{lastUpdated}</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
         {stats1.map((s) => (
-          <div key={s.label} style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontSize: 27, fontWeight: 700, color: "#1B3568" }}>{s.v}</div>
+          <div key={s.label} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontSize: 27, fontWeight: 700, color: "var(--foreground)" }}>{s.v}</div>
             <div style={{ fontSize: 11.5, color: "#2FA36B", marginTop: 3 }}>{t.monthGrowth}</div>
           </div>
         ))}
@@ -126,10 +126,10 @@ export function OverviewScreen({
             {topCats.map((c, i) => (
               <div key={c.en}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
-                  <span style={{ fontWeight: 600, color: "#2C3A54" }}>{pick(c.ar, c.en)}</span>
-                  <span style={{ color: "#93A1B8" }}>{fmtNum(c.v)}</span>
+                  <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{pick(c.ar, c.en)}</span>
+                  <span style={{ color: "var(--muted-foreground)" }}>{fmtNum(c.v)}</span>
                 </div>
-                <div style={{ height: 9, background: "#F0F3F8", borderRadius: 999, overflow: "hidden" }}>
+                <div style={{ height: 9, background: "var(--muted)", borderRadius: 999, overflow: "hidden" }}>
                   <div
                     style={{
                       height: "100%",
@@ -148,7 +148,7 @@ export function OverviewScreen({
         <div style={card}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{t.aPendingTitle}</div>
           {pendingProviders.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: "#93A1B8" }}>—</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {pendingProviders.map((pd) => {
@@ -157,7 +157,7 @@ export function OverviewScreen({
                   <div
                     key={pd.id}
                     style={{
-                      border: "1px solid #EEF1F6",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
                       padding: "13px 16px",
                       display: "flex",
@@ -167,7 +167,7 @@ export function OverviewScreen({
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{pick(pd.nameAr, pd.nameEn)}</div>
-                      <div style={{ fontSize: 12, color: "#93A1B8" }}>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                         {pick(pd.roleAr, pd.roleEn)} · {pick(pd.cityAr, pd.cityEn)} · {fmtDate(pd.date)}
                       </div>
                     </div>

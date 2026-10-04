@@ -13,18 +13,18 @@ type SignupRole = "client" | "provider";
 const labelStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
-  color: "#4A5A76",
+  color: "var(--muted-foreground)",
   marginBottom: 6,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  border: "1.5px solid #E4E9F1",
+  border: "1.5px solid var(--border)",
   borderRadius: 10,
   padding: "11px 14px",
   fontSize: 14,
   outline: "none",
-  background: "#FBFCFE",
+  background: "var(--background)",
 };
 
 export function SignupScreen({ initialRole }: { initialRole?: string }) {
@@ -98,8 +98,8 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
     const selected = role === target;
     return {
       textAlign: "start",
-      background: selected ? (target === "client" ? "#EEF3FB" : "#E8F5F6") : "#fff",
-      border: `2px solid ${selected ? (target === "client" ? "#1B3568" : "#0E7A81") : "#E4E9F1"}`,
+      background: selected ? (target === "client" ? "var(--muted)" : "var(--muted)") : "var(--card)",
+      border: `2px solid ${selected ? (target === "client" ? "var(--foreground)" : "var(--foreground)") : "var(--border)"}`,
       borderRadius: 14,
       padding: 16,
       cursor: "pointer",
@@ -118,8 +118,8 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
     >
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 22,
           padding: 40,
           width: 560,
@@ -129,24 +129,24 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
       >
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{t.signupTitle}</div>
-          <div style={{ fontSize: 14, color: "#7684A0" }}>{t.signupSub}</div>
+          <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{t.signupSub}</div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 22 }}>
           <button onClick={() => setRole("client")} style={roleCard("client")}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#1B3568", marginBottom: 3 }}>{t.suClientT}</div>
-            <div style={{ fontSize: 12.5, color: "#7684A0" }}>{t.suClientD}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 3 }}>{t.suClientT}</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{t.suClientD}</div>
           </button>
           <button onClick={() => setRole("provider")} style={roleCard("provider")}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#0E7A81", marginBottom: 3 }}>{t.suProviderT}</div>
-            <div style={{ fontSize: 12.5, color: "#7684A0" }}>{t.suProviderD}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 3 }}>{t.suProviderT}</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{t.suProviderD}</div>
           </button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
           <div>
             <div style={labelStyle}>{t.sfName}</div>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="focus:border-[#14969E]!" style={inputStyle} />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="focus:border-[var(--foreground)]!" style={inputStyle} />
           </div>
           <div>
             <div style={labelStyle}>{t.sfPhone}</div>
@@ -155,13 +155,13 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
               placeholder="+966 5X XXX XXXX"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="focus:border-[#14969E]!"
+              className="focus:border-[var(--foreground)]!"
               style={inputStyle}
             />
           </div>
           <div>
             <div style={labelStyle}>{t.sfEmail}</div>
-            <input dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="focus:border-[#14969E]!" style={inputStyle} />
+            <input dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="focus:border-[var(--foreground)]!" style={inputStyle} />
           </div>
           <div>
             <div style={labelStyle}>{t.sfPassword}</div>
@@ -170,18 +170,18 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
               dir="ltr"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="focus:border-[#14969E]!"
+              className="focus:border-[var(--foreground)]!"
               style={inputStyle}
             />
           </div>
           <div>
             <div style={labelStyle}>{t.sfCompany}</div>
-            <input value={company} onChange={(e) => setCompany(e.target.value)} className="focus:border-[#14969E]!" style={inputStyle} />
+            <input value={company} onChange={(e) => setCompany(e.target.value)} className="focus:border-[var(--foreground)]!" style={inputStyle} />
           </div>
           {isClient ? (
             <div>
               <div style={labelStyle}>{t.sfCity}</div>
-              <input value={city} onChange={(e) => setCity(e.target.value)} className="focus:border-[#14969E]!" style={inputStyle} />
+              <input value={city} onChange={(e) => setCity(e.target.value)} className="focus:border-[var(--foreground)]!" style={inputStyle} />
             </div>
           ) : (
             <div>
@@ -189,8 +189,8 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="focus:border-[#14969E]!"
-                style={{ ...inputStyle, padding: "11px 10px", color: "#2C3A54" }}
+                className="focus:border-[var(--foreground)]!"
+                style={{ ...inputStyle, padding: "11px 10px", color: "var(--foreground)" }}
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -220,8 +220,8 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
           className="hover:opacity-[.93]"
           style={{
             width: "100%",
-            background: isClient ? "#1B3568" : "#0E7A81",
-            color: "#fff",
+            background: isClient ? "var(--foreground)" : "var(--foreground)",
+            color: "var(--card)",
             border: "none",
             cursor: busy ? "default" : "pointer",
             fontSize: 15,
@@ -234,10 +234,10 @@ export function SignupScreen({ initialRole }: { initialRole?: string }) {
         >
           {busy ? "…" : t.signupBtn}
         </button>
-        <div style={{ fontSize: 11.5, color: "#93A1B8", textAlign: "center", marginBottom: 14 }}>{t.termsNote}</div>
-        <div style={{ textAlign: "center", fontSize: 13, color: "#7684A0" }}>
+        <div style={{ fontSize: 11.5, color: "var(--muted-foreground)", textAlign: "center", marginBottom: 14 }}>{t.termsNote}</div>
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
           {t.haveAccount}{" "}
-          <span onClick={() => router.push("/login")} style={{ color: "#14969E", fontWeight: 700, cursor: "pointer" }}>
+          <span onClick={() => router.push("/login")} style={{ color: "var(--foreground)", fontWeight: 700, cursor: "pointer" }}>
             {t.signInLink}
           </span>
         </div>

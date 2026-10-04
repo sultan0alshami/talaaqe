@@ -70,13 +70,13 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.requestsTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.requestsSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.requestsSub}</p>
       </div>
 
       {/* Request cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {rows.length === 0 && (
-          <div style={{ fontSize: 13.5, color: "#7684A0" }}>
+          <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>
             {isAr ? "ما عندك طلبات عروض واردة الحين" : "No incoming proposal requests right now"}
           </div>
         )}
@@ -84,8 +84,8 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
           <div
             key={rq.matchId}
             style={{
-              background: "#fff",
-              border: "1px solid #E4E9F1",
+              background: "var(--card)",
+              border: "1px solid var(--border)",
               borderRadius: 18,
               padding: "22px 24px",
               display: "grid",
@@ -100,8 +100,8 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                 <span style={{ fontSize: 16, fontWeight: 700 }}>{pick(rq.projectTitleAr, rq.projectTitleEn)}</span>
                 <span
                   style={{
-                    background: "#E8F5F6",
-                    color: "#0E7A81",
+                    background: "var(--muted)",
+                    color: "var(--foreground)",
                     fontSize: 11.5,
                     fontWeight: 700,
                     padding: "2px 11px",
@@ -112,7 +112,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                   {t.reqReceived} {fmtAgo(rq.createdAt, lang)}
                 </span>
               </div>
-              <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 10 }}>
                 {t.clientLabel}: {pick(rq.clientAr, rq.clientEn)} · {t.budgetLabel}:{" "}
                 {fmtBudget(rq.budgetMin, rq.budgetMax)} {t.perProject} · {t.timelineLabel}:{" "}
                 {pick(rq.timelineAr, rq.timelineEn) || "—"}
@@ -121,8 +121,8 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                 <div
                   style={{
                     fontSize: 13,
-                    color: "#6E5A31",
-                    background: "#FDF9F0",
+                    color: "var(--foreground)",
+                    background: "var(--muted)",
                     borderRadius: 8,
                     padding: "8px 13px",
                     display: "inline-block",
@@ -139,10 +139,10 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                   <button
                     onClick={() => send(rq.matchId)}
                     disabled={!!busy[rq.matchId]}
-                    className="hover:bg-[#24437F]!"
+                    className="hover:bg-[var(--foreground)]!"
                     style={{
-                      background: "#1B3568",
-                      color: "#fff",
+                      background: "var(--foreground)",
+                      color: "var(--card)",
                       border: "none",
                       cursor: busy[rq.matchId] ? "default" : "pointer",
                       fontSize: 13.5,
@@ -159,9 +159,9 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                     disabled={!!busy[rq.matchId]}
                     className="hover:border-[#B0433A]! hover:text-[#B0433A]!"
                     style={{
-                      background: "#fff",
-                      color: "#7684A0",
-                      border: "1.5px solid #E4E9F1",
+                      background: "var(--card)",
+                      color: "var(--muted-foreground)",
+                      border: "1.5px solid var(--border)",
                       cursor: busy[rq.matchId] ? "default" : "pointer",
                       fontSize: 13.5,
                       fontWeight: 600,
@@ -178,7 +178,7 @@ export function ProviderRequestsScreen({ requests }: { requests: OpportunityDTO[
                 <div style={{ ...resolvedBlock, background: "#E9F6EF", color: "#1F7A4D" }}>{t.reqSentLbl}</div>
               )}
               {rq.status === "DECLINED" && (
-                <div style={{ ...resolvedBlock, background: "#F0F3F8", color: "#93A1B8" }}>{t.declined}</div>
+                <div style={{ ...resolvedBlock, background: "var(--muted)", color: "var(--muted-foreground)" }}>{t.declined}</div>
               )}
             </div>
           </div>

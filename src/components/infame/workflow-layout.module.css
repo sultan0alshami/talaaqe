@@ -1,0 +1,18 @@
+/* Shared Talaqee panel/field geometry for additional Infame workflows. */
+.page { width: 100%; max-width: 1000px; margin-inline: auto; }
+.page h1 { font-size: 24px; font-weight: 700; }
+.page [data-slot="card"] {
+  --card-spacing: 24px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding-block: 22px;
+  box-shadow: none;
+}
+.page [data-slot="card-title"] { font-size: 16px; font-weight: 700; }
+.page [data-slot="button"] { border-radius: 10px; font-size: 13.5px; }
+.page input:not([type="checkbox"]):not([type="radio"]),
+.page textarea, .page select { border-radius: 10px; }
+
+@media (max-width: 600px) {
+  .page [data-slot="card"] { --card-spacing: 18px; }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import styles from "./workflow-layout.module.css";
 import { useRef, useState } from "react";
 import { Bookmark, Check, Loader2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,7 @@ export function MatchesScreen({ initialCampaign, initialRun, accessUnavailable =
   }
   const visible = run?.results.filter((row) => filter === "SAVED" ? row.decision?.decision === "SAVED" : filter === "DISMISSED" ? row.decision?.decision === "DISMISSED" : row.decision?.decision !== "DISMISSED") ?? [];
   const statusCopy = !approved ? copy("اعتمد أحدث موجز للحملة قبل المطابقة.", "Approve the latest campaign brief before matching.") : !campaign.policyReviewed ? errorCopy("POLICY_REVIEW_REQUIRED") : unavailable ? errorCopy("FORBIDDEN") : readinessError ? errorCopy(readinessError) : run?.readiness !== undefined && run.readiness !== "READY" ? errorCopy(run.readiness) : null;
-  return <section className="mx-auto max-w-5xl space-y-6" aria-busy={busy}>
+  return <section className={`${styles.page} space-y-[22px]`} aria-busy={busy}>
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 space-y-3"><Button asChild variant="ghost" className="max-w-full"><Link href={campaignPath}>{copy("ارجع للموجز", "Back to brief")}</Link></Button><h1 className="text-3xl font-semibold">{copy("صنّاع المحتوى المناسبون", "Creator matches")}</h1><p dir="auto" className="break-words text-lg">{campaign.title}</p><p className="max-w-2xl text-base leading-7 text-muted-foreground">{copy("مطابقة محسوبة من متطلبات الحملة والبيانات المسموح بمشاركتها. تظهر فقط النتائج بدرجة ٦٠ أو أكثر، وبحد أقصى ١٢ نتيجة.", "Matching uses campaign requirements and permitted data. Only scores of 60 or above appear, with at most 12 results.")}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void reload()} disabled={busy}><RefreshCw aria-hidden="true" />{copy("حمّل الحالة الحالية", "Load current state")}</Button><Button onClick={start} disabled={busy || !canRun || !!pending}>{busy ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <Check aria-hidden="true" />}{run ? copy("مطابقة جديدة", "Run again") : copy("ابدأ المطابقة", "Run matching")}</Button></div></div>
     <div aria-live="polite" className="space-y-3">{busy && <p className="flex items-center gap-2 text-base"><Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />{copy("جارٍ تنفيذ الطلب…", "Processing your request…")}</p>}{notice && <p className="text-base">{notice === "DECISION_SAVED" ? copy("تم حفظ قرارك.", "Your decision was saved.") : notice === "RELOADED" ? copy("تم تحميل الحالة الحالية.", "The current state was loaded.") : copy("تمت المطابقة وحُفظت النتيجة.", "Matching completed and the result was saved.")}</p>}</div>
     {error && <Card role="alert" className="border-destructive"><CardContent className="space-y-3 text-base"><p>{errorCopy(error)}</p>{pending && <Button variant="outline" disabled={busy} onClick={() => void send(pending)}>{copy("أعد نفس الطلب", "Retry the same request")}</Button>}{error === "UNAUTHENTICATED" && <Button asChild variant="outline"><Link href="/login">{copy("سجّل دخولك", "Sign in")}</Link></Button>}</CardContent></Card>}

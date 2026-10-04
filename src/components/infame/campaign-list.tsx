@@ -5,25 +5,11 @@ import { useRef, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { DashboardCampaignRows } from "./dashboard-parts";
 import type { listCampaigns } from "@/lib/campaigns/service";
 
 type CampaignListDTO = Awaited<ReturnType<typeof listCampaigns>>;
-const statuses: Record<string, [string, string]> = {
-  DRAFT: ["مسودة", "Draft"],
-  BRIEF_GENERATED: ["موجز للمراجعة", "Brief ready for review"],
-  BRIEF_APPROVED: ["موجز معتمد", "Brief approved"],
-  SHORTLISTED: ["تم إعداد القائمة", "Shortlisted"],
-  IN_DEALS: ["صفقات جارية", "Deals in progress"],
-  COMPLETED: ["مكتملة", "Completed"],
-  CANCELLED: ["ملغاة", "Cancelled"],
-};
 export function CampaignList({
   initialList,
   profileRequired = false,
@@ -67,16 +53,13 @@ export function CampaignList({
     }
   }
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {copy("مساحة العلامة التجارية", "Brand workspace")}
-          </p>
-          <h1 className="text-3xl font-semibold">
+    <section className="mx-auto max-w-[1000px]">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="mb-1 text-2xl font-bold">
             {copy("حملاتك", "Your campaigns")}
           </h1>
-          <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="max-w-2xl text-[14.5px] text-muted-foreground">
             {copy(
               "ارجع لمسودتك، راجع الموجز واعتمد النسخة اللي تمثل حملتك.",
               "Resume your draft, review the brief and approve the version that represents your campaign.",
@@ -84,7 +67,7 @@ export function CampaignList({
           </p>
         </div>
         {!profileRequired && (
-          <Button asChild size="lg">
+          <Button asChild className="h-auto min-h-11 rounded-[10px] px-[18px] py-[11px] text-[13.5px] font-bold">
             <Link href="/brand/campaigns/new">
               <Plus aria-hidden="true" />
               {copy("حملة جديدة", "New campaign")}
@@ -93,96 +76,49 @@ export function CampaignList({
         )}
       </div>
       {profileRequired ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        <Card className="gap-3 rounded-[18px] border border-border px-6 py-[22px] ring-0">
+            <h2 className="text-base font-bold">
               {copy("عرّف بشركتك أولًا", "Introduce your company first")}
-            </CardTitle>
-            <CardDescription className="text-base">
+            </h2>
+            <p className="text-[13.5px] text-muted-foreground">
               {copy(
                 "احفظ ملف شركتك الخاص، وبعدها تقدر تبدأ حملة. ما يلزم نشر الملف لإنشاء مسودة.",
                 "Save your private company profile, then start a campaign. Public profile publication is not required for a draft.",
               )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild size="lg">
+            </p>
+          <div>
+            <Button asChild className="h-auto min-h-11 rounded-[10px] px-[18px] py-2.5 text-[13px] font-bold">
               <Link href="/brand/onboarding">
                 {copy("أكمل ملف الشركة", "Complete company profile")}
               </Link>
             </Button>
-          </CardContent>
+          </div>
         </Card>
       ) : !list?.campaigns.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        <Card className="gap-3 rounded-[18px] border border-border px-6 py-[22px] ring-0">
+            <h2 className="text-base font-bold">
               {copy("فكرتك تبدأ هنا", "Your idea starts here")}
-            </CardTitle>
-            <CardDescription className="text-base">
+            </h2>
+            <p className="text-[13.5px] text-muted-foreground">
               {copy(
                 "ما عندك حملات محفوظة بعد. ابدأ بالمعلومات المتاحة وكملها لاحقًا.",
                 "No saved campaigns yet. Start with the information you have and complete it later.",
               )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild size="lg">
+            </p>
+          <div>
+            <Button asChild variant="secondary" className="h-auto min-h-11 rounded-[10px] px-[18px] py-2.5 text-[13px] font-bold">
               <Link href="/brand/campaigns/new">
                 {copy("ابدأ أول حملة", "Start your first campaign")}
               </Link>
             </Button>
-          </CardContent>
+          </div>
         </Card>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {list.campaigns.map((campaign) => (
-            <li key={campaign.id}>
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle dir="auto" className="break-words text-xl">
-                    {campaign.title ||
-                      copy("حملة بدون اسم بعد", "Campaign not named yet")}
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    {statuses[campaign.status]?.[isAr ? 0 : 1] ??
-                      campaign.status}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    {copy("آخر تحديث", "Last updated")}:{" "}
-                    <time dateTime={campaign.updatedAt}>
-                      {new Intl.DateTimeFormat(isAr ? "ar" : "en", {
-                        dateStyle: "medium",
-                        timeZone: "UTC",
-                      }).format(new Date(campaign.updatedAt))}
-                    </time>{" "}
-                    · UTC
-                  </p>
-                  {campaign.currentBriefVersion && (
-                    <p className="text-base">
-                      {copy("نسخة الموجز المعتمدة", "Approved brief version")}{" "}
-                      {campaign.currentBriefVersion}
-                    </p>
-                  )}
-                  <Button asChild size="lg" variant="outline">
-                    <Link
-                      href={`/brand/campaigns/${encodeURIComponent(campaign.id)}`}
-                    >
-                      {copy("افتح الحملة", "Open campaign")}
-                      <span className="sr-only">
-                        : {campaign.title || copy("بدون اسم", "Unnamed")}
-                      </span>
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <Card className="gap-0 rounded-[18px] border border-border py-0 ring-0">
+          <DashboardCampaignRows campaigns={list.campaigns} />
+        </Card>
       )}
-      <div aria-live="polite">
+      <div aria-live="polite" className="mt-4">
         {busy && (
           <p className="flex items-center gap-2 text-base">
             <Loader2
@@ -202,7 +138,7 @@ export function CampaignList({
         )}
       </div>
       {list?.nextCursor && (
-        <Button variant="outline" size="lg" disabled={busy} onClick={loadMore}>
+        <Button variant="outline" className="mt-3 h-auto min-h-11 rounded-[10px] px-[18px] py-2.5 text-[13.5px] font-semibold" disabled={busy} onClick={loadMore}>
           {failed
             ? copy("حاول مرة ثانية", "Try again")
             : copy("حمّل المزيد", "Load more")}

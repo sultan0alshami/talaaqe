@@ -8,7 +8,27 @@ import { Card } from "@/components/ui/card";
 import {
   DashboardSection,
   DashboardStat,
+  DashboardCampaignRows,
+  DashboardDealCard,
+  type DashboardCampaign,
+  type DashboardDeal,
 } from "@/components/infame/dashboard-parts";
+
+export type RecentCampaign = DashboardCampaign;
+export type RecentDeal = DashboardDeal;
+export type RoleDashboardProps = {
+  name: string;
+  role: "CREATOR" | "BRAND";
+  emailVerified: boolean;
+  state: string;
+  deals: number;
+  campaigns: number;
+  recentCampaigns?: RecentCampaign[];
+  recentDeals?: RecentDeal[];
+  pendingDeals?: number;
+  activeDeals?: number;
+  completedDeals?: number;
+};
 
 export function RoleDashboard({
   name,
@@ -17,14 +37,12 @@ export function RoleDashboard({
   state,
   deals,
   campaigns,
-}: {
-  name: string;
-  role: "CREATOR" | "BRAND";
-  emailVerified: boolean;
-  state: string;
-  deals: number;
-  campaigns: number;
-}) {
+  recentCampaigns,
+  recentDeals,
+  pendingDeals,
+  activeDeals,
+  completedDeals,
+}: RoleDashboardProps) {
   const { isAr } = useI18n();
   const [sending, setSending] = useState(false),
     [verification, setVerification] = useState<
@@ -68,6 +86,9 @@ export function RoleDashboard({
   const profileLabel = published
     ? copy("منشور", "Published")
     : copy("خاص", "Private");
+  const count = (value: number | undefined) => value === undefined
+    ? <span aria-label={copy("غير معروف", "Unknown")}>—</span>
+    : <bdi>{value}</bdi>;
   async function verifyEmail() {
     setSending(true);
     setVerification(null);
@@ -120,7 +141,7 @@ export function RoleDashboard({
             <h2 className="mb-1 text-[19px] font-bold">
               {copy("ابدأ حملتك الجديدة", "Start your next campaign")}
             </h2>
-            <p className="text-sm opacity-80">
+            <p className="text-[13.5px] opacity-80">
               {copy(
                 "حدّد هدفك وميزانيتك ومتطلباتك، ثم راجع الملخص واعتمده.",
                 "Set your goal, budget and requirements, then review and approve the brief.",
@@ -129,7 +150,7 @@ export function RoleDashboard({
           </div>
           <Button
             asChild
-            className="rounded-[11px] px-[26px] text-[15px] font-bold shadow-md"
+            className="h-auto min-h-11 rounded-[11px] px-[26px] py-[13px] text-[15px] font-bold shadow-md"
           >
             <Link href="/brand/campaigns/new">
               {copy("حملة جديدة", "New campaign")}{" "}
@@ -139,101 +160,86 @@ export function RoleDashboard({
         </div>
       )}
       <div
-        className={`mb-[26px] grid gap-4 sm:grid-cols-2 ${role === "BRAND" ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+        className="mb-[26px] grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         {role === "BRAND" && (
           <DashboardStat
             label={copy("الحملات", "Campaigns")}
             value={<bdi>{campaigns}</bdi>}
-            detail={copy("حملات علامتك التجارية", "Your brand's campaigns")}
           />
         )}
         <DashboardStat
-          label={copy("التعاونات", "Collaborations")}
-          value={<bdi>{deals}</bdi>}
-          detail={copy(
-            "تعاونات مرتبطة بحسابك",
-            "Collaborations linked to your account",
-          )}
+          label={copy("عروض بانتظار الرد", "Offers awaiting a response")}
+          value={count(pendingDeals)}
         />
         <DashboardStat
-          label={copy("ملفك", "Your profile")}
-          value={<span className="text-xl">{profileLabel}</span>}
+          label={copy("تعاونات جارية", "Active collaborations")}
+          value={count(activeDeals)}
         />
         <DashboardStat
-          label={copy("البريد الإلكتروني", "Email")}
-          value={
-            <span className="text-xl">
-              {emailVerified
-                ? copy("مؤكّد", "Verified")
-                : copy("غير مؤكّد", "Unverified")}
-            </span>
-          }
+          label={copy("تعاونات مكتملة", "Completed collaborations")}
+          value={count(completedDeals)}
         />
+        {role === "CREATOR" && <DashboardStat label={copy("كل التعاونات", "All collaborations")} value={<bdi>{deals}</bdi>} />}
       </div>
       <div className="space-y-[22px]">
+        {role === "BRAND" ? (
         <DashboardSection
-          title={
-            role === "BRAND"
-              ? copy("حملات علامتك التجارية", "Your brand's campaigns")
-              : copy("التعاونات", "Collaborations")
-          }
-          href={role === "BRAND" ? "/brand/campaigns" : home + "/deals"}
+          title={copy("آخر الحملات", "Recent campaigns")}
+          href="/brand/campaigns"
           action={copy("عرض الكل", "View all")}
+          flush={!!recentCampaigns?.length}
         >
-          <p className="mb-3 text-sm text-muted-foreground">
-            {role === "BRAND"
-              ? campaigns === 0
-                ? copy(
+          {recentCampaigns?.length ? <DashboardCampaignRows campaigns={recentCampaigns} compact /> : <>
+          <p className="mb-3 text-[13.5px] text-muted-foreground">
+            {campaigns === 0
+              ? copy(
                     "ما عندك حملات حتى الآن. ابدأ بالهدف والمتطلبات، واحفظ تقدمك أثناء إعداد الحملة.",
                     "You have no campaigns yet. Start with your goal and requirements and save your progress as you prepare.",
                   )
-                : copy(
+              : copy(
                     "راجع الحملات المحفوظة والملخصات المعتمدة من قائمة حملاتك.",
                     "Open your campaigns to review saved requirements and approved briefs.",
-                  )
-              : deals === 0
-                ? copy(
-                    "ما عندك تعاونات مرتبطة بحسابك حتى الآن. أكمل ملفك وراجع حساباتك قبل مشاركة ملفك.",
-                    "You have no collaborations linked to your account yet. Complete your profile and review your accounts before sharing it.",
-                  )
-                : copy(
-                    "راجع عروضك وسجل التفاوض والاتفاقيات من قائمة الصفقات.",
-                    "Open your deals to review offers, negotiation history and agreements.",
                   )}
           </p>
           <Button
             asChild
             variant="secondary"
-            className="rounded-[10px] px-[18px] font-bold"
+            className="h-auto min-h-11 rounded-[10px] px-[18px] py-2.5 text-[13px] font-bold"
           >
             <Link
-              href={
-                role === "BRAND" && campaigns === 0
-                  ? "/brand/campaigns/new"
-                  : home +
-                    (role === "BRAND"
-                      ? "/campaigns"
-                      : deals === 0
-                        ? "/onboarding"
-                        : "/deals")
-              }
+              href={campaigns === 0 ? "/brand/campaigns/new" : "/brand/campaigns"}
             >
-              {role === "BRAND"
-                ? campaigns === 0
+              {campaigns === 0
                   ? copy("حملة جديدة", "New campaign")
-                  : copy("حملاتي", "Campaigns")
-                : deals === 0
-                  ? copy("إكمال الملف", "Complete profile")
-                  : copy("الصفقات", "Deals")}
+                  : copy("حملاتي", "Campaigns")}
             </Link>
           </Button>
+          </>}
         </DashboardSection>
+        ) : (
+          <section aria-labelledby="creator-collaborations-title">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="creator-collaborations-title" className="mb-[3px] text-lg font-bold">{copy("العروض والتعاونات", "Offers and collaborations")}</h2>
+                <p className="text-[13.5px] text-muted-foreground">{copy("راجع عروضك وسجل التفاوض والاتفاقيات.", "Review your offers, negotiation history and agreements.")}</p>
+              </div>
+              <Link href="/creator/deals" className="inline-flex min-h-11 items-center gap-2 text-[13.5px] font-semibold underline-offset-4 hover:underline">{copy("عرض الكل", "View all")}<span aria-hidden="true" className="rtl:rotate-180">→</span></Link>
+            </div>
+            {recentDeals?.length ? <ul className="space-y-4">{recentDeals.map((deal) => <li key={deal.id}><DashboardDealCard deal={deal} role="CREATOR" /></li>)}</ul> : (
+              <Card className="gap-3 rounded-[18px] border border-border px-6 py-[22px] ring-0">
+                <p className="text-[13.5px] text-muted-foreground">{deals === 0 ? copy("ما عندك تعاونات مرتبطة بحسابك حتى الآن. أكمل ملفك وراجع حساباتك قبل مشاركة ملفك.", "You have no collaborations linked to your account yet. Complete your profile and review your accounts before sharing it.") : copy("راجع عروضك وسجل التفاوض والاتفاقيات من قائمة الصفقات.", "Open your deals to review offers, negotiation history and agreements.")}</p>
+                <div><Button asChild variant="secondary" className="h-auto min-h-11 rounded-[10px] px-[18px] py-2.5 text-[13px] font-bold"><Link href={deals === 0 ? "/creator/onboarding" : "/creator/deals"}>{deals === 0 ? copy("إكمال الملف", "Complete profile") : copy("الصفقات", "Deals")}</Link></Button></div>
+              </Card>
+            )}
+          </section>
+        )}
         <DashboardSection
           title={copy("ملفك", "Your profile")}
           href={home + "/onboarding"}
           action={copy("إكمال وتعديل الملف", "Complete and edit profile")}
         >
+          <p className="mb-2 text-[13px] font-semibold">{profileLabel} · {emailVerified ? copy("البريد الإلكتروني مؤكّد", "Email verified") : copy("البريد الإلكتروني غير مؤكّد", "Email unverified")}</p>
           <p className="text-sm text-muted-foreground">
             {published
               ? copy(

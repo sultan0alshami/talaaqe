@@ -11,18 +11,18 @@ const DEST: Record<string, string> = { BRAND: "/client", CREATOR: "/provider", A
 const labelStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
-  color: "#4A5A76",
+  color: "var(--muted-foreground)",
   marginBottom: 6,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  border: "1.5px solid #E4E9F1",
+  border: "1.5px solid var(--border)",
   borderRadius: 10,
   padding: "12px 14px",
   fontSize: 14,
   outline: "none",
-  background: "#FBFCFE",
+  background: "var(--background)",
 };
 
 export function LoginScreen({ next }: { next?: string }) {
@@ -73,8 +73,8 @@ export function LoginScreen({ next }: { next?: string }) {
     >
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 22,
           padding: 40,
           width: 430,
@@ -85,7 +85,7 @@ export function LoginScreen({ next }: { next?: string }) {
         <div style={{ textAlign: "center", marginBottom: 26 }}>
           <Image src="/assets/logo-mark.png" alt="Talaqi" width={52} height={51} priority style={{ width: 52, height: 51, objectFit: "contain", marginBottom: 12, display: "inline-block" }} />
           <div style={{ fontSize: 22, fontWeight: 700 }}>{t.loginTitle}</div>
-          <div style={{ fontSize: 14, color: "#7684A0" }}>{t.loginSub}</div>
+          <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{t.loginSub}</div>
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -95,7 +95,7 @@ export function LoginScreen({ next }: { next?: string }) {
             placeholder="you@company.sa"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="focus:border-[#14969E]!"
+            className="focus:border-[var(--foreground)]!"
             style={inputStyle}
           />
         </div>
@@ -108,7 +108,7 @@ export function LoginScreen({ next }: { next?: string }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            className="focus:border-[#14969E]!"
+            className="focus:border-[var(--foreground)]!"
             style={inputStyle}
           />
         </div>
@@ -118,16 +118,16 @@ export function LoginScreen({ next }: { next?: string }) {
           </div>
         )}
         <div style={{ textAlign: "end", marginBottom: 18 }}>
-          <span style={{ fontSize: 12.5, color: "#14969E", cursor: "pointer", fontWeight: 600 }}>{t.forgotPass}</span>
+          <span style={{ fontSize: 12.5, color: "var(--foreground)", cursor: "pointer", fontWeight: 600 }}>{t.forgotPass}</span>
         </div>
         <button
           onClick={submit}
           disabled={busy}
-          className="hover:bg-[#24437F]!"
+          className="hover:bg-[var(--foreground)]!"
           style={{
             width: "100%",
-            background: "#1B3568",
-            color: "#fff",
+            background: "var(--foreground)",
+            color: "var(--card)",
             border: "none",
             cursor: busy ? "default" : "pointer",
             fontSize: 15,
@@ -141,11 +141,11 @@ export function LoginScreen({ next }: { next?: string }) {
           {busy ? "…" : t.loginBtn}
         </button>
 
-        <div style={{ textAlign: "center", fontSize: 13, color: "#7684A0" }}>
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
           {t.noAccount}{" "}
           <span
             onClick={() => router.push("/signup?role=client")}
-            style={{ color: "#14969E", fontWeight: 700, cursor: "pointer" }}
+            style={{ color: "var(--foreground)", fontWeight: 700, cursor: "pointer" }}
           >
             {t.createOne}
           </span>

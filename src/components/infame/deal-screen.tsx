@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import styles from "./workflow-layout.module.css";
 import { useId, useRef, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -369,7 +370,7 @@ export function DealScreen({
     evidence = record(record(deliveryEvent?.payload).evidence),
     evidenceText = original(evidence.text);
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className={`${styles.page} space-y-[22px]`}>
       <header className="space-y-4">
         <Link
           href={`/${role.toLowerCase()}/deals`}
@@ -382,7 +383,7 @@ export function DealScreen({
             <p className="text-sm font-medium text-muted-foreground">
               {status(deal.status)}
             </p>
-            <h1 className="text-3xl font-semibold sm:text-4xl">
+            <h1 className="text-2xl font-bold">
               {copy("تفاصيل الصفقة", "Deal details")}
             </h1>
             <p className="break-all text-xs text-muted-foreground" dir="ltr">

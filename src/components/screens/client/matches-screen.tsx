@@ -36,20 +36,20 @@ export function MatchesScreen({
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #E4E9F1",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: 18,
             padding: "48px 32px",
             textAlign: "center",
           }}
         >
-          <p style={{ margin: "0 0 18px", fontSize: 14.5, color: "#7684A0" }}>{t.matchesSub}</p>
+          <p style={{ margin: "0 0 18px", fontSize: 14.5, color: "var(--muted-foreground)" }}>{t.matchesSub}</p>
           <button
-            onClick={() => router.push("/client/brief")}
+            onClick={() => router.push("/brand/brief")}
             className="hover:bg-[#E1E9F6]"
             style={{
-              background: "#EEF3FB",
-              color: "#1B3568",
+              background: "var(--muted)",
+              color: "var(--foreground)",
               border: "none",
               cursor: "pointer",
               fontSize: 13.5,
@@ -88,7 +88,7 @@ export function MatchesScreen({
           style={{
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#14969E",
+            color: "var(--foreground)",
             letterSpacing: ".04em",
             marginBottom: 6,
           }}
@@ -96,16 +96,16 @@ export function MatchesScreen({
           ✦ {pick(titleAr, titleEn)}
         </div>
         <h1 style={{ fontSize: 25, fontWeight: 700, margin: "0 0 4px" }}>{t.matchesTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.matchesSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.matchesSub}</p>
       </div>
       <div
         style={{
-          background: "#F2F7F9",
-          border: "1px solid #DCEBEE",
+          background: "var(--muted)",
+          border: "1px solid var(--border)",
           borderRadius: 12,
           padding: "10px 18px",
           fontSize: 12.5,
-          color: "#0E7A81",
+          color: "var(--foreground)",
           margin: "16px 0 22px",
           display: "inline-block",
         }}
@@ -121,10 +121,10 @@ export function MatchesScreen({
           return (
             <div
               key={m.id}
-              className="hover:shadow-[0_10px_28px_rgba(20,40,80,.08)] hover:border-[#C6E7E9]"
+              className="hover:shadow-[0_10px_28px_rgba(20,40,80,.08)] hover:border-[var(--border)]"
               style={{
-                background: "#fff",
-                border: "1px solid #E4E9F1",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 borderRadius: 18,
                 padding: "22px 24px",
                 display: "grid",
@@ -141,7 +141,7 @@ export function MatchesScreen({
                     height: 58,
                     borderRadius: 16,
                     background: p.avatarColor,
-                    color: "#fff",
+                    color: "var(--card)",
                     fontSize: 23,
                     fontWeight: 700,
                     display: "flex",
@@ -155,7 +155,7 @@ export function MatchesScreen({
                   <div style={{ fontSize: 20, fontWeight: 700, color: scoreColor(m.matchScore) }}>
                     {m.matchScore}%
                   </div>
-                  <div style={{ fontSize: 10.5, color: "#93A1B8" }}>{t.matchScore}</div>
+                  <div style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>{t.matchScore}</div>
                 </div>
               </div>
 
@@ -173,8 +173,8 @@ export function MatchesScreen({
                   <span style={{ fontSize: 16.5, fontWeight: 700 }}>{pick(p.nameAr, p.nameEn)}</span>
                   <span
                     style={{
-                      background: "#F0F3F8",
-                      color: "#4A5A76",
+                      background: "var(--muted)",
+                      color: "var(--muted-foreground)",
                       fontSize: 11.5,
                       fontWeight: 600,
                       padding: "2px 10px",
@@ -198,7 +198,7 @@ export function MatchesScreen({
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 13.5, color: "#7684A0", marginBottom: 10 }}>
+                <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginBottom: 10 }}>
                   {pick(p.roleAr, p.roleEn)} · {pick(p.cityAr, p.cityEn)} · ★ {p.rating} · {p.years}{" "}
                   {t.yearsExp} · {fmtBudget(p.priceMin, p.priceMax)} {t.perProject}
                 </div>
@@ -208,8 +208,8 @@ export function MatchesScreen({
                       key={i}
                       dir="ltr"
                       style={{
-                        background: "#EEF3FB",
-                        color: "#1B3568",
+                        background: "var(--muted)",
+                        color: "var(--foreground)",
                         fontSize: 12,
                         fontWeight: 600,
                         padding: "3px 11px",
@@ -222,8 +222,8 @@ export function MatchesScreen({
                 </div>
                 <div
                   style={{
-                    background: "#F2F7F9",
-                    borderInlineStart: "3px solid #14969E",
+                    background: "var(--muted)",
+                    borderInlineStart: "3px solid var(--foreground)",
                     borderRadius: 8,
                     padding: "9px 14px",
                     fontSize: 13,
@@ -241,10 +241,10 @@ export function MatchesScreen({
                   <button
                     onClick={() => void request(m)}
                     disabled={!!pending[m.id]}
-                    className="hover:bg-[#24437F]"
+                    className="hover:bg-[var(--foreground)]"
                     style={{
-                      background: "#1B3568",
-                      color: "#fff",
+                      background: "var(--foreground)",
+                      color: "var(--card)",
                       border: "none",
                       cursor: "pointer",
                       fontSize: 13.5,
@@ -272,11 +272,11 @@ export function MatchesScreen({
                 )}
                 <button
                   onClick={() => showToast(t.demoOnly)}
-                  className="hover:border-[#1B3568]"
+                  className="hover:border-[var(--foreground)]"
                   style={{
-                    background: "#fff",
-                    color: "#1B3568",
-                    border: "1.5px solid #D5DDE9",
+                    background: "var(--card)",
+                    color: "var(--foreground)",
+                    border: "1.5px solid var(--border)",
                     cursor: "pointer",
                     fontSize: 13.5,
                     fontWeight: 600,

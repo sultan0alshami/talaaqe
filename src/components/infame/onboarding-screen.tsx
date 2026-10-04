@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import styles from "./workflow-layout.module.css";
 import { useRef, useState, type FormEvent } from "react";
 import { CheckCircle2, Loader2, Mic, Pencil, RefreshCw } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -113,7 +114,7 @@ export function OnboardingScreen({ initialDraft, initialOwner }: { initialDraft:
     });
   }
   const steps = [copy("التعريف", "Identity"), copy("الحسابات", "Accounts"), copy("البيانات", "Facts"), copy("الأساسيات", "Essentials"), copy("الملف والمشاركة", "Portfolio & sharing")];
-  return <section className="mx-auto max-w-4xl space-y-6">
+  return <section className={`${styles.page} space-y-[22px]`}>
     <div><p className="text-sm text-muted-foreground">{creator ? copy("مساحة صانع المحتوى", "Creator workspace") : copy("مساحة العلامة التجارية", "Brand workspace")}</p><h1 className="mt-2 text-3xl font-semibold">{copy("خلّنا نتعرف عليك", "Let's get to know you")}</h1><p className="mt-3 text-muted-foreground">{copy("بخطوات قصيرة، نرتب ملفك من المعلومات اللي تختار تشاركها.", "Build your profile in short steps using the information you choose to share.")}</p></div>
     {!draft && <Card><CardContent className="space-y-4 pt-6"><p className="text-base">{copy("كيف تفضّل تبدأ؟", "How would you like to start?")}</p><div className="flex flex-wrap gap-3"><Button size="lg" onClick={() => setError(message("CAPABILITY_UNAVAILABLE"))}><Mic aria-hidden="true" />{copy("أتكلم", "Speak")}</Button><Button variant="outline" size="lg" disabled={busy} onClick={() => run(async () => { await initialize(); })}><Pencil aria-hidden="true" />{copy("أكتب", "Type")}</Button></div></CardContent></Card>}
     <nav className="flex flex-wrap gap-2" aria-label={copy("خطوات الملف", "Profile steps")}>{steps.map((label, index) => <Button key={index} variant={step === index ? "secondary" : "ghost"} onClick={() => setStep(index)} aria-current={step === index ? "step" : undefined}>{index + 1}. {label}</Button>)}</nav>

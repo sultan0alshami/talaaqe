@@ -28,10 +28,10 @@ export function HomeScreen({
   const hoursSaved = Math.round(briefsCount * 6.5);
 
   const stats: { label: string; v: string; color: string }[] = [
-    { label: t.statActive, v: fmtNum(activeCount), color: "#1B3568" },
-    { label: t.statBriefsDone, v: fmtNum(briefsCount), color: "#14969E" },
-    { label: t.statProposals, v: fmtNum(proposalsCount), color: "#1B3568" },
-    { label: t.statSaved, v: `${fmtNum(hoursSaved)}+`, color: "#8A6D33" },
+    { label: t.statActive, v: fmtNum(activeCount), color: "var(--foreground)" },
+    { label: t.statBriefsDone, v: fmtNum(briefsCount), color: "var(--foreground)" },
+    { label: t.statProposals, v: fmtNum(proposalsCount), color: "var(--foreground)" },
+    { label: t.statSaved, v: `${fmtNum(hoursSaved)}+`, color: "var(--foreground)" },
   ];
 
   return (
@@ -51,17 +51,17 @@ export function HomeScreen({
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>
             {isAr ? `هلا ${firstName} 👋` : `Welcome, ${firstName} 👋`}
           </h1>
-          <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.welcomeSub}</p>
+          <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.welcomeSub}</p>
         </div>
       </div>
 
       {/* CTA banner */}
       <div
         style={{
-          background: "linear-gradient(120deg, #1B3568, #14969E 140%)",
+          background: "linear-gradient(120deg, var(--foreground), var(--foreground) 140%)",
           borderRadius: 18,
           padding: "26px 30px",
-          color: "#fff",
+          color: "var(--card)",
           display: "flex",
           alignItems: "center",
           gap: 20,
@@ -77,8 +77,8 @@ export function HomeScreen({
           onClick={() => router.push("/client/chat")}
           className="hover:-translate-y-[1px]"
           style={{
-            background: "#fff",
-            color: "#1B3568",
+            background: "var(--card)",
+            color: "var(--foreground)",
             border: "none",
             cursor: "pointer",
             fontSize: 15,
@@ -97,23 +97,23 @@ export function HomeScreen({
         {stats.map((s, i) => (
           <div
             key={i}
-            style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 16, padding: 20 }}
+            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}
           >
-            <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{s.label}</div>
             <div style={{ fontSize: 27, fontWeight: 700, color: s.color }}>{s.v}</div>
           </div>
         ))}
       </div>
 
       {/* Recent projects card */}
-      <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
         <div
           style={{
             padding: "18px 24px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            borderBottom: "1px solid #EEF1F6",
+            borderBottom: "1px solid var(--border)",
           }}
         >
           <span style={{ fontSize: 16, fontWeight: 700 }}>{t.myProjects}</span>
@@ -123,7 +123,7 @@ export function HomeScreen({
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: "#14969E",
+              color: "var(--foreground)",
               fontSize: 13.5,
               fontWeight: 600,
             }}
@@ -133,13 +133,13 @@ export function HomeScreen({
         </div>
         {projects.length === 0 ? (
           <div style={{ padding: "22px 24px" }}>
-            <div style={{ fontSize: 13.5, color: "#7684A0", marginBottom: 12 }}>{t.newProjectSub}</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginBottom: 12 }}>{t.newProjectSub}</div>
             <button
               onClick={() => router.push("/client/chat")}
               className="hover:bg-[#E1E9F6]!"
               style={{
-                background: "#EEF3FB",
-                color: "#1B3568",
+                background: "var(--muted)",
+                color: "var(--foreground)",
                 border: "none",
                 cursor: "pointer",
                 fontSize: 13,
@@ -156,23 +156,23 @@ export function HomeScreen({
             <div
               key={p.id}
               onClick={() => router.push(`/client/projects/${p.id}`)}
-              className="hover:bg-[#FAFBFD]"
+              className="hover:bg-[var(--background)]"
               style={{
                 padding: "15px 24px",
                 display: "grid",
                 gridTemplateColumns: "2fr 1fr 1fr 1fr",
                 gap: 12,
                 alignItems: "center",
-                borderBottom: "1px solid #F3F5F9",
+                borderBottom: "1px solid var(--border)",
                 cursor: "pointer",
               }}
             >
               <div>
                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{pick(p.titleAr, p.titleEn)}</div>
-                <div style={{ fontSize: 12.5, color: "#93A1B8" }}>{pick(p.categoryAr, p.categoryEn)}</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{pick(p.categoryAr, p.categoryEn)}</div>
               </div>
-              <div style={{ fontSize: 13.5, color: "#4A5A76" }}>{fmtBudget(p.budgetMin, p.budgetMax)}</div>
-              <div style={{ fontSize: 13.5, color: "#4A5A76" }}>{pick(p.timelineAr, p.timelineEn) || "—"}</div>
+              <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>{fmtBudget(p.budgetMin, p.budgetMax)}</div>
+              <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>{pick(p.timelineAr, p.timelineEn) || "—"}</div>
               <div>
                 <StatusChip status={p.status} />
               </div>

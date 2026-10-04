@@ -30,8 +30,8 @@ export type ProviderProfileProps = {
 };
 
 const panel: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: 24,
 };
@@ -82,19 +82,19 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
       >
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.profileTitle}</h1>
-          <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.profileSub}</p>
+          <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.profileSub}</p>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 14, padding: "12px 20px", minWidth: 220 }}>
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: "12px 20px", minWidth: 220 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 6 }}>
-            <span style={{ color: "#7684A0" }}>{t.profileCompletion}</span>
-            <span style={{ fontWeight: 700, color: "#0E7A81" }}>{completion}%</span>
+            <span style={{ color: "var(--muted-foreground)" }}>{t.profileCompletion}</span>
+            <span style={{ fontWeight: 700, color: "var(--foreground)" }}>{completion}%</span>
           </div>
-          <div style={{ height: 7, background: "#EEF1F6", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ height: 7, background: "var(--border)", borderRadius: 999, overflow: "hidden" }}>
             <div
               style={{
                 height: "100%",
                 width: `${completion}%`,
-                background: "linear-gradient(90deg, #14969E, #1B3568)",
+                background: "linear-gradient(90deg, var(--foreground), var(--foreground))",
                 borderRadius: 999,
               }}
             />
@@ -105,8 +105,8 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
       {/* Identity card */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 26,
           marginBottom: 18,
@@ -122,7 +122,7 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
             height: 72,
             borderRadius: 20,
             background: p.avatarColor,
-            color: "#fff",
+            color: "var(--card)",
             fontSize: 30,
             fontWeight: 700,
             display: "flex",
@@ -150,7 +150,7 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
               </span>
             )}
           </div>
-          <div style={{ fontSize: 14, color: "#7684A0" }}>
+          <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
             {pick(p.roleAr, p.roleEn)} · ★ {p.rating}
           </div>
         </div>
@@ -159,11 +159,11 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
       {/* Facts grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 18 }}>
         {facts.map((f, i) => (
-          <div key={i} style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: "#93A1B8", marginBottom: 3 }}>{f.label}</div>
+          <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: "16px 18px" }}>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 3 }}>{f.label}</div>
             <div
               dir={f.ltr ? "ltr" : undefined}
-              style={{ fontSize: 15, fontWeight: 700, color: "#2C3A54", textAlign: "start" }}
+              style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", textAlign: "start" }}
             >
               {f.v}
             </div>
@@ -180,10 +180,10 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
             <button
               onClick={() => showToast(t.demoOnly)}
               style={{
-                background: "#F0F3F8",
+                background: "var(--muted)",
                 border: "none",
                 cursor: "pointer",
-                color: "#1B3568",
+                color: "var(--foreground)",
                 fontSize: 12.5,
                 fontWeight: 600,
                 padding: "5px 13px",
@@ -199,8 +199,8 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
                 key={sk}
                 dir="ltr"
                 style={{
-                  background: "#EEF3FB",
-                  color: "#1B3568",
+                  background: "var(--muted)",
+                  color: "var(--foreground)",
                   fontSize: 13,
                   fontWeight: 600,
                   padding: "6px 14px",
@@ -211,7 +211,7 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
               </span>
             ))}
             {p.skills.length === 0 && (
-              <span style={{ fontSize: 13, color: "#7684A0" }}>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
                 {isAr ? "ما أضفت مهارات لين الحين" : "No skills added yet"}
               </span>
             )}
@@ -219,13 +219,13 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>{t.pfServices}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {t.servicesItems.map((sv: string, i: number) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14, color: "#2C3A54" }}>
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14, color: "var(--foreground)" }}>
                 <span
                   style={{
                     width: 7,
                     height: 7,
                     borderRadius: 2,
-                    background: "#14969E",
+                    background: "var(--foreground)",
                     transform: "rotate(45deg)",
                     flexShrink: 0,
                   }}
@@ -241,16 +241,16 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>{t.pfPortfolio}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {p.portfolio.length === 0 && (
-              <div style={{ fontSize: 13.5, color: "#7684A0" }}>
+              <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>
                 {isAr ? "ما عندك أعمال سابقة لين الحين" : "No portfolio items yet"}
               </div>
             )}
             {p.portfolio.map((pf) => (
               <div
                 key={pf.id}
-                className="hover:border-[#14969E]!"
+                className="hover:border-[var(--foreground)]!"
                 style={{
-                  border: "1px solid #E4E9F1",
+                  border: "1px solid var(--border)",
                   borderRadius: 12,
                   padding: "14px 16px",
                   display: "flex",
@@ -264,11 +264,11 @@ export function ProviderProfileScreen(p: ProviderProfileProps) {
                     height: 44,
                     borderRadius: 10,
                     background:
-                      "repeating-linear-gradient(45deg, #EEF3FB, #EEF3FB 6px, #E1E9F6 6px, #E1E9F6 12px)",
+                      "repeating-linear-gradient(45deg, var(--muted), var(--muted) 6px, #E1E9F6 6px, #E1E9F6 12px)",
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: "#2C3A54" }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--foreground)" }}>
                   {pick(pf.title, pf.titleEn)}
                 </span>
               </div>

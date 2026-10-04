@@ -52,20 +52,20 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.briefsTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.briefsSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.briefsSub}</p>
       </div>
-      <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
         <div
           style={{
             padding: "13px 24px",
             display: "grid",
             gridTemplateColumns: GRID,
             gap: 12,
-            background: "#FAFBFD",
-            borderBottom: "1px solid #EEF1F6",
+            background: "var(--background)",
+            borderBottom: "1px solid var(--border)",
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#7684A0",
+            color: "var(--muted-foreground)",
           }}
         >
           <span>{t.thProject}</span>
@@ -76,47 +76,47 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
           <span style={{ width: 76 }} />
         </div>
         {briefs.length === 0 && (
-          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "#93A1B8" }}>—</div>
+          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
         )}
         {briefs.map((b) => {
           const isOpen = open === b.id;
           const q = b.qualityScore;
-          const qColor = q != null && q >= 90 ? "#0E7A81" : "#8A6D33";
+          const qColor = q != null && q >= 90 ? "var(--foreground)" : "var(--foreground)";
           return (
             <div key={b.id}>
               <div
-                className="hover:bg-[#FAFBFD]"
+                className="hover:bg-[var(--background)]"
                 style={{
                   padding: "14px 24px",
                   display: "grid",
                   gridTemplateColumns: GRID,
                   gap: 12,
                   alignItems: "center",
-                  borderBottom: "1px solid #F3F5F9",
+                  borderBottom: "1px solid var(--border)",
                 }}
               >
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 600 }}>{pick(b.titleAr, b.titleEn)}</div>
-                  <div style={{ fontSize: 12, color: "#93A1B8" }}>{pick(b.clientAr, b.clientEn)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{pick(b.clientAr, b.clientEn)}</div>
                 </div>
-                <span style={{ fontSize: 13, color: "#4A5A76" }}>
+                <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
                   {b.categoryAr ? pick(b.categoryAr, b.categoryEn ?? b.categoryAr) : "—"}
                 </span>
-                <span style={{ fontSize: 13, color: "#93A1B8" }}>{fmtDate(b.createdAt)}</span>
+                <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{fmtDate(b.createdAt)}</span>
                 {q != null ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <div style={{ flex: 1, height: 6, background: "#F0F3F8", borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ flex: 1, height: 6, background: "var(--muted)", borderRadius: 999, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${q}%`, background: qColor, borderRadius: 999 }} />
                     </div>
                     <span style={{ fontSize: 12.5, fontWeight: 700, color: qColor }}>{q}%</span>
                   </div>
                 ) : (
-                  <span style={{ fontSize: 12.5, color: "#93A1B8" }}>—</span>
+                  <span style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>—</span>
                 )}
                 <span
                   style={{
-                    background: b.approvedByClient ? "#E9F6EF" : "#FDF9F0",
-                    color: b.approvedByClient ? "#1F7A4D" : "#8A6D33",
+                    background: b.approvedByClient ? "#E9F6EF" : "var(--muted)",
+                    color: b.approvedByClient ? "#1F7A4D" : "var(--foreground)",
                     fontSize: 11.5,
                     fontWeight: 600,
                     padding: "3px 12px",
@@ -131,8 +131,8 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                   onClick={() => setOpen(isOpen ? null : b.id)}
                   className="hover:bg-[#E1E9F6]"
                   style={{
-                    background: "#EEF3FB",
-                    color: "#1B3568",
+                    background: "var(--muted)",
+                    color: "var(--foreground)",
                     border: "none",
                     cursor: "pointer",
                     fontSize: 12,
@@ -146,26 +146,26 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                 </button>
               </div>
               {isOpen && (
-                <div style={{ background: "#FAFBFD", borderBottom: "1px solid #F3F5F9", padding: "20px 24px" }}>
+                <div style={{ background: "var(--background)", borderBottom: "1px solid var(--border)", padding: "20px 24px" }}>
                   <div
                     style={{
                       fontSize: 12.5,
                       fontWeight: 700,
-                      color: "#93A1B8",
+                      color: "var(--muted-foreground)",
                       letterSpacing: ".05em",
                       marginBottom: 8,
                     }}
                   >
                     {t.bSummary}
                   </div>
-                  <p style={{ fontSize: 14, color: "#2C3A54", lineHeight: 1.9, margin: "0 0 14px", maxWidth: 760 }}>
+                  <p style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.9, margin: "0 0 14px", maxWidth: 760 }}>
                     {pick(b.summaryAr, b.summaryEn)}
                   </p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                     <span
                       style={{
-                        background: "#EEF3FB",
-                        color: "#1B3568",
+                        background: "var(--muted)",
+                        color: "var(--foreground)",
                         fontSize: 12,
                         fontWeight: 600,
                         padding: "5px 13px",
@@ -177,8 +177,8 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                     </span>
                     <span
                       style={{
-                        background: "#E8F5F6",
-                        color: "#0E7A81",
+                        background: "var(--muted)",
+                        color: "var(--foreground)",
                         fontSize: 12,
                         fontWeight: 600,
                         padding: "5px 13px",
@@ -193,9 +193,9 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                         key={sk}
                         dir="ltr"
                         style={{
-                          background: "#fff",
-                          border: "1px solid #E4E9F1",
-                          color: "#4A5A76",
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          color: "var(--muted-foreground)",
                           fontSize: 12,
                           fontWeight: 600,
                           padding: "5px 13px",
@@ -209,7 +209,7 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                   </div>
                   {/* Quality score review control */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: "#7684A0" }}>{t.thQuality}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted-foreground)" }}>{t.thQuality}</span>
                     <input
                       dir="ltr"
                       type="number"
@@ -219,13 +219,13 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                       onChange={(e) => setScores((s) => ({ ...s, [b.id]: e.target.value }))}
                       style={{
                         width: 72,
-                        border: "1px solid #E4E9F1",
+                        border: "1px solid var(--border)",
                         borderRadius: 10,
                         padding: "7px 10px",
                         fontSize: 13,
                         fontWeight: 600,
-                        color: "#2C3A54",
-                        background: "#fff",
+                        color: "var(--foreground)",
+                        background: "var(--card)",
                         outline: "none",
                         textAlign: "center",
                       }}
@@ -233,10 +233,10 @@ export function BriefsScreen({ briefs }: { briefs: BriefRow[] }) {
                     <button
                       onClick={() => saveScore(b)}
                       disabled={busy === b.id}
-                      className="hover:bg-[#24437F]"
+                      className="hover:bg-[var(--foreground)]"
                       style={{
-                        background: "#1B3568",
-                        color: "#fff",
+                        background: "var(--foreground)",
+                        color: "var(--card)",
                         border: "none",
                         cursor: "pointer",
                         fontSize: 12.5,

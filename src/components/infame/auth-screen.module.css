@@ -1,0 +1,19 @@
+.fields label, .fields legend {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.fields input {
+  height: auto;
+  border-width: 1.5px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  background: var(--background);
+}
+
+@media (max-width: 600px) {
+  .fields input { font-size: 16px; }
+}

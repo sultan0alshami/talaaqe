@@ -32,6 +32,16 @@ export function AppShell({
             href: "/brand/campaigns/new",
           },
           {
+            key: "brief",
+            label: { ar: "موجز الحملة", en: "Campaign brief" },
+            href: "/brand/brief",
+          },
+          {
+            key: "matches",
+            label: { ar: "صنّاع المحتوى", en: "Creator matches" },
+            href: "/brand/matches",
+          },
+          {
             key: "campaigns",
             label: { ar: "حملاتي", en: "Campaigns" },
             href: "/brand/campaigns",
@@ -49,6 +59,11 @@ export function AppShell({
             key: "profile",
             label: { ar: "ملفي", en: "My profile" },
             href: home + "/onboarding",
+          },
+          {
+            key: "settings",
+            label: { ar: "الإعدادات", en: "Settings" },
+            href: home + "/settings",
           },
         ]
       : []),

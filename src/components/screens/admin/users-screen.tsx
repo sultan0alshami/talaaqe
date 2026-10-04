@@ -19,9 +19,9 @@ type UserRow = {
 
 // Role chip + avatar color map (behaviors §6.8).
 const ROLE_CHIP: Record<UserRow["role"], { labelKey: keyof Dict; bg: string; fg: string; avatar: string }> = {
-  BRAND: { labelKey: "roleClient", bg: "#EEF3FB", fg: "#1B3568", avatar: "#1B3568" },
-  CREATOR: { labelKey: "roleProvider", bg: "#E8F5F6", fg: "#0E7A81", avatar: "#14969E" },
-  ADMIN: { labelKey: "roleAdminL", bg: "#F7F0E3", fg: "#8A6D33", avatar: "#14213A" },
+  BRAND: { labelKey: "roleClient", bg: "var(--muted)", fg: "var(--foreground)", avatar: "var(--foreground)" },
+  CREATOR: { labelKey: "roleProvider", bg: "var(--muted)", fg: "var(--foreground)", avatar: "var(--foreground)" },
+  ADMIN: { labelKey: "roleAdminL", bg: "var(--muted)", fg: "var(--foreground)", avatar: "var(--foreground)" },
 };
 
 const GRID = "2.2fr 1fr 1fr 1fr auto";
@@ -52,18 +52,18 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
   return (
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>{t.usersTitle}</h1>
-      <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
         <div
           style={{
             padding: "13px 24px",
             display: "grid",
             gridTemplateColumns: GRID,
             gap: 12,
-            background: "#FAFBFD",
-            borderBottom: "1px solid #EEF1F6",
+            background: "var(--background)",
+            borderBottom: "1px solid var(--border)",
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#7684A0",
+            color: "var(--muted-foreground)",
           }}
         >
           <span>{t.thUser}</span>
@@ -73,21 +73,21 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
           <span style={{ width: 64 }} />
         </div>
         {users.length === 0 && (
-          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "#93A1B8" }}>—</div>
+          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
         )}
         {users.map((u) => {
           const chip = ROLE_CHIP[u.role];
           return (
             <div
               key={u.id}
-              className="hover:bg-[#FAFBFD]"
+              className="hover:bg-[var(--background)]"
               style={{
                 padding: "13px 24px",
                 display: "grid",
                 gridTemplateColumns: GRID,
                 gap: 12,
                 alignItems: "center",
-                borderBottom: "1px solid #F3F5F9",
+                borderBottom: "1px solid var(--border)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
@@ -97,7 +97,7 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
                     height: 34,
                     borderRadius: "50%",
                     background: chip.avatar,
-                    color: "#fff",
+                    color: "var(--card)",
                     fontSize: 13,
                     fontWeight: 700,
                     display: "flex",
@@ -124,7 +124,7 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
                     dir="ltr"
                     style={{
                       fontSize: 11.5,
-                      color: "#93A1B8",
+                      color: "var(--muted-foreground)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -148,7 +148,7 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
               >
                 {String(t[chip.labelKey])}
               </span>
-              <span style={{ fontSize: 13, color: "#4A5A76" }}>{fmtDate(u.joined)}</span>
+              <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{fmtDate(u.joined)}</span>
               <span
                 style={{
                   background: u.active ? "#E9F6EF" : "#FBEDEB",
@@ -166,10 +166,10 @@ export function UsersScreen({ users, selfId }: { users: UserRow[]; selfId: strin
                 <button
                   onClick={() => toggleActive(u)}
                   disabled={busy === u.id}
-                  className="hover:bg-[#F0F3F8]"
+                  className="hover:bg-[var(--muted)]"
                   style={{
                     background: "none",
-                    border: "1px solid #E4E9F1",
+                    border: "1px solid var(--border)",
                     cursor: "pointer",
                     fontSize: 12,
                     fontWeight: 600,

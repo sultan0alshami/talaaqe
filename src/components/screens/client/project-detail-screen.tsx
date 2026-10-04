@@ -8,8 +8,8 @@ import { useI18n } from "@/lib/i18n";
 import { StatusChip } from "@/components/ui/status-chip";
 
 const card: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
 };
 
@@ -28,12 +28,12 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
       {/* Back link */}
       <button
         onClick={() => router.push("/client/projects")}
-        className="hover:text-[#1B3568]!"
+        className="hover:text-[var(--foreground)]!"
         style={{
           background: "none",
           border: "none",
           cursor: "pointer",
-          color: "#7684A0",
+          color: "var(--muted-foreground)",
           fontSize: 13.5,
           fontWeight: 600,
           padding: 0,
@@ -58,7 +58,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
           <h1 style={{ fontSize: 25, fontWeight: 700, margin: "0 0 6px" }}>
             {pick(project.titleAr, project.titleEn)}
           </h1>
-          <div style={{ fontSize: 13.5, color: "#7684A0" }}>
+          <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>
             {pick(project.categoryAr, project.categoryEn)} · {fmtDate(project.createdAt)}
           </div>
         </div>
@@ -71,7 +71,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
           style={{
             fontSize: 13,
             fontWeight: 700,
-            color: "#93A1B8",
+            color: "var(--muted-foreground)",
             letterSpacing: ".05em",
             marginBottom: 20,
           }}
@@ -90,9 +90,9 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                       width: 30,
                       height: 30,
                       borderRadius: "50%",
-                      background: done ? "#14969E" : active ? "#1B3568" : "#fff",
-                      color: done || active ? "#fff" : "#93A1B8",
-                      border: done || active ? "none" : "2px solid #E4E9F1",
+                      background: done ? "var(--foreground)" : active ? "var(--foreground)" : "var(--card)",
+                      color: done || active ? "var(--card)" : "var(--muted-foreground)",
+                      border: done || active ? "none" : "2px solid var(--border)",
                       fontSize: 13,
                       fontWeight: 700,
                       display: "flex",
@@ -106,7 +106,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                     style={{
                       fontSize: 12,
                       fontWeight: active ? 700 : 500,
-                      color: done || active ? "#14213A" : "#93A1B8",
+                      color: done || active ? "var(--foreground)" : "var(--muted-foreground)",
                       textAlign: "center",
                       lineHeight: 1.4,
                     }}
@@ -120,7 +120,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                       flex: 1,
                       height: 3,
                       borderRadius: 999,
-                      background: i < curStep ? "#14969E" : "#EEF1F6",
+                      background: i < curStep ? "var(--foreground)" : "var(--border)",
                       marginTop: 14,
                     }}
                   />
@@ -153,7 +153,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    color: "#14969E",
+                    color: "var(--foreground)",
                     fontSize: 13,
                     fontWeight: 700,
                   }}
@@ -164,14 +164,14 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
             </div>
             {brief ? (
               <>
-                <p style={{ fontSize: 14.5, color: "#4A5A76", lineHeight: 1.9, margin: "0 0 16px" }}>
+                <p style={{ fontSize: 14.5, color: "var(--muted-foreground)", lineHeight: 1.9, margin: "0 0 16px" }}>
                   {pick(brief.summaryAr, brief.summaryEn)}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <span
                     style={{
-                      background: "#EEF3FB",
-                      color: "#1B3568",
+                      background: "var(--muted)",
+                      color: "var(--foreground)",
                       fontSize: 12.5,
                       fontWeight: 600,
                       padding: "6px 14px",
@@ -182,8 +182,8 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                   </span>
                   <span
                     style={{
-                      background: "#E8F5F6",
-                      color: "#0E7A81",
+                      background: "var(--muted)",
+                      color: "var(--foreground)",
                       fontSize: 12.5,
                       fontWeight: 600,
                       padding: "6px 14px",
@@ -194,8 +194,8 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                   </span>
                   <span
                     style={{
-                      background: "#F7F0E3",
-                      color: "#8A6D33",
+                      background: "var(--muted)",
+                      color: "var(--foreground)",
                       fontSize: 12.5,
                       fontWeight: 600,
                       padding: "6px 14px",
@@ -208,13 +208,13 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
               </>
             ) : (
               <>
-                <div style={{ fontSize: 13.5, color: "#7684A0", marginBottom: 12 }}>{t.newProjectSub}</div>
+                <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginBottom: 12 }}>{t.newProjectSub}</div>
                 <button
                   onClick={() => router.push(`/client/chat?project=${project.id}`)}
                   className="hover:bg-[#E1E9F6]!"
                   style={{
-                    background: "#EEF3FB",
-                    color: "#1B3568",
+                    background: "var(--muted)",
+                    color: "var(--foreground)",
                     border: "none",
                     cursor: "pointer",
                     fontSize: 13,
@@ -242,18 +242,18 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                           width: 11,
                           height: 11,
                           borderRadius: "50%",
-                          background: "#14969E",
+                          background: "var(--foreground)",
                           flexShrink: 0,
                           marginTop: 5,
                         }}
                       />
                       {i < brief.milestones.length - 1 && (
-                        <span style={{ width: 2, flex: 1, background: "#DCEBEE" }} />
+                        <span style={{ width: 2, flex: 1, background: "var(--border)" }} />
                       )}
                     </div>
                     <div style={{ paddingBottom: 18 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0E7A81" }}>{pick(m.tAr, m.tEn)}</div>
-                      <div style={{ fontSize: 14, color: "#4A5A76" }}>{pick(m.dAr, m.dEn)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{pick(m.tAr, m.tEn)}</div>
+                      <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{pick(m.dAr, m.dEn)}</div>
                     </div>
                   </div>
                 ))}
@@ -276,7 +276,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                       display: "flex",
                       gap: 11,
                       alignItems: "center",
-                      border: "1px solid #EEF1F6",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
                       padding: "11px 14px",
                     }}
@@ -287,7 +287,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                         height: 36,
                         borderRadius: 11,
                         background: m.provider.avatarColor,
-                        color: "#fff",
+                        color: "var(--card)",
                         fontSize: 15,
                         fontWeight: 700,
                         display: "flex",
@@ -310,7 +310,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                       >
                         {pick(m.provider.nameAr, m.provider.nameEn)}
                       </div>
-                      <div style={{ fontSize: 12, color: "#93A1B8" }}>
+                      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                         {m.matchScore}% {t.matchScore}
                       </div>
                     </div>
@@ -332,13 +332,13 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 13.5, color: "#7684A0", marginBottom: 12 }}>{t.pdNoProviders}</div>
+                <div style={{ fontSize: 13.5, color: "var(--muted-foreground)", marginBottom: 12 }}>{t.pdNoProviders}</div>
                 <button
                   onClick={() => router.push(`/client/matches?project=${project.id}`)}
                   className="hover:bg-[#E1E9F6]!"
                   style={{
-                    background: "#EEF3FB",
-                    color: "#1B3568",
+                    background: "var(--muted)",
+                    color: "var(--foreground)",
                     border: "none",
                     cursor: "pointer",
                     fontSize: 13,
@@ -357,7 +357,7 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
           <div style={{ ...card, padding: 22 }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{t.pdActivityT}</div>
             {project.activity.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: "#7684A0" }}>—</div>
+              <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {project.activity.map((a, i) => (
@@ -368,18 +368,18 @@ export function ProjectDetailScreen({ project }: { project: ProjectDetailDTO }) 
                           width: 9,
                           height: 9,
                           borderRadius: "50%",
-                          background: "#C9D3E2",
+                          background: "var(--border)",
                           flexShrink: 0,
                           marginTop: 6,
                         }}
                       />
                       {i < project.activity.length - 1 && (
-                        <span style={{ width: 2, flex: 1, background: "#EEF1F6" }} />
+                        <span style={{ width: 2, flex: 1, background: "var(--border)" }} />
                       )}
                     </div>
                     <div style={{ paddingBottom: 16 }}>
-                      <div style={{ fontSize: 11.5, color: "#93A1B8" }}>{fmtWhen(a.createdAt, lang)}</div>
-                      <div style={{ fontSize: 13.5, color: "#2C3A54" }}>{pick(a.textAr, a.textEn)}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>{fmtWhen(a.createdAt, lang)}</div>
+                      <div style={{ fontSize: 13.5, color: "var(--foreground)" }}>{pick(a.textAr, a.textEn)}</div>
                     </div>
                   </div>
                 ))}

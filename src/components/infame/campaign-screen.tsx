@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import styles from "./workflow-layout.module.css";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
@@ -951,7 +952,7 @@ export function CampaignScreen({
     );
   const disabled = busy || terminal || !!pendingRequest;
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
+    <section className={`${styles.page} space-y-[22px]`}>
       <Button asChild variant="ghost">
         <Link href="/brand/campaigns">
           {copy("كل الحملات", "All campaigns")}
@@ -961,7 +962,7 @@ export function CampaignScreen({
         <p className="text-sm text-muted-foreground">
           {copy("مساحة العلامة التجارية", "Brand workspace")}
         </p>
-        <h1 className="text-3xl font-semibold">
+        <h1 className="text-2xl font-bold">
           {campaign
             ? copy("رتّب تفاصيل حملتك", "Shape your campaign")
             : copy("ابدأ حملة", "Start a campaign")}

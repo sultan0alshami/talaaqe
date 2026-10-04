@@ -14,16 +14,16 @@ const ORG_TYPE_LABELS: Record<string, { ar: string; en: string }> = {
 };
 
 const factCard: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 14,
   padding: "16px 18px",
 };
-const factLabel: React.CSSProperties = { fontSize: 12, color: "#93A1B8", marginBottom: 3 };
+const factLabel: React.CSSProperties = { fontSize: 12, color: "var(--muted-foreground)", marginBottom: 3 };
 const factValue: React.CSSProperties = {
   fontSize: 14.5,
   fontWeight: 700,
-  color: "#2C3A54",
+  color: "var(--foreground)",
   textAlign: "start",
 };
 
@@ -68,14 +68,14 @@ export function ProfileScreen({
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{t.cpTitle}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{t.cpSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{t.cpSub}</p>
       </div>
 
       {/* Identity card */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E4E9F1",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 18,
           padding: 26,
           marginBottom: 18,
@@ -90,8 +90,8 @@ export function ProfileScreen({
             width: 72,
             height: 72,
             borderRadius: 20,
-            background: "#1B3568",
-            color: "#fff",
+            background: "var(--foreground)",
+            color: "var(--card)",
             fontSize: 30,
             fontWeight: 700,
             display: "flex",
@@ -103,18 +103,18 @@ export function ProfileScreen({
         </div>
         <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{name}</div>
-          <div style={{ fontSize: 14, color: "#7684A0" }}>
+          <div style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
             {companyName ? `${companyName} · ` : ""}
             {t.memberSince} {fmtDate(createdAt)}
           </div>
         </div>
         <button
           onClick={() => showToast(t.demoOnly)}
-          className="hover:border-[#1B3568]!"
+          className="hover:border-[var(--foreground)]!"
           style={{
-            background: "#fff",
-            color: "#1B3568",
-            border: "1.5px solid #D5DDE9",
+            background: "var(--card)",
+            color: "var(--foreground)",
+            border: "1.5px solid var(--border)",
             cursor: "pointer",
             fontSize: 13.5,
             fontWeight: 600,

@@ -27,18 +27,18 @@ export function ProjectsScreen({ projects }: { projects: ProjectRow[] }) {
   return (
     <div style={{ maxWidth: 1040, margin: "0 auto" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>{t.aProjectsTitle}</h1>
-      <div style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden" }}>
         <div
           style={{
             padding: "13px 24px",
             display: "grid",
             gridTemplateColumns: GRID,
             gap: 12,
-            background: "#FAFBFD",
-            borderBottom: "1px solid #EEF1F6",
+            background: "var(--background)",
+            borderBottom: "1px solid var(--border)",
             fontSize: 12.5,
             fontWeight: 700,
-            color: "#7684A0",
+            color: "var(--muted-foreground)",
           }}
         >
           <span>{t.thProject}</span>
@@ -48,33 +48,33 @@ export function ProjectsScreen({ projects }: { projects: ProjectRow[] }) {
           <span>{t.thDate}</span>
         </div>
         {projects.length === 0 && (
-          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "#93A1B8" }}>—</div>
+          <div style={{ padding: "22px 24px", fontSize: 13.5, color: "var(--muted-foreground)" }}>—</div>
         )}
         {projects.map((p) => (
           <div
             key={p.id}
-            className="hover:bg-[#FAFBFD]"
+            className="hover:bg-[var(--background)]"
             style={{
               padding: "15px 24px",
               display: "grid",
               gridTemplateColumns: GRID,
               gap: 12,
               alignItems: "center",
-              borderBottom: "1px solid #F3F5F9",
+              borderBottom: "1px solid var(--border)",
             }}
           >
             <div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{pick(p.titleAr, p.titleEn)}</div>
-              <div style={{ fontSize: 12, color: "#93A1B8" }}>
+              <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                 {p.categoryAr ? pick(p.categoryAr, p.categoryEn ?? p.categoryAr) : "—"}
               </div>
             </div>
-            <span style={{ fontSize: 13, color: "#4A5A76" }}>{pick(p.clientAr, p.clientEn)}</span>
-            <span style={{ fontSize: 13, color: "#4A5A76" }}>{fmtBudget(p.budgetMin, p.budgetMax)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{pick(p.clientAr, p.clientEn)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{fmtBudget(p.budgetMin, p.budgetMax)}</span>
             <div>
               <StatusChip status={p.status} />
             </div>
-            <span style={{ fontSize: 13, color: "#93A1B8" }}>{fmtDate(p.createdAt)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{fmtDate(p.createdAt)}</span>
           </div>
         ))}
       </div>

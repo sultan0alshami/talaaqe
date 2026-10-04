@@ -11,8 +11,8 @@ import { fmtBudget, fmtNum } from "@/lib/format";
 import type { OpportunityDTO } from "@/lib/domain";
 
 const cardStyle: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: "22px 24px",
   display: "grid",
@@ -63,10 +63,10 @@ export function ProviderHomeScreen({
     : `You have ${fmtNum(matched)} new opportunities matched to your specialty`;
 
   const stats: { label: string; v: string; color: string }[] = [
-    { label: t.pStatOps, v: fmtNum(matched), color: "#14969E" },
-    { label: t.pStatActive, v: fmtNum(acceptedCount + proposalSentCount), color: "#1B3568" },
-    { label: t.pStatRating, v: `${rating} ★`, color: "#8A6D33" },
-    { label: t.pStatResponse, v: acceptRate, color: "#1B3568" },
+    { label: t.pStatOps, v: fmtNum(matched), color: "var(--foreground)" },
+    { label: t.pStatActive, v: fmtNum(acceptedCount + proposalSentCount), color: "var(--foreground)" },
+    { label: t.pStatRating, v: `${rating} ★`, color: "var(--foreground)" },
+    { label: t.pStatResponse, v: acceptRate, color: "var(--foreground)" },
   ];
 
   const accept = async (matchId: string) => {
@@ -110,14 +110,14 @@ export function ProviderHomeScreen({
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>{welcome}</h1>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 14.5 }}>{welcomeSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 14.5 }}>{welcomeSub}</p>
       </div>
 
       {/* Stats grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
         {stats.map((s, i) => (
-          <div key={i} style={{ background: "#fff", border: "1px solid #E4E9F1", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 6 }}>{s.label}</div>
+          <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>{s.label}</div>
             <div style={{ fontSize: 27, fontWeight: 700, color: s.color }}>{s.v}</div>
           </div>
         ))}
@@ -126,31 +126,31 @@ export function ProviderHomeScreen({
       {/* Section header */}
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 3px" }}>{t.opsTitle}</h2>
-        <p style={{ color: "#7684A0", margin: 0, fontSize: 13.5 }}>{t.opsSub}</p>
+        <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: 13.5 }}>{t.opsSub}</p>
       </div>
 
       {/* Opportunity cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {ops.length === 0 && (
-          <div style={{ fontSize: 13.5, color: "#7684A0" }}>
+          <div style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>
             {isAr ? "ما عندك فرص متوافقة الحين — بيوصلك إشعار أول ما تترشّح لمشروع جديد" : "No matched opportunities right now — you will be notified when a new project matches you"}
           </div>
         )}
         {ops.map((op) => {
-          const scoreColor = op.score >= 85 ? "#0E7A81" : "#8A6D33";
+          const scoreColor = op.score >= 85 ? "var(--foreground)" : "var(--foreground)";
           return (
             <div key={op.matchId} style={cardStyle}>
               {/* Match score */}
               <div style={{ textAlign: "center", minWidth: 64 }}>
                 <div style={{ fontSize: 23, fontWeight: 700, color: scoreColor }}>{op.score}%</div>
-                <div style={{ fontSize: 11, color: "#93A1B8" }}>{t.matchScore}</div>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{t.matchScore}</div>
               </div>
               {/* Body */}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 3 }}>
                   {pick(op.projectTitleAr, op.projectTitleEn)}
                 </div>
-                <div style={{ fontSize: 13, color: "#7684A0", marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 10 }}>
                   {t.clientLabel}: {pick(op.clientAr, op.clientEn)} · {t.budgetLabel}:{" "}
                   {fmtBudget(op.budgetMin, op.budgetMax)} {t.perProject} · {t.timelineLabel}:{" "}
                   {pick(op.timelineAr, op.timelineEn) || "—"}
@@ -162,8 +162,8 @@ export function ProviderHomeScreen({
                         key={sk}
                         dir="ltr"
                         style={{
-                          background: "#EEF3FB",
-                          color: "#1B3568",
+                          background: "var(--muted)",
+                          color: "var(--foreground)",
                           fontSize: 12,
                           fontWeight: 600,
                           padding: "3px 11px",
@@ -179,8 +179,8 @@ export function ProviderHomeScreen({
                   <div
                     style={{
                       fontSize: 13,
-                      color: "#6E5A31",
-                      background: "#FDF9F0",
+                      color: "var(--foreground)",
+                      background: "var(--muted)",
                       borderRadius: 8,
                       padding: "8px 13px",
                       display: "inline-block",
@@ -197,10 +197,10 @@ export function ProviderHomeScreen({
                     <button
                       onClick={() => accept(op.matchId)}
                       disabled={!!busy[op.matchId]}
-                      className="hover:bg-[#14969E]!"
+                      className="hover:bg-[var(--foreground)]!"
                       style={{
-                        background: "#0E7A81",
-                        color: "#fff",
+                        background: "var(--foreground)",
+                        color: "var(--card)",
                         border: "none",
                         cursor: busy[op.matchId] ? "default" : "pointer",
                         fontSize: 13.5,
@@ -217,9 +217,9 @@ export function ProviderHomeScreen({
                       disabled={!!busy[op.matchId]}
                       className="hover:border-[#B0433A]! hover:text-[#B0433A]!"
                       style={{
-                        background: "#fff",
-                        color: "#7684A0",
-                        border: "1.5px solid #E4E9F1",
+                        background: "var(--card)",
+                        color: "var(--muted-foreground)",
+                        border: "1.5px solid var(--border)",
                         cursor: busy[op.matchId] ? "default" : "pointer",
                         fontSize: 13.5,
                         fontWeight: 600,
@@ -236,7 +236,7 @@ export function ProviderHomeScreen({
                   <div style={{ ...resolvedBlock, background: "#E9F6EF", color: "#1F7A4D" }}>{t.accepted}</div>
                 )}
                 {op.status === "DECLINED" && (
-                  <div style={{ ...resolvedBlock, background: "#F0F3F8", color: "#93A1B8" }}>{t.declined}</div>
+                  <div style={{ ...resolvedBlock, background: "var(--muted)", color: "var(--muted-foreground)" }}>{t.declined}</div>
                 )}
               </div>
             </div>

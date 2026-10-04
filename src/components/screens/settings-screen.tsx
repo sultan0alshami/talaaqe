@@ -1,31 +1,30 @@
 "use client";
 // Shared Settings screen for all three roles (behaviors §7.1, shells §1.4).
-import { useState } from "react";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
-import { useToast } from "@/components/ui/toast";
 
 const card: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #E4E9F1",
+  background: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: 18,
   padding: 24,
   marginBottom: 18,
 };
 const cardTitle: React.CSSProperties = { fontSize: 15, fontWeight: 700, margin: "0 0 4px" };
-const cardSub: React.CSSProperties = { fontSize: 13, color: "#7684A0", margin: "0 0 16px" };
+const cardSub: React.CSSProperties = { fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 16px" };
 
 export function SettingsScreen() {
   const { t, isAr, setLang } = useI18n();
-  const { showToast } = useToast();
-  const [notif, setNotif] = useState<boolean[]>([true, true, false]);
+  const copy = (ar: string, en: string) => isAr ? ar : en;
 
   const segActive: React.CSSProperties = {
-    background: "#fff",
-    color: "#1B3568",
+    background: "var(--card)",
+    color: "var(--foreground)",
     boxShadow: "0 2px 6px rgba(20,40,80,.12)",
   };
-  const segInactive: React.CSSProperties = { background: "transparent", color: "#7684A0", boxShadow: "none" };
+  const segInactive: React.CSSProperties = { background: "transparent", color: "var(--muted-foreground)", boxShadow: "none" };
   const segBtn: React.CSSProperties = {
+    minHeight: 44,
     fontSize: 13,
     fontWeight: 600,
     padding: "7px 22px",
@@ -34,8 +33,8 @@ export function SettingsScreen() {
     cursor: "pointer",
   };
   const actionBtn: React.CSSProperties = {
-    background: "#F0F3F8",
-    color: "#1B3568",
+    background: "var(--muted)",
+    color: "var(--foreground)",
     border: "none",
     cursor: "pointer",
     padding: "11px 20px",
@@ -52,11 +51,11 @@ export function SettingsScreen() {
       <div style={card}>
         <h3 style={cardTitle}>{t.setLangT}</h3>
         <p style={cardSub}>{t.setLangD}</p>
-        <div style={{ display: "inline-flex", background: "#F0F3F8", borderRadius: 999, padding: 4, gap: 2 }}>
-          <button style={{ ...segBtn, ...(isAr ? segActive : segInactive) }} onClick={() => setLang("ar")}>
+        <div style={{ display: "inline-flex", background: "var(--muted)", borderRadius: 999, padding: 4, gap: 2 }}>
+          <button aria-pressed={isAr} style={{ ...segBtn, ...(isAr ? segActive : segInactive) }} onClick={() => setLang("ar")}>
             العربية
           </button>
-          <button style={{ ...segBtn, ...(!isAr ? segActive : segInactive) }} onClick={() => setLang("en")}>
+          <button aria-pressed={!isAr} style={{ ...segBtn, ...(!isAr ? segActive : segInactive) }} onClick={() => setLang("en")}>
             English
           </button>
         </div>
@@ -65,25 +64,24 @@ export function SettingsScreen() {
       {/* Notifications */}
       <div style={card}>
         <h3 style={{ ...cardTitle, marginBottom: 14 }}>{t.setNotifT}</h3>
+        <p style={cardSub}>{copy("إعدادات إرسال الإشعارات غير متاحة حاليًا.", "Notification delivery settings are currently unavailable.")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {t.notifs.map((label: string, i: number) => (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <span style={{ fontSize: 14, color: "#2C3A54" }}>{label}</span>
+              <span style={{ fontSize: 14, color: "var(--foreground)" }}>{label}</span>
               <button
-                onClick={() => {
-                  setNotif((n) => n.map((v, j) => (j === i ? !v : v)));
-                  showToast(t.settingsSaved);
-                }}
-                aria-pressed={notif[i]}
+                disabled
+                aria-label={label}
+                aria-pressed={false}
                 style={{
                   width: 44,
                   height: 25,
                   borderRadius: 999,
                   border: "none",
-                  cursor: "pointer",
+                  cursor: "not-allowed",
                   position: "relative",
                   transition: "background .2s",
-                  background: notif[i] ? "#14969E" : "#D5DDE9",
+                  background: "var(--border)",
                   flexShrink: 0,
                 }}
               >
@@ -91,11 +89,11 @@ export function SettingsScreen() {
                   style={{
                     position: "absolute",
                     top: 3,
-                    insetInlineStart: notif[i] ? 22 : 3,
+                    insetInlineStart: 3,
                     width: 19,
                     height: 19,
                     borderRadius: "50%",
-                    background: "#fff",
+                    background: "var(--card)",
                     boxShadow: "0 1px 4px rgba(0,0,0,.25)",
                     transition: "inset-inline-start .2s",
                   }}
@@ -110,20 +108,20 @@ export function SettingsScreen() {
       <div style={card}>
         <h3 style={{ ...cardTitle, marginBottom: 14 }}>{t.setAccountT}</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="hover:bg-[#E4E9F1]" style={actionBtn} onClick={() => showToast(t.demoOnly)}>
+          <Link className="hover:bg-[var(--border)]" style={{ ...actionBtn, textDecoration: "none" }} href="/forgot-password">
             {t.changePass}
-          </button>
-          <button className="hover:bg-[#E4E9F1]" style={actionBtn} onClick={() => showToast(t.demoOnly)}>
+          </Link>
+          <button disabled style={{ ...actionBtn, cursor: "not-allowed", opacity: .6 }}>
             {t.exportData}
           </button>
           <button
-            className="hover:bg-[#F6DEDA]"
-            style={{ ...actionBtn, background: "#FBEDEB", color: "#B0433A" }}
-            onClick={() => showToast(t.demoOnly)}
+            disabled
+            style={{ ...actionBtn, background: "var(--infame-danger-bg)", color: "var(--destructive)", cursor: "not-allowed", opacity: .6 }}
           >
             {t.deleteAcc}
           </button>
         </div>
+        <p style={{ ...cardSub, margin: "12px 0 0" }}>{copy("تصدير البيانات وحذف الحساب غير متاحين من هذه الشاشة حاليًا.", "Data export and account deletion are currently unavailable from this screen.")}</p>
       </div>
     </div>
   );
