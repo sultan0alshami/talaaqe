@@ -1,0 +1,67 @@
+/* Original Talaqee Users table, with an inline reasoned status form. */
+.page { width: 100%; max-width: 1040px; min-width: 0; margin-inline: auto; }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-block-end: 20px; }
+.headingCopy { min-width: 0; }
+.heading h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; }
+.timestamp { margin: 0; color: var(--muted-foreground); font-size: 13px; overflow-wrap: anywhere; }
+.timestamp time { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.note { margin: 0 0 16px; color: var(--muted-foreground); font-size: 13px; overflow-wrap: anywhere; }
+.table { overflow: hidden; border: 1px solid var(--border); border-radius: 18px; color: var(--card-foreground); background: var(--card); }
+.row { display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr)) minmax(76px, auto); align-items: center; gap: 12px; min-width: 0; padding: 13px 24px; border-block-end: 1px solid var(--border); }
+.row:hover { background: var(--background); }
+.tableHeader { color: var(--muted-foreground); background: var(--background); font-size: 12.5px; font-weight: 700; }
+.identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.identityCopy { min-width: 0; }
+.avatar { display: flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; border-radius: 50%; color: var(--card); background: var(--foreground); font-size: 13px; font-weight: 700; }
+.name { margin: 0; font-size: 13.5px; font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
+.email { margin: 0; color: var(--muted-foreground); font-size: 11.5px; text-align: start; overflow-wrap: anywhere; }
+.cell { min-width: 0; color: var(--muted-foreground); font-size: 13px; overflow-wrap: anywhere; }
+.cell time { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.chip { display: inline-block; max-width: 100%; padding: 3px 12px; border-radius: 999px; color: var(--foreground); background: var(--muted); font-size: 11.5px; font-weight: 600; }
+.active { color: var(--infame-success); background: var(--infame-success-bg); }
+.suspended { color: var(--destructive); background: var(--infame-danger-bg); }
+.protected { font-size: 12px; }
+.action { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 44px; max-width: 100%; padding: 9px 13px; border: 1px solid var(--border); border-radius: 999px; color: var(--foreground); background: transparent; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.7; text-align: center; text-decoration: none; overflow-wrap: anywhere; cursor: pointer; }
+.action:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--muted); }
+.action:disabled, .action[aria-disabled="true"] { color: var(--muted-foreground); opacity: .65; cursor: default; }
+.action:focus-visible, .textLink:focus-visible, .field input:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.dangerAction:not(:disabled) { color: var(--destructive); }
+.activateAction:not(:disabled) { color: var(--infame-success); }
+.empty { margin: 0; padding: 22px 24px; color: var(--muted-foreground); font-size: 13.5px; }
+.expanded { min-width: 0; padding: 20px 24px; border-block-end: 1px solid var(--border); background: var(--muted); }
+.expanded h2 { margin: 0 0 8px; color: var(--foreground); font-size: 18px; font-weight: 700; }
+.formNote { margin: 0 0 16px; color: var(--muted-foreground); font-size: 13px; overflow-wrap: anywhere; }
+.fields { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.field label { color: var(--foreground); font-size: 13px; font-weight: 600; }
+.field input, .field textarea { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--input); border-radius: 10px; color: var(--foreground); background: var(--background); font: inherit; font-size: 14px; }
+.field textarea { resize: vertical; }
+.field input:disabled, .field textarea:disabled { opacity: .65; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 16px; }
+.comparison { margin-block-end: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; color: var(--foreground); background: var(--background); font-size: 13px; overflow-wrap: anywhere; }
+.comparison p { margin: 0 0 8px; }
+.feedback, .error { margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; color: var(--foreground); background: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.feedback p, .error p { margin: 0; }
+.feedback p + .action, .error p + p { margin-block-start: 8px; }
+.error { border-color: var(--destructive); background: var(--infame-danger-bg); }
+.textLink { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; color: var(--foreground); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.unavailable { padding: 22px 24px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); }
+.unavailable h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+.unavailable p { margin: 0; color: var(--muted-foreground); font-size: 13px; }
+.pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-block: 18px 12px; }
+.pagination p { flex: 1 1 250px; min-width: 0; margin: 0; color: var(--muted-foreground); font-size: 13px; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .tableHeader { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0; white-space: nowrap; }
+  .row { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 20px; gap: 14px 12px; }
+  .identity { grid-column: 1 / -1; }
+  .cell::before { display: block; content: attr(data-label); margin-block-end: 4px; color: var(--muted-foreground); font-size: 11.5px; font-weight: 600; }
+  .expanded { padding: 20px; }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .heading { flex-direction: column; }
+  .pagination { align-items: stretch; }
+  .pagination p { flex-basis: 100%; }
+  .pagination .action { flex: 1 1 120px; }
+}

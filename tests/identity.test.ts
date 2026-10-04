@@ -1,11 +1,17 @@
 import { randomBytes } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { SignupSchema, signup, authenticate, openSession, resolveSession, issueToken, consumeToken } from "@/lib/identity";
+import { AuthenticationInvalidated, SignupSchema, signup, authenticate, openSession, resolveSession, issueToken, consumeToken } from "@/lib/identity";
 
 const createdUsers: string[] = [];
 const strongPassword = "Correct horse 9 battery!";
-afterAll(async () => { await prisma.user.deleteMany({ where: { id: { in: createdUsers } } }); });
+afterAll(async () => {
+  // Profile ownership uses SET NULL: delete only this file's synthetic profiles
+  // before their Users so successful acceptance does not leave orphan rows.
+  await prisma.creator.deleteMany({ where: { userId: { in: createdUsers } } });
+  await prisma.brand.deleteMany({ where: { userId: { in: createdUsers } } });
+  await prisma.user.deleteMany({ where: { id: { in: createdUsers } } });
+});
 
 describe("revocable Infame identity", () => {
   it("rejects admin self-signup, weak or bcrypt-truncated passwords and invalid countries", () => {
@@ -69,5 +75,21 @@ describe("revocable Infame identity", () => {
     try { await openSession(user.id, authenticated!.sessionVersion, authenticated!.passwordHash); }
     catch (error) { rejected = error instanceof Error && error.message === "Authentication invalidated"; }
     expect(rejected).toBe(true);
+  });
+  it.each(["version", "destination"] as const)("binds token issuance to the caller's captured %s before creating any credential", async changed => {
+    const user = await signup({ name: "Synthetic captured issuance", email: `identity-${randomBytes(8).toString("hex")}@example.invalid`, password: strongPassword, role: "CREATOR" });
+    createdUsers.push(user.id);
+    const expected = { sessionVersion: user.sessionVersion, email: user.email };
+    await prisma.user.update({ where: { id: user.id }, data: changed === "version"
+      ? { sessionVersion: { increment: 1 } }
+      : { email: `identity-${randomBytes(8).toString("hex")}@example.invalid` } });
+    let invalidated = false;
+    try { await issueToken(user.id, "VERIFY_EMAIL", expected); }
+    catch (error) { invalidated = error instanceof AuthenticationInvalidated; }
+    expect(invalidated).toBe(true);
+    expect(await prisma.authToken.count({ where: { userId: user.id } })).toBe(0);
+    const current = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const valid = await issueToken(user.id, "VERIFY_EMAIL", { sessionVersion: current.sessionVersion, email: current.email });
+    expect(await consumeToken("VERIFY_EMAIL", valid.value)).toBe(user.id);
   });
 });

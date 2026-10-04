@@ -1132,3 +1132,17 @@ model AdminAudit {
 
   @@index([resourceType, resourceId, createdAt])
 }
+
+// Immutable status-command receipts are independent of outbox delivery state.
+model AdminCommand {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  resourceId   String
+  resultJson   Json
+  createdAt    DateTime @default(now())
+
+  @@unique([actorUserId, operationKey])
+  @@index([resourceId, createdAt])
+}

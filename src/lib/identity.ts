@@ -73,14 +73,21 @@ function tokenHash(purpose: TokenPurpose, value: string) {
   if (!secret || secret.length < 32) throw new Error("Missing authentication secret");
   return createHmac("sha256", secret).update(`${purpose}:${value}`).digest("hex");
 }
-export async function issueToken(userId: string, purpose: TokenPurpose) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (!user.active) throw new Error("Inactive account");
-  const value = randomBytes(32).toString("base64url");
-  const record = await prisma.authToken.create({ data: {
-    userId, purpose, destination: user.email, tokenHash: tokenHash(purpose, value), expiresAt: new Date(Date.now() + 30 * 60000),
-  } });
-  return { id: record.id, value, expiresAt: record.expiresAt };
+export async function issueToken(userId: string, purpose: TokenPurpose, expected?: { sessionVersion: number; email: string }) {
+  const captured = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (!captured.active || expected && (captured.sessionVersion !== expected.sessionVersion || captured.email !== expected.email)) throw new AuthenticationInvalidated();
+  return prisma.$transaction(async tx => {
+    // Serialize with login/reset and reasoned suspension/reactivation. The
+    // captured version rejects active-state ABA while waiting to issue a link.
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!user?.active || user.sessionVersion !== captured.sessionVersion || user.email !== captured.email) throw new AuthenticationInvalidated();
+    const value = randomBytes(32).toString("base64url");
+    const record = await tx.authToken.create({ data: {
+      userId, purpose, destination: user.email, tokenHash: tokenHash(purpose, value), expiresAt: new Date(Date.now() + 30 * 60000),
+    } });
+    return { id: record.id, value, expiresAt: record.expiresAt };
+  }, { maxWait: 10000, timeout: 20000 });
 }
 
 export async function consumeToken(purpose: TokenPurpose, value: string, newPassword?: string): Promise<string | null> {

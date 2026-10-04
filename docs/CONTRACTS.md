@@ -122,6 +122,12 @@ type ApiSuccess<T> = { data: T; requestId: string };
 
 Adapters may preserve legacy API signatures temporarily, with documented callers; no mixed error envelopes within a new endpoint. Safe request IDs/logs exclude secrets/private proof/transcripts. Reads do not trigger imports, matching, model jobs or changes.
 
+Canonical admin users/status v1 (2026-10-05): GET `/api/admin/users` returns a private current-ADMIN snapshot, at most30 original-name rows in immutable ID order and an exclusive `after` cursor. Rows contain only ID, original name, email, role, access status, joining UTC and `statusVersion` (current `User.sessionVersion`). Counts/list scope includes private, synthetic and suspended stored records. This is operational data, not publication or trust approval.
+
+PATCH `/api/admin/users/[id]` requires a UUID operation key, expected active state and version, the opposite requested state and a bounded2..2000-character original-language reason. Self/ADMIN targets, role changes and provisioning are protected. Under current actor/session authorization, the nonadmin target User is locked before the ADMIN actor User/session. State change, version increment, every existing target session/token invalidation, durable unique actor/key `AdminCommand` receipt, private reason audit and pending account event are atomic. Reactivation advances the version and cannot restore old credentials. Token issuance captures/rechecks the user version/destination under the same User lock; callers with earlier captured identity bind it explicitly. Old credentials and reads that cross a status ABA must fail closed.
+
+Exact command replay returns its immutable historical receipt without repeating mutation/audit/event. Reusing a key with changed target/content returns409 `IDEMPOTENCY_CONFLICT`; changed active state or version returns409 `STALE_VERSION`. Original reason text is preserved solely in private audit; the outbox carries status metadata and no reason/credentials. The account event vocabulary adds `account.reactivated`. A receipt describes the recorded action, so clients reload authoritative current rows before displaying saved status, preserve uncertain commands exactly and compare stale versions explicitly. HTTP401/403 hides all protected cached rows/time before parsing the response body. Other legacy admin endpoints remain retired until reviewed individually. This extends D031 with an additive command journal; it does not authorize delivery or ADMIN provisioning.
+
 ## 4. Provenance and visibility
 
 ```ts

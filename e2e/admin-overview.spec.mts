@@ -85,7 +85,7 @@ test("original admin overview shows actual canonical counts and bounded private-
   await expect(page.locator("meter")).toHaveCount(5);
   await expect(page.getByText("+12%", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^(Approve|Reject|اعتماد|رفض)$/ })).toHaveCount(0);
-  expect((await page.request.get("/api/admin/users")).status()).toBe(410);
+  expect((await page.request.get("/api/admin/providers")).status()).toBe(410);
   await page.getByRole("button", { name: label("تحديث البيانات", "Reload data"), exact: true }).focus();
   await expect(page.getByRole("button", { name: label("تحديث البيانات", "Reload data"), exact: true })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

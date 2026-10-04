@@ -14,9 +14,10 @@ export const POST = handler(async (req: Request) => {
   const capability = runtimeConfig().DELIVERY_MODE;
   const user = await prisma.user.findUnique({ where: { email } });
   if (limit.ok && user?.active && capability !== "unavailable") {
-    const token = await issueToken(user.id, "RESET_PASSWORD");
-    try { await deliverAuthLink({ id: token.id, email, purpose: "RESET_PASSWORD", token: token.value }); }
-    catch { /* Keep the same response for known and unknown accounts. Provider health is monitored separately. */ }
+    try {
+      const token = await issueToken(user.id, "RESET_PASSWORD", { sessionVersion: user.sessionVersion, email });
+      await deliverAuthLink({ id: token.id, email, purpose: "RESET_PASSWORD", token: token.value });
+    } catch { /* Preserve the same response after identity races or delivery failures. Provider health is monitored separately. */ }
   }
   return ok({ accepted: true, delivery: capability === "resend" ? "available" : capability });
 });

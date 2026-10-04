@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import type { Session } from "@/lib/jwt";
 import { GET } from "@/app/api/admin/overview/route";
-import { GET as retiredUsersGET } from "@/app/api/admin/users/route";
+import { GET as retiredProvidersGET } from "@/app/api/admin/providers/route";
 import { AdminOverviewSchema } from "@/lib/admin/contracts";
 import { cleanup, fixture } from "../deals/fixtures";
 
@@ -52,7 +52,7 @@ it("returns only the validated actual canonical metadata and keeps other legacy 
   await failure(await GET(request("?limit=8")), 422, "VALIDATION");
   // The legacy wrapper inspects its actual runtime Request although the old
   // zero-argument callback inferred a zero-argument TypeScript signature.
-  const retired = await (retiredUsersGET as unknown as (request: Request) => Promise<Response>)(new Request("http://localhost:3100/api/admin/users"));
+  const retired = await (retiredProvidersGET as unknown as (request: Request) => Promise<Response>)(new Request("http://localhost:3100/api/admin/providers"));
   expect(retired.status).toBe(410);
 });
 

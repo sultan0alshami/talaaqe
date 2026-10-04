@@ -11,7 +11,7 @@ export const POST = handler(async () => {
   const limit = await rateLimit(`verification:user:${user.id}`, 1, 60000);
   if (!limit.ok) return fail(429, "Wait before resending", { retryAfterSec: limit.retryAfterSec });
   if (runtimeConfig().DELIVERY_MODE === "unavailable") return ok({ accepted: false, delivery: "unavailable" });
-  const token = await issueToken(user.id, "VERIFY_EMAIL");
+  const token = await issueToken(user.id, "VERIFY_EMAIL", { sessionVersion: actor.sessionVersion, email: user.email });
   const delivery = await deliverAuthLink({ id: token.id, email: user.email, purpose: "VERIFY_EMAIL", token: token.value });
   return ok({ accepted: true, delivery });
 });
