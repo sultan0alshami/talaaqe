@@ -12,6 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const nav: NavSpec[] = [
     { key: "overview", labelKey: "aNavOverview", href: "/admin" },
+    { key: "evidence", label: { ar: "مراجعة الإثباتات", en: "Evidence review" }, href: "/admin/evidence" },
     { key: "users", labelKey: "aNavUsers", href: "/admin/users" },
     { key: "providers", labelKey: "aNavProviders", href: "/admin/providers", badge: pending > 0 ? String(pending) : null },
     { key: "projects", labelKey: "aNavProjects", href: "/admin/projects" },

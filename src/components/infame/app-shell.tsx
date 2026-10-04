@@ -61,6 +61,11 @@ export function AppShell({
             href: home + "/profile",
           },
           {
+            key: "evidence",
+            label: { ar: "الإثباتات", en: "Evidence" },
+            href: home + "/evidence",
+          },
+          {
             key: "settings",
             label: { ar: "الإعدادات", en: "Settings" },
             href: home + "/settings",

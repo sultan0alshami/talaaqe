@@ -1,0 +1,70 @@
+/* Original Talaqee admin Providers/Briefs table and expandable review panel. */
+.page { width: 100%; max-width: 1040px; margin-inline: auto; min-width: 0; }
+.heading { margin-block-end: 20px; }
+.heading h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; }
+.heading p { margin: 0; font-size: 14.5px; line-height: 1.9; color: var(--muted-foreground); }
+.page [data-slot="button"] { max-width: 100%; white-space: normal; height: auto; min-height: 44px; padding: 8px 16px; overflow-wrap: anywhere; }
+.filters { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-block-end: 20px; }
+.field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.filters .field { flex: 1 1 220px; }
+.field label { font-size: 13px; font-weight: 600; line-height: 1.7; }
+.field select { min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--input); border-radius: 10px; background: var(--background); color: var(--foreground); font: inherit; font-size: 14px; }
+.field select:focus-visible, .attachment:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.field select:disabled { opacity: .6; }
+.feedback, .error { margin: 0 0 16px; border: 1px solid var(--border); background: var(--muted); border-radius: 12px; padding: 14px 18px; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.feedback p, .error p { margin: 0 0 10px; }
+.error { border-color: color-mix(in srgb, var(--destructive) 35%, var(--border)); color: var(--destructive); }
+.error a { display: inline-block; padding-block: 10px; text-decoration: underline; }
+.table { border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: var(--card); color: var(--card-foreground); }
+.row { padding: 13px 24px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(76px, auto); gap: 12px; align-items: center; border-block-end: 1px solid var(--border); }
+.row:hover { background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
+.tableHeader { background: var(--muted); font-size: 12.5px; font-weight: 700; color: var(--muted-foreground); }
+.identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.identity > div { min-width: 0; }
+.avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--primary); color: var(--primary-foreground); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.name { font-size: 13.5px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.secondary { font-size: 11.5px; color: var(--muted-foreground); margin: 3px 0 0; overflow-wrap: anywhere; text-align: start; }
+.cell { min-width: 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.status { display: inline-block; border-radius: 999px; padding: 3px 11px; border: 1px solid var(--border); background: var(--muted); color: var(--foreground); font-size: 11.5px; font-weight: 600; max-width: 100%; }
+.rowAction { min-width: 0; }
+.rowAction [data-slot="button"] { border-radius: 999px; font-size: 12px; font-weight: 700; }
+.empty { margin: 0; padding: 22px 24px; font-size: 13.5px; color: var(--muted-foreground); }
+.expanded { background: color-mix(in srgb, var(--muted) 45%, var(--card)); border-block-end: 1px solid var(--border); padding: 20px 24px; }
+.review { min-width: 0; }
+.review h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+.review h3 { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.explanation { color: var(--muted-foreground); font-size: 13.5px; line-height: 1.9; margin: 0 0 14px; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 16px 0; }
+.fact { min-width: 0; }
+.fact dt { font-size: 12.5px; font-weight: 700; color: var(--muted-foreground); margin-block-end: 6px; }
+.fact dd { margin: 0; font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fact ul { margin: 0; padding-inline-start: 20px; }
+.fact [dir="ltr"] { display: inline-block; max-width: 100%; }
+.history, .metricSection, .policySection { margin-block: 18px; padding-block-start: 16px; border-block-start: 1px solid var(--border); min-width: 0; }
+.history p, .metricSection p, .policySection > p { margin: 0 0 8px; font-size: 14px; line-height: 1.9; overflow-wrap: anywhere; }
+.history ol, .metricSection ul { margin: 0; padding-inline-start: 20px; }
+.history li + li, .metricSection li + li { margin-block-start: 14px; }
+.original { white-space: pre-wrap; overflow-wrap: anywhere; }
+.proof { margin-block: 16px; font-size: 14px; }
+.attachment { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; color: var(--foreground); background: var(--background); text-decoration: underline; overflow-wrap: anywhere; max-width: 100%; }
+.reviewForm { border-block-start: 1px solid var(--border); padding-block-start: 18px; display: flex; flex-direction: column; gap: 16px; }
+.reviewForm [data-slot="input"], .reviewForm [data-slot="textarea"] { background: var(--background); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block-start: 14px; }
+.pagination { margin-block-start: 18px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.pagination p { margin: 0; margin-inline-end: auto; color: var(--muted-foreground); font-size: 13px; }
+
+@media (max-width: 760px) {
+  .tableHeader { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0; white-space: nowrap; }
+  .row { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 20px; gap: 14px 12px; }
+  .identity { grid-column: 1 / -1; }
+  .cell::before { display: block; content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); margin-block-end: 4px; }
+  .rowAction { align-self: end; }
+  .expanded { padding: 20px; }
+}
+@media (max-width: 420px) {
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  .filters > [data-slot="button"], .actions > [data-slot="button"] { width: 100%; }
+  .pagination { align-items: stretch; }
+  .pagination p { flex-basis: 100%; }
+  .pagination [data-slot="button"] { flex: 1 1 120px; }
+}

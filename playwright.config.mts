@@ -11,7 +11,7 @@ export default defineConfig({
     { name: "english-desktop", use: { viewport: { width: 1440, height: 1000 } } },
   ],
   webServer: { command: "npm run dev -- --port 3100", url: "http://localhost:3100", reuseExistingServer: false,
-    env: { DATABASE_URL: databaseUrl, AUTH_SECRET: state.authSecret, INFAME_TASK_ID: state.id, INFAME_ENV: "test", DELIVERY_MODE: "fixture", APP_ORIGIN: "http://localhost:3100", NEXT_BUILD_DIR: ".next-e2e" },
+    env: { DATABASE_URL: databaseUrl, AUTH_SECRET: state.authSecret, INFAME_TASK_ID: state.id, INFAME_ENV: "test", DELIVERY_MODE: "fixture", EVIDENCE_STORAGE_MODE: "local", APP_ORIGIN: "http://localhost:3100", NEXT_BUILD_DIR: ".next-e2e" },
     timeout: 120000,
   },
 });
