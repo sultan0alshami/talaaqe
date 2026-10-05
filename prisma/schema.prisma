@@ -434,6 +434,7 @@ model Creator {
   portfolios       PortfolioVersion[]
   deals            Deal[]
   matches          CreatorMatch[]
+  collectionEntries CreatorCollectionEntry[]
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
@@ -462,6 +463,7 @@ model Brand {
   campaigns       Campaign[]
   deals           Deal[]
   organizationClients OrganizationClient[]
+  creatorCollections CreatorCollection[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
@@ -530,11 +532,69 @@ model OrganizationClient {
   authorizingSessionVersion Int?
   allowedCapabilities       Json?
   grants                    ClientGrant[]
+  creatorCollections        CreatorCollection[]
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
   @@unique([organizationId, brandId])
   @@unique([id, organizationId])
+  @@unique([id, organizationId, brandId])
   @@index([brandId, state])
+}
+
+enum CreatorCollectionScope {
+  OWN_BRAND
+  CLIENT
+}
+
+model CreatorCollection {
+  id             String @id @default(cuid())
+  scope          CreatorCollectionScope
+  brandId        String
+  brand          Brand @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  organizationId String?
+  clientId       String?
+  client         OrganizationClient? @relation(fields: [clientId, organizationId, brandId], references: [id, organizationId, brandId], onDelete: Restrict, onUpdate: Restrict)
+  name           String
+  nameLanguage   String?
+  revision       Int @default(1)
+  archived       Boolean @default(false)
+  entries        CreatorCollectionEntry[]
+  commands       CreatorCollectionCommand[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([scope, brandId, archived, id])
+  @@index([scope, clientId, archived, id])
+}
+
+model CreatorCollectionEntry {
+  id                 String @id @default(cuid())
+  collectionId       String
+  collection         CreatorCollection @relation(fields: [collectionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  creatorReferenceId String
+  creatorId          String?
+  creator            Creator? @relation(fields: [creatorId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  note               String?
+  noteLanguage       String?
+  removedAt          DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@unique([collectionId, creatorReferenceId])
+  @@index([creatorId])
+  @@index([collectionId, removedAt, id])
+}
+
+model CreatorCollectionCommand {
+  id           String @id @default(cuid())
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  collectionId String
+  collection   CreatorCollection @relation(fields: [collectionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  action       String
+  result       Json
+  createdAt    DateTime @default(now())
+  @@unique([actorUserId, operationKey])
+  @@index([collectionId, id])
 }
 
 model ClientGrant {
