@@ -1,0 +1,29 @@
+.region { min-width: 0; max-width: 100%; }
+.panel { min-width: 0; border: 1px solid var(--border); border-radius: 18px; padding: 24px; gap: 16px; box-shadow: none; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
+.header > div { flex: 1 1 300px; min-width: 0; }
+.title { font-size: 18px; font-weight: 700; line-height: 1.7; margin: 0 0 6px; overflow-wrap: anywhere; }
+.title:focus { outline: none; }
+.title:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.intro { font-size: 14px; line-height: 1.7; color: var(--muted-foreground); margin: 0; overflow-wrap: anywhere; }
+.panel [data-slot="button"] { min-height: 44px; height: auto; max-width: 100%; padding: 11px 18px; border-radius: 10px; white-space: normal; overflow-wrap: anywhere; font-size: 13.5px; }
+.status { margin: 0; font-size: 13px; line-height: 1.7; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.status:empty { display: none; }
+.assessment, .historical, .error { border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; min-width: 0; }
+.historical { background: var(--infame-surface-subtle); border-style: dashed; }
+.error { border-color: var(--destructive); }
+.assessment h3, .historical h3 { font-size: 15px; line-height: 1.7; font-weight: 700; margin: 0 0 6px; overflow-wrap: anywhere; }
+.assessment p, .historical p, .error p { font-size: 14px; line-height: 1.7; margin: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block-start: 12px; }
+.note { font-size: 13px; line-height: 1.7; color: var(--muted-foreground); margin: 0; overflow-wrap: anywhere; }
+.assessment .timestamp, .historical .timestamp { font-size: 12px; line-height: 1.7; color: var(--muted-foreground); margin-block-start: 12px; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .panel { padding: 18px; }
+  .header { align-items: stretch; }
+  .header > [data-slot="button"] { width: 100%; }
+  .actions > [data-slot="button"] { flex: 1 1 180px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .region *, .region *::before, .region *::after { transition: none !important; animation: none !important; }
+  .region [data-slot="button"]:active { transform: none; }
+}

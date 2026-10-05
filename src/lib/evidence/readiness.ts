@@ -27,7 +27,11 @@ export async function lockEvidenceActors(tx: Tx, scope: ActorScope): Promise<Evi
 export async function lockEvidenceDomain(tx: Tx, table: "Creator" | "Brand" | "SocialAccount" | "BusinessVerification" | "AdvertisingLicence" | "OwnershipChallenge" | "PrivateAsset", ids: readonly string[]): Promise<void> {
   if (ids.length) await tx.$queryRaw(Prisma.sql`SELECT id FROM ${Prisma.raw('"' + table + '"')} WHERE id IN (${Prisma.join([...new Set(ids)].sort())}) ORDER BY id FOR SHARE`);
 }
-export const accountIdentityHash = (a: SocialAccount) => canonicalHash({ platform: a.platform, normalizedHandle: a.handle, providerAccountId: a.providerAccountId, confirmedOrigin: null });
+export const ownershipProofAccountSelect = { id: true, creatorId: true, platform: true, handle: true, providerAccountId: true,
+  mappingRevision: true, evidenceRevision: true, ownershipStatus: true, ownershipProofAssetId: true,
+  ownershipReviewedBy: true, ownershipReviewedAt: true, ownershipIdentityHash: true } as const;
+export type OwnershipProofAccount = Prisma.SocialAccountGetPayload<{ select: typeof ownershipProofAccountSelect }>;
+export const accountIdentityHash = (a: Pick<SocialAccount, "platform" | "handle" | "providerAccountId">) => canonicalHash({ platform: a.platform, normalizedHandle: a.handle, providerAccountId: a.providerAccountId, confirmedOrigin: null });
 export const currentCreatorOwner = (actors: EvidenceActorLocks, c: Pick<Creator, "id" | "userId">) => actors.creatorOwners.has(c.id) && actors.creatorOwners.get(c.id) === c.userId && (!c.userId || actors.ownerIds.has(c.userId));
 export const currentBrandOwner = (actors: EvidenceActorLocks, b: Pick<Brand, "id" | "userId">) => actors.brandOwners.get(b.id) === b.userId && actors.ownerIds.has(b.userId);
 async function reviewerActive(tx: Tx, id: string, actors: EvidenceActorLocks) {
@@ -75,7 +79,7 @@ export async function privateAssetAccepted(tx: Tx, id: string, owner: string, pu
 
 // Reads only database metadata. The accepted review checked actual bytes; GET
 // never imports storage/provider code or rereads private evidence bytes.
-export async function acceptedOwnershipProof(tx: Tx, account: SocialAccount, ownerUserId: string, now: Date, locked?: EvidenceActorLocks, reader?: EvidenceReceiptReader): Promise<boolean> {
+export async function acceptedOwnershipProof(tx: Tx, account: OwnershipProofAccount, ownerUserId: string, now: Date, locked?: EvidenceActorLocks, reader?: EvidenceReceiptReader): Promise<boolean> {
   reader?.checkpoint();
   try {
     if (!Number.isFinite(now.getTime()) || account.ownershipStatus !== "VERIFIED" || !account.ownershipReviewedBy || !account.ownershipReviewedAt || account.ownershipReviewedAt > now || !account.ownershipProofAssetId || account.ownershipIdentityHash !== accountIdentityHash(account)) return false;
@@ -90,7 +94,8 @@ export async function acceptedOwnershipProof(tx: Tx, account: SocialAccount, own
     }
     const creator = await tx.creator.findUnique({ where: { id: account.creatorId }, select: { id: true, userId: true } });
     reader?.checkpoint();
-    const current = await tx.socialAccount.findUnique({ where: { id: account.id } });
+    const current = reader ? await tx.socialAccount.findUnique({ where: { id: account.id }, select: ownershipProofAccountSelect })
+      : await tx.socialAccount.findUnique({ where: { id: account.id } });
     reader?.checkpoint();
     if (!creator || creator.userId !== ownerUserId || !currentCreatorOwner(actors, creator) || !current || current.creatorId !== account.creatorId || current.mappingRevision !== account.mappingRevision || current.evidenceRevision !== account.evidenceRevision || current.ownershipStatus !== account.ownershipStatus || current.ownershipProofAssetId !== account.ownershipProofAssetId || current.ownershipReviewedBy !== account.ownershipReviewedBy || current.ownershipReviewedAt?.getTime() !== account.ownershipReviewedAt.getTime() || current.ownershipIdentityHash !== account.ownershipIdentityHash || accountIdentityHash(current) !== accountIdentityHash(account)) return false;
     reader?.checkpoint();
@@ -125,13 +130,20 @@ export async function acceptedOwnershipProof(tx: Tx, account: SocialAccount, own
   } finally { reader?.checkpoint(); }
 }
 function businessScope(b: BusinessVerification) { return { kind: b.kind, jurisdiction: b.jurisdiction, identifier: b.identifier, evidenceAssetId: b.evidenceAssetId, expiresAt: b.expiresAt?.toISOString() ?? null }; }
-export async function acceptedRepresentativeProof(tx: Tx, brand: Brand, verification: BusinessVerification, now: Date, actors: EvidenceActorLocks): Promise<boolean> {
+export async function acceptedRepresentativeProof(tx: Tx, brand: Pick<Brand, "id" | "userId" | "countryCode">,
+  verification: BusinessVerification, now: Date, actors: EvidenceActorLocks, reader?: EvidenceReceiptReader): Promise<boolean> {
+  reader?.checkpoint();
+  try {
   const b = verification;
   if (!currentBrandOwner(actors, brand) || b.brandId !== brand.id || b.kind !== "REPRESENTATIVE" || b.jurisdiction !== brand.countryCode || b.status !== "VERIFIED" || b.revision !== 2 || !b.reviewedBy || !b.reviewedAt || b.reviewedAt < b.createdAt || b.reviewedAt > now || b.expiresAt && b.expiresAt <= now || !b.evidenceAssetId || !await reviewerActive(tx, b.reviewedBy, actors)) return false;
+  reader?.checkpoint();
   if (!await ownerActive(tx, brand.userId, "BRAND", actors)) return false;
-  const submissions = await evidenceJournal(tx, "BusinessVerification", b.id, brand.userId, 1, b.createdAt);
-  if (!submissions.some(row => { const m = record(row.resultJson); return m.ownerUserId === brand.userId && m.brandCountryCode === brand.countryCode && m.scopeHash === canonicalHash(businessScope(b)); }) || !(await evidenceJournal(tx, "BusinessVerification", b.id, b.reviewedBy, b.revision, b.reviewedAt)).some(row => verifiedReview(row, "REVIEW_BUSINESS_PROOF", b.id, b.revision, b.reviewNote))) return false;
-  return !!await privateAssetAccepted(tx, b.evidenceAssetId, brand.userId, "REPRESENTATIVE", b.createdAt);
+  reader?.checkpoint();
+  const submissions = await evidenceJournal(tx, "BusinessVerification", b.id, brand.userId, 1, b.createdAt, reader);
+  if (!submissions.some(row => { reader?.checkpoint(); const m = record(row.resultJson); return m.ownerUserId === brand.userId && m.brandCountryCode === brand.countryCode && m.scopeHash === canonicalHash(businessScope(b)); }) || !(await evidenceJournal(tx, "BusinessVerification", b.id, b.reviewedBy, b.revision, b.reviewedAt, reader)).some(row => { reader?.checkpoint(); return verifiedReview(row, "REVIEW_BUSINESS_PROOF", b.id, b.revision, b.reviewNote); })) return false;
+  reader?.checkpoint();
+  return !!await privateAssetAccepted(tx, b.evidenceAssetId, brand.userId, "REPRESENTATIVE", b.createdAt, reader);
+  } finally { reader?.checkpoint(); }
 }
 function licenceScope(l: AdvertisingLicence) { return { jurisdiction: l.jurisdiction, issuer: l.issuer, holderName: l.holderName, licenceNumber: l.licenceNumber, type: l.type, scope: l.scope, accountIds: [...l.accountIds].sort(), platformScope: [...l.platformScope].sort(), evidenceAssetId: l.evidenceAssetId, validFrom: l.validFrom?.toISOString() ?? null, expiresAt: l.expiresAt?.toISOString() ?? null }; }
 export async function acceptedLicenceProof(tx: Tx, creator: Creator, l: AdvertisingLicence, accounts: readonly SocialAccount[], now: Date, actors: EvidenceActorLocks): Promise<boolean> {

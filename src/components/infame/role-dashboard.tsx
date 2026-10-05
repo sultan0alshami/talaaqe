@@ -1,4 +1,5 @@
 "use client";
+import { PublicationReadinessPanel } from "./readiness-panel";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -262,6 +263,7 @@ export function RoleDashboard({
               </Link>
             </Button>
           )}
+          <PublicationReadinessPanel role={role} />
         </DashboardSection>
         {!emailVerified && (
           <Card className="gap-3 rounded-[18px] border border-border p-[22px] ring-0">

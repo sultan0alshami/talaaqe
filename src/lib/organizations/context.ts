@@ -21,17 +21,30 @@ export async function organizationAwait<T>(checkpoint: (() => void) | undefined,
   try { return await query(); } finally { checkpoint?.(); }
 }
 const checkpointed = organizationAwait;
-async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor, checkpoint?: () => void) {
+const organizationRoles = Object.freeze(["BRAND"] as const);
+const profileRoles = Object.freeze(["CREATOR", "BRAND"] as const);
+async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor,
+  checkpoint?: () => void, allowedRoles: readonly string[] = organizationRoles) {
   const user = await checkpointed(checkpoint, () => tx.user.findUnique({ where: { id: actor.userId }, select: { id: true, active: true, role: true, sessionVersion: true } }));
   const session = await checkpointed(checkpoint, () => tx.authSession.findUnique({ where: { id: actor.sessionId } }));
   if (!user?.active || user.role !== actor.role || user.sessionVersion !== actor.sessionVersion || !session
     || session.userId !== actor.userId || session.version !== actor.sessionVersion || session.revokedAt || session.expiresAt <= new Date()) {
     throw new OrganizationError("UNAUTHENTICATED", 401);
   }
-  if (user.role !== "BRAND") throw new OrganizationError("FORBIDDEN", 403);
+  if (!allowedRoles.includes(user.role)) throw new OrganizationError("FORBIDDEN", 403);
 }
 export async function checkOrganizationActor(actor: OrganizationActor, options: OrganizationOptions = {}, checkpoint?: () => void) {
   await authorizeActor(organizationDb(options), claims(actor), checkpoint);
+}
+// Self-profile access is distinct from tenant authority. No caller can broaden
+// the fixed role set, and existing organization exports remain BRAND-only.
+export async function checkProfileActor(actor: OrganizationActor, options: OrganizationOptions = {}, checkpoint?: () => void) {
+  await authorizeActor(organizationDb(options), claims(actor), checkpoint, profileRoles);
+}
+export function withProfileActorTransaction<T>(actor: OrganizationActor, options: OrganizationOptions,
+  config: { write: boolean; userIds?: string[]; reviewerIds?: string[]; checkpoint?: () => void },
+  action: (tx: OrganizationTransaction, ownerIds: ReadonlySet<string>, reviewerIds: ReadonlySet<string>) => Promise<T>): Promise<T> {
+  return withActorTransaction(actor, options, config, action, profileRoles);
 }
 function retryConflict(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034"
@@ -40,10 +53,17 @@ function retryConflict(error: unknown) {
 
 // Preflight identity IDs are locks only, never an authority claim. The handler
 // must recheck every owner/membership/client binding under these native locks.
-export async function withOrganizationTransaction<T>(actorInput: OrganizationActor, options: OrganizationOptions,
+export function withOrganizationTransaction<T>(actor: OrganizationActor, options: OrganizationOptions,
   config: { write: boolean; userIds?: string[]; reviewerIds?: string[]; checkpoint?: () => void },
-  action: (tx: OrganizationTransaction, lockedUserIds: ReadonlySet<string>, reviewerIds: ReadonlySet<string>) => Promise<T>): Promise<T> {
+  action: (tx: OrganizationTransaction, ownerIds: ReadonlySet<string>, reviewerIds: ReadonlySet<string>) => Promise<T>): Promise<T> {
+  return withActorTransaction(actor, options, config, action, organizationRoles);
+}
+async function withActorTransaction<T>(actorInput: OrganizationActor, options: OrganizationOptions,
+  config: { write: boolean; userIds?: string[]; reviewerIds?: string[]; checkpoint?: () => void },
+  action: (tx: OrganizationTransaction, lockedUserIds: ReadonlySet<string>, reviewerIds: ReadonlySet<string>) => Promise<T>,
+  allowedRoles: readonly ("CREATOR" | "BRAND")[]): Promise<T> {
   const actor = claims(actorInput);
+  const write = config.write;
   const ids = z.array(OrganizationIdSchema).max(63).parse(config.userIds ?? []);
   const ordered = [...new Set([actor.userId, ...ids])].sort();
   const reviewerIds = [...new Set(z.array(OrganizationIdSchema).max(2412).parse(config.reviewerIds ?? []))].sort();
@@ -51,24 +71,24 @@ export async function withOrganizationTransaction<T>(actorInput: OrganizationAct
   const reviewers = reviewerIds.filter(id => !owners.has(id));
   const checkpoint = config.checkpoint;
   const client = organizationDb(options);
-  const attempts = config.write ? 3 : 1;
+  const attempts = write ? 3 : 1;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       checkpoint?.();
       return await client.$transaction(async tx => {
         checkpoint?.();
-        await checkpointed(checkpoint, () => config.write
+        await checkpointed(checkpoint, () => write
           ? tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR UPDATE`)
           : tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR SHARE`));
         if (reviewers.length) await checkpointed(checkpoint, () => tx.$queryRaw(Prisma.sql`SELECT id FROM "User"
           WHERE id IN (${Prisma.join(reviewers)}) ORDER BY id FOR SHARE`));
         await checkpointed(checkpoint, () => tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${actor.sessionId} FOR SHARE`);
-        await authorizeActor(tx, actor, checkpoint);
+        await authorizeActor(tx, actor, checkpoint, allowedRoles);
         const result = await checkpointed(checkpoint, () => action(tx, new Set(owners), new Set(logicalReviewers)));
-        await authorizeActor(tx, actor, checkpoint);
+        await authorizeActor(tx, actor, checkpoint, allowedRoles);
         checkpoint?.();
         return result;
-      }, { isolationLevel: config.write ? "Serializable" : "RepeatableRead", maxWait: 10000, timeout: 20000 });
+      }, { isolationLevel: write ? "Serializable" : "RepeatableRead", maxWait: 10000, timeout: 20000 });
     } catch (error) {
       if (!retryConflict(error)) throw error;
       if (attempt + 1 >= attempts) throw new OrganizationError("RETRY_REQUIRED", 503);

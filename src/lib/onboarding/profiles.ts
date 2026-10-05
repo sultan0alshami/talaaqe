@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { AvailabilitySchema, ArabicDialectSchema, ContentLanguageSchema, ContentStyleSchema, CountryCodeSchema, FameIndustrySchema, LocationSchema, normalizeBrandSlug, normalizeInfameHandle, PLATFORM_FORMATS, PlatformSchema, DealFormatSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
 import { CurrencyCodeSchema, MoneySchema } from "@/lib/contracts/money";
 import { NICHE_BY_SLUG } from "@/lib/contracts/taxonomy";
-import { acceptedOwnershipProof, acceptedRepresentativeProof, currentBrandOwner, currentCreatorOwner, lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
+import { acceptedRepresentativeProof, currentBrandOwner, currentCreatorOwner, lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, OnboardingError, parse, persistCommand, record, requireRevision, stateOf, withOwnedDraft, type CommandContext, type DraftDTO, type Json, type Transaction } from "./drafts";
 import { ProfileTextSchema as text, PortfolioContentSchema, type PortfolioContent } from "./portfolio-contract";
 import { creatorPublicationCore } from "./public-creator-core";
+import { assertPublicationPrerequisites, assertPublicationAccountSelection,
+  currentPublicationPortfolio as currentPortfolio, type PublicationPortfolio as PortfolioDTO } from "./publication-prerequisites";
 export { PortfolioContentSchema, type PortfolioContent } from "./portfolio-contract";
 
 const MinorAmountSchema = MoneySchema.shape.amountMinor;
@@ -26,7 +28,6 @@ const BrandProfileSchema = z.object({
   contactName: text.max(100), representativeRole: text.max(100), targetMarkets: z.array(CountryCodeSchema).max(50), languages: z.array(languageSchema).max(20), preferredCurrency: CurrencyCodeSchema.nullable(),
 }).strict().refine((value) => value.noWebsite ? value.website === null : value.website !== null, "Choose website or no-website path");
 const CommandSchema = CommandBaseSchema.extend({ action: z.enum(["SAVE_PROFILE", "GENERATE_PORTFOLIO", "APPROVE_PORTFOLIO", "PUBLISH", "HIDE"]), payload: z.unknown() }).strict();
-type PortfolioDTO = { version: number; content: PortfolioContent; approvedAt: string | null; inputRevision: number };
 type Result = { draft: DraftDTO; portfolio?: PortfolioDTO; replayed: boolean };
 function handle(value: string, role: "CREATOR" | "BRAND") { try { return role === "CREATOR" ? normalizeInfameHandle(value) : normalizeBrandSlug(value); } catch { throw new OnboardingError("INVALID_HANDLE", 400); } }
 function safeWebsite(value: string | null) {
@@ -39,13 +40,6 @@ function safeWebsite(value: string | null) {
 }
 function profileFact(value: Json, now: Date) { return { value, source: "SELF_REPORTED", evidenceAt: now.toISOString(), approvedAt: now.toISOString(), brandVisible: true, publicVisible: true }; }
 const past = (date: Date | null, now: Date) => date !== null && date <= now;
-async function currentPortfolio(tx: Transaction, role: "CREATOR" | "BRAND", profileId: string): Promise<PortfolioDTO | null> {
-  const portfolio = role === "CREATOR" ? await tx.portfolioVersion.findFirst({ where: { creatorId: profileId }, orderBy: { version: "desc" } }) : await tx.brandPortfolioVersion.findFirst({ where: { brandId: profileId }, orderBy: { version: "desc" } });
-  if (!portfolio) return null;
-  const parsed = PortfolioContentSchema.safeParse(portfolio.content);
-  if (!parsed.success) return null;
-  return { version: portfolio.version, content: parsed.data, approvedAt: portfolio.approvedAt?.toISOString() ?? null, inputRevision: portfolio.inputRevision };
-}
 async function syncMappedAccounts(tx: Transaction, creator: Creator, draft: OnboardingDraft, primarySourceKey: string | null) {
   const state = stateOf(draft), consents = consentOf(draft);
   let primaryAccountId: string | null = null;
@@ -141,32 +135,13 @@ export async function profileCommand(actorUserId: string, draftId: string, input
       step = "PREVIEW";
     } else if (command.action === "PUBLISH") {
       const value = parse(z.object({ consent: z.boolean(), portfolioVersion: z.number().int().positive(), visibleAccountIds: z.array(z.string().min(1).max(200)).max(100).refine((ids) => new Set(ids).size === ids.length).optional() }).strict(), command.payload);
-      if (!value.consent) throw new OnboardingError("PUBLICATION_CONSENT_REQUIRED", 400);
-      const user = await tx.user.findUniqueOrThrow({ where: { id: actorUserId } });
-      if (!past(user.emailVerifiedAt, now)) throw new OnboardingError("EMAIL_VERIFICATION_REQUIRED");
-      if (creator) {
-        const primary = creator.primaryAccountId ? await tx.socialAccount.findUnique({ where: { id: creator.primaryAccountId } }) : null;
-        if (!primary || primary.creatorId !== creator.id || !past(primary.intendedConfirmedAt, now) || !past(primary.consentAt, now) || !await acceptedOwnershipProof(tx, primary, actorUserId, now, evidenceActors)) throw new OnboardingError("PRIMARY_OWNERSHIP_REQUIRED");
-        if (!creator.countryCode || !creator.timeZone || !creator.languages.length || !creator.nicheIds.length || !creator.currency) throw new OnboardingError("PROFILE_ESSENTIALS_REQUIRED");
-        if (record(creator.profileFacts).mappingHash !== canonicalHash(state.sources)) throw new OnboardingError("ACCOUNT_MAPPING_CHANGED");
-      } else if (brand) {
-        const rows = await tx.businessVerification.findMany({ where: { brandId: brand.id, kind: "REPRESENTATIVE", status: "VERIFIED", reviewedAt: { lte: now }, reviewedBy: { not: null }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } });
-        let accepted = false;
-        for (const row of rows) if (await acceptedRepresentativeProof(tx, brand, row, now, evidenceActors)) { accepted = true; break; }
-        if (!accepted) throw new OnboardingError("REPRESENTATION_REQUIRED");
-        const facts = record(brand.profileFacts);
-        if (!brand.countryCode || !brand.timeZone || !Array.isArray(facts.languages) || !facts.languages.length || !Array.isArray(facts.targetMarkets) || !facts.targetMarkets.length || !CurrencyCodeSchema.safeParse(facts.preferredCurrency).success) throw new OnboardingError("PROFILE_ESSENTIALS_REQUIRED");
-      }
-      portfolio = await currentPortfolio(tx, role, profile.id);
-      if (!portfolio?.approvedAt || portfolio.version !== value.portfolioVersion || state.generatedSectionsStale) throw new OnboardingError("PORTFOLIO_APPROVAL_REQUIRED");
+      portfolio = await assertPublicationPrerequisites(tx, { actorUserId,
+        profile: creator ? { role: "CREATOR", creator } : { role: "BRAND", brand: brand! },
+        state, payload: value, actors: evidenceActors, now });
       const publication = { state: "PUBLISHED" as const, publicConsentAt: now, publishedAt: now };
       if (creator) {
         await tx.creator.update({ where: { id: creator.id }, data: { ...publication, brandVisible: true } });
-        const accounts = await tx.socialAccount.findMany({ where: { creatorId: creator.id, ownershipStatus: "VERIFIED", intendedConfirmedAt: { not: null }, consentAt: { not: null } } });
-        const allowed: string[] = [];
-        for (const account of accounts) if (past(account.intendedConfirmedAt, now) && past(account.consentAt, now) && await acceptedOwnershipProof(tx, account, actorUserId, now, evidenceActors)) allowed.push(account.id);
-        const ids = value.visibleAccountIds ?? [creator.primaryAccountId!];
-        if (ids.some((id) => !allowed.includes(id))) throw new OnboardingError("ACCOUNT_PUBLICATION_NOT_ALLOWED", 400);
+        const ids = await assertPublicationAccountSelection(tx, { actorUserId, creator, visibleAccountIds: value.visibleAccountIds, actors: evidenceActors, now });
         await tx.socialAccount.updateMany({ where: { creatorId: creator.id }, data: { publicVisible: false, brandVisible: false } });
         await tx.socialAccount.updateMany({ where: { id: { in: ids } }, data: { publicVisible: true, brandVisible: true } });
       } else await tx.brand.update({ where: { id: brand!.id }, data: publication });
