@@ -13,7 +13,7 @@ const card: React.CSSProperties = {
 const cardTitle: React.CSSProperties = { fontSize: 15, fontWeight: 700, margin: "0 0 4px" };
 const cardSub: React.CSSProperties = { fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 16px" };
 
-export function SettingsScreen() {
+export function SettingsScreen({ organizationSettings = false }: { organizationSettings?: boolean }) {
   const { t, isAr, setLang } = useI18n();
   const copy = (ar: string, en: string) => isAr ? ar : en;
 
@@ -62,6 +62,13 @@ export function SettingsScreen() {
       </div>
 
       {/* Notifications */}
+      {organizationSettings && <div style={card}>
+        <h3 style={cardTitle}>{copy("المؤسسات والفريق", "Organizations and team")}</h3>
+        <p style={cardSub}>{copy("إدارة عضوية المؤسسة والوصول المفوّض للعملاء.", "Manage organization memberships and delegated client access.")}</p>
+        <Link href="/brand/organizations" style={{ ...actionBtn, display: "inline-flex", textDecoration: "none", minHeight: 44, alignItems: "center" }}>
+          {copy("عرض المؤسسات", "View organizations")}
+        </Link>
+      </div>}
       <div style={card}>
         <h3 style={{ ...cardTitle, marginBottom: 14 }}>{t.setNotifT}</h3>
         <p style={cardSub}>{copy("إعدادات إرسال الإشعارات غير متاحة حاليًا.", "Notification delivery settings are currently unavailable.")}</p>

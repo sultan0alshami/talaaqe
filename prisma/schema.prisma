@@ -83,6 +83,8 @@ model User {
   brand                   Brand?
   drafts                  OnboardingDraft[]
   notifications           Notification[]
+  ownedOrganizations      Organization[]
+  organizationMemberships OrganizationMembership[]
 }
 
 model Client {
@@ -459,10 +461,117 @@ model Brand {
   verifications   BusinessVerification[]
   campaigns       Campaign[]
   deals           Deal[]
+  organizationClients OrganizationClient[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
   @@index([state, isTest])
+}
+
+// Additive client-scoped authority. Legacy Brand ownership and deal parties stand.
+enum OrganizationKind {
+  BUSINESS
+  AGENCY
+}
+
+enum MembershipState {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum OrganizationClientState {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+model Organization {
+  id          String @id @default(cuid())
+  name        String
+  kind        OrganizationKind
+  ownerUserId String
+  owner       User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  active      Boolean @default(true)
+  revision    Int @default(1)
+  memberships OrganizationMembership[]
+  clients     OrganizationClient[]
+  commands    OrganizationCommand[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([ownerUserId])
+}
+
+model OrganizationMembership {
+  id             String @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  state          MembershipState @default(PENDING)
+  revision       Int @default(1)
+  grants         ClientGrant[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([organizationId, userId])
+  @@unique([id, organizationId])
+  @@index([userId, state])
+}
+
+model OrganizationClient {
+  id                        String @id @default(cuid())
+  organizationId            String
+  organization              Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brandId                   String
+  brand                     Brand @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  state                     OrganizationClientState @default(PENDING)
+  revision                  Int @default(1)
+  authorizingUserId         String?
+  authorizingSessionVersion Int?
+  allowedCapabilities       Json?
+  grants                    ClientGrant[]
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  @@unique([organizationId, brandId])
+  @@unique([id, organizationId])
+  @@index([brandId, state])
+}
+
+model ClientGrant {
+  id               String @id @default(cuid())
+  organizationId   String
+  membershipId     String
+  membership       OrganizationMembership @relation(fields: [membershipId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  clientId         String
+  client           OrganizationClient @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  active           Boolean @default(true)
+  revision         Int @default(1)
+  view             Boolean @default(false)
+  plan             Boolean @default(false)
+  approveShortlist Boolean @default(false)
+  reviewContent    Boolean @default(false)
+  signCustomer     Boolean @default(false)
+  financial        Boolean @default(false)
+  manageGrants     Boolean @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@unique([membershipId, clientId])
+  @@index([organizationId, clientId, active])
+}
+
+model OrganizationCommand {
+  id             String @id @default(cuid())
+  actorUserId    String
+  operationKey   String
+  payloadHash    String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  resourceType   String
+  resourceId     String
+  result         Json
+  createdAt      DateTime @default(now())
+  @@unique([actorUserId, operationKey])
+  @@index([organizationId])
 }
 
 model Niche {

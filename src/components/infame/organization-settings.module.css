@@ -1,0 +1,19 @@
+.page { max-width:720px; margin:0 auto; min-width:0; }
+.header { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.page h1 { font-size:24px; font-weight:700; margin:0; }
+.page h2 { font-size:15px; font-weight:700; margin:0 0 4px; }
+.page h3 { font-size:15px; font-weight:600; margin:0; overflow-wrap:anywhere; }
+.intro { font-size:14px; color:var(--muted-foreground); margin:16px 0 20px; overflow-wrap:anywhere; }
+.card { border:1px solid var(--border); border-radius:18px; padding:24px; margin-bottom:18px; gap:16px; box-shadow:none; }
+.form { display:grid; gap:12px; }
+.form select { min-height:48px; min-width:0; width:100%; padding:10px; background:var(--background); color:var(--foreground); border:1px solid var(--input); border-radius:10px; font-size:16px; }
+.form select:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.form button { justify-self:start; }
+.row { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--border); padding-top:16px; }
+.row > div { min-width:0; flex:1; }
+.row p { margin:6px 0; font-size:13px; color:var(--muted-foreground); overflow-wrap:anywhere; }
+.error { color:var(--destructive); overflow-wrap:anywhere; }
+.status { min-height:24px; font-size:14px; }
+.timestamp { color:var(--muted-foreground); font-size:12px; }
+@media(max-width:480px) { .card { padding:18px; } .row { align-items:stretch; flex-direction:column; } .row button, .row a { align-self:flex-start; max-width:100%; white-space:normal; } }
+@media(prefers-reduced-motion:reduce) { .page * { transition:none !important; animation:none !important; } }
