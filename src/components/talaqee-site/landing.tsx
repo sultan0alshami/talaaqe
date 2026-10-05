@@ -47,7 +47,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
     per: p.per,
     cta: p.cta,
     hot: p.hot,
-    href: i === 3 ? "/classic/signup?role=creator" : "/classic/signup?role=brand",
+    href: i === 0 ? "/classic/signup?role=brand" : null,
     featList: p.feats,
     bg: p.hot ? "linear-gradient(160deg, var(--classic-ink), var(--classic-deep))" : "var(--classic-card)",
     fg: p.hot ? "var(--classic-inverse)" : "var(--classic-ink)",
@@ -523,6 +523,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <h2 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 8px", color: "var(--classic-deep)" }}>{t.pricingTitle}</h2>
           <p style={{ color: "var(--classic-muted)", fontSize: 16, margin: 0 }}>{t.pricingSub}</p>
+          <p style={{ color: "var(--classic-muted)", fontSize: 14, margin: "16px 0" }}>{t.pricingDetails}</p>
+          <Link href="/pricing" style={{ color: TEAL, fontWeight: 700 }}>{t.pricingLink}</Link>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18, alignItems: "stretch" }}>
           {plans.map((pl, i) => (
@@ -557,8 +559,8 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                 </div>
               )}
               <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>{pl.n}</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 22 }}>
-                <span style={{ fontSize: 36, fontWeight: 700 }}>{pl.p}</span>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 6, marginBottom: 22 }}>
+                <bdi dir={i === 0 ? "auto" : "ltr"} style={{ fontSize: 36, fontWeight: 700 }}>{pl.p}</bdi>
                 <span style={{ fontSize: 13, opacity: 0.65 }}>{pl.per}</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 26 }}>
@@ -569,7 +571,7 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                   </div>
                 ))}
               </div>
-              <Link
+              {pl.href ? <Link
                 href={pl.href}
                 className="hover:opacity-[.92]"
                 style={{
@@ -585,7 +587,15 @@ export function LandingScreen({ categories }: { categories: LandingCategory[] })
                 }}
               >
                 {pl.cta}
-              </Link>
+              </Link> : <button
+                type="button"
+                disabled
+                style={{
+                  marginTop: "auto", background: pl.btnBg, color: NAVY, border: "none",
+                  fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 11,
+                  minHeight: 44, cursor: "not-allowed",
+                }}
+              >{pl.cta}</button>}
             </div>
           ))}
         </div>
