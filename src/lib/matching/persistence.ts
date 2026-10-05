@@ -10,6 +10,9 @@ import { acceptedLicenceProof, acceptedOwnershipProof, currentCreatorOwner, lock
 import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
 import { FRESHNESS_MS, STRATEGY_ID } from "./benchmarks";
 import { prepareEligibility, shortlist } from "./strategy";
+import { MatchingIdSchema as IdSchema, RunCommandSchema, DecisionCommandSchema,
+  type MatchingDecisionDTO, type MatchingCreatorIdentity, type MatchingRunDTO, type MatchingRunCommand } from "./contracts";
+export type { MatchingRunCommand, MatchingDecisionCommand, MatchingDecisionDTO, MatchingCreatorIdentity, MatchingRunDTO } from "./contracts";
 import type { AudienceInput, Bucket, CampaignInput, CreatorInput, Evidence, Fact, MatchingAccount, MatchResult, PolicyOutcome, SafetyExclusion, ViewObservation } from "./types";
 
 export class MatchingError extends Error {
@@ -20,15 +23,6 @@ type Transaction = Prisma.TransactionClient;
 // request/model input; no provider/model calls or writes, including on GET.
 export type MatchingPolicyReader = (tx: Transaction, requirements: CampaignRequirementsDTO, creatorIds: readonly string[], context?: { evidenceActors: EvidenceActorLocks; now: Date }) => Promise<{ version:string; outcomes:Record<string,PolicyOutcome[]>; safetyExclusions:Record<string,SafetyExclusion[]> }>;
 export type MatchingPersistenceOptions = { client?:PrismaClient; now?:Date; policyReader?:MatchingPolicyReader; evidenceActors?:EvidenceActorLocks };
-const KeySchema=z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/);
-const IdSchema=z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
-const RunCommandSchema=z.object({operationKey:KeySchema,expectedBriefVersion:z.number().int().positive(),expectedCampaignRevision:z.number().int().positive()}).strict();
-const DecisionCommandSchema=z.object({operationKey:KeySchema,expectedBriefVersion:z.number().int().positive(),runId:IdSchema,creatorId:IdSchema,expectedDecisionRevision:z.number().int().nonnegative(),decision:z.enum(["NONE","SAVED","DISMISSED"])}).strict();
-export type MatchingRunCommand=z.infer<typeof RunCommandSchema>;
-export type MatchingDecisionCommand=z.infer<typeof DecisionCommandSchema>;
-export type MatchingDecisionDTO={creatorId:string;decision:string;revision:number;runId:string|null;updatedAt:string};
-export type MatchingCreatorIdentity={displayName:string;handle:string};
-export type MatchingRunDTO={runId:string;briefVersion:number;strategyId:string;createdAt:string;replayed:boolean;stale:boolean;readiness:string;allocationBasis:"FIRST_SLOT_COMPARISON";desiredCreatorCount:number;results:(MatchResult & {stale:boolean;creator:MatchingCreatorIdentity;provenance:Evidence[];decision:MatchingDecisionDTO|null})[]};
 const visible=(brand:boolean,publicField:boolean):Evidence["visibility"]=>publicField?"PUBLIC":brand?"BRAND_ONLY":"PRIVATE";
 const record=(value:unknown):Record<string,unknown>=>value && typeof value==="object" && !Array.isArray(value)?value as Record<string,unknown>:{};
 function fieldPermission(value:unknown,key:string,original:Evidence["visibility"]):Evidence["visibility"] {

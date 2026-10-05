@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import type { MatchingCampaignSummary } from "@/components/infame/matches-screen";
+import { MatchingCampaignSummarySchema, summarizeMatchingCampaign } from "./contracts";
 import { CampaignError, getCampaign } from "@/lib/campaigns/service";
 import { MatchingError, getCampaignMatches } from "@/lib/matching/persistence";
 import { reviewedMatchingPolicies } from "@/lib/policies";
@@ -21,7 +21,6 @@ export async function loadMatchingPage(actorUserId: string, campaignId: string) 
     else if (error instanceof Error && "code" in error && error.code === "POLICY_UNAVAILABLE") readinessError = "POLICY_UNAVAILABLE";
     else throw error;
   }
-  const summary: MatchingCampaignSummary = { id: campaign.id, title: campaign.title, revision: campaign.revision, currentBriefVersion: campaign.currentBriefVersion, status: campaign.status,
-    policyReviewed: !!campaign.briefs.find((brief) => brief.version === campaign.currentBriefVersion)?.content.policyReview };
+  const summary = MatchingCampaignSummarySchema.parse(summarizeMatchingCampaign(campaign));
   return { summary, run, accessUnavailable, readinessError };
 }
