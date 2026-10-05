@@ -1,3 +1,4 @@
+import "./clock";
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";

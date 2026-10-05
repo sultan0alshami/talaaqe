@@ -1,115 +1,57 @@
-import { Prisma, type Creator, type MetricsSnapshot } from "@prisma/client";
+import { Prisma, type MetricsSnapshot } from "@prisma/client";
 import { bandForFollowers, REACH_TAXONOMY_VERSION } from "@/lib/commercial/contracts";
 import { CountryCodeSchema } from "@/lib/contracts/vocabulary";
 import { acceptedSnapshotFieldConsent } from "@/lib/evidence/metrics-consent";
 import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
 import { lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import type { EvidenceReceiptReader } from "@/lib/evidence/receipt-reader";
-import { canonicalHash } from "@/lib/onboarding/drafts";
 import { creatorPublicationCore } from "@/lib/onboarding/public-creator-core";
 import { DISCOVERY_FRESHNESS_MS, DISCOVERY_LIMITS, DiscoveryError, PublicDiscoveryCreatorSchema,
   type PublicDiscoveryAccount, type PublicDiscoveryCreator } from "./contracts";
+import { capturePublicCreatorIdentities, lockPublicIdentityUsers, publicIdentityActors,
+  publicIdentityAccountReferences, publicIdentityRead, publicIdentityChoiceOrder as choiceOrder,
+  publicIdentityAccountFingerprint as accountFingerprint, publicIdentityObservationFingerprint as choiceFingerprint,
+  type PublicIdentityCapture } from "./public-identity-capture";
 
-const accountSelect = {
-  id: true, creatorId: true, platform: true, handle: true, providerAccountId: true,
-  publicVisible: true, mappingRevision: true, evidenceRevision: true, ownershipReviewedBy: true,
-} as const;
-const choiceSelect = {
-  id: true, accountId: true, mappingRevision: true, source: true, reviewStatus: true,
-  observedAt: true, importedAt: true, approvedAt: true, approvedBy: true, excludedAt: true, supersedesId: true,
-} as const;
-const choiceOrder = [{ observedAt: "desc" }, { importedAt: "desc" }, { id: "asc" }] as const;
-type CreatorRef = Pick<Creator, "id" | "userId" | "primaryAccountId">;
-type AccountRef = Prisma.SocialAccountGetPayload<{ select: typeof accountSelect }>;
-type Choice = Prisma.MetricsSnapshotGetPayload<{ select: typeof choiceSelect }>;
-type Capture = { creator: CreatorRef; accounts: AccountRef[]; choices: Map<string, Choice | null> };
 const retry = (): never => { throw new DiscoveryError("RETRY_REQUIRED"); };
-
-function accountFingerprint(account: AccountRef): string {
-  return canonicalHash({ id: account.id, creatorId: account.creatorId, platform: account.platform,
-    handle: account.handle, providerAccountId: account.providerAccountId, publicVisible: account.publicVisible,
-    mappingRevision: account.mappingRevision, evidenceRevision: account.evidenceRevision, ownershipReviewedBy: account.ownershipReviewedBy });
-}
-function choiceFingerprint(choice: Choice | null): string | null {
-  return choice ? canonicalHash({ id: choice.id, accountId: choice.accountId, mappingRevision: choice.mappingRevision,
-    source: choice.source, reviewStatus: choice.reviewStatus, observedAt: choice.observedAt.toISOString(),
-    importedAt: choice.importedAt.toISOString(), approvedAt: choice.approvedAt?.toISOString() ?? null,
-    approvedBy: choice.approvedBy, excludedAt: choice.excludedAt?.toISOString() ?? null, supersedesId: choice.supersedesId }) : null;
-}
 
 export async function loadPublicCreatorIdentities(
   tx: Prisma.TransactionClient, creatorIds: readonly string[], now: Date, reader: EvidenceReceiptReader,
 ): Promise<PublicDiscoveryCreator[]> {
   reader.checkpoint();
   try {
-    if (!Array.isArray(creatorIds) || creatorIds.length > DISCOVERY_LIMITS.creators
-      || creatorIds.some(id => typeof id !== "string" || !id.length || id.length > 200)
-      || new Set(creatorIds).size !== creatorIds.length || !Number.isFinite(now.getTime())) retry();
-    const ids = [...creatorIds];
-    if (!ids.length) return [];
-    async function checked<T>(query: () => Promise<T>): Promise<T> {
-      reader.checkpoint();
-      const value = await query();
-      reader.checkpoint();
-      return value;
-    }
-    async function accountsFor(creator: CreatorRef): Promise<AccountRef[]> {
-      const publicAccounts = await checked(() => tx.socialAccount.findMany({
-        where: { creatorId: creator.id, publicVisible: true }, select: accountSelect,
-        orderBy: { id: "asc" }, take: DISCOVERY_LIMITS.publicAccounts,
-      }));
-      if (publicAccounts.length === DISCOVERY_LIMITS.publicAccounts) {
-        const tail = publicAccounts[publicAccounts.length - 1]!.id;
-        const more = await checked(() => tx.$queryRaw<Array<{ exists: boolean }>>`SELECT EXISTS (
-          SELECT 1 FROM "SocialAccount" WHERE "creatorId"=${creator.id} AND "publicVisible"=true AND id>${tail}
-        ) AS "exists"`);
-        if (more.length !== 1 || typeof more[0]?.exists !== "boolean" || more[0].exists) retry();
-      }
-      if (creator.primaryAccountId && !publicAccounts.some(account => account.id === creator.primaryAccountId)) {
-        const primary = await checked(() => tx.socialAccount.findUnique({
-          where: { id: creator.primaryAccountId!, creatorId: creator.id }, select: accountSelect,
-        }));
-        if (primary?.publicVisible) retry();
-        if (primary) publicAccounts.push(primary);
-      }
-      return publicAccounts;
-    }
+    const capture = await capturePublicCreatorIdentities(tx, creatorIds, now, reader);
+    const actors = await lockPublicIdentityUsers(tx, capture, reader);
+    return await projectPublicCreatorIdentities(tx, capture, actors, reader);
+  } finally { reader.checkpoint(); }
+}
 
-    const references = await checked(() => tx.creator.findMany({ where: { id: { in: ids } },
-      select: { id: true, userId: true, primaryAccountId: true }, take: DISCOVERY_LIMITS.creators }));
-    const byId = new Map(references.map(creator => [creator.id, creator]));
-    const captures: Capture[] = [];
-    const ownerIds = new Set<string>(), reviewerIds = new Set<string>();
-    for (const id of ids) {
+export async function projectPublicCreatorIdentities(
+  tx: Prisma.TransactionClient, capture: PublicIdentityCapture,
+  actors: EvidenceActorLocks, reader: EvidenceReceiptReader,
+): Promise<PublicDiscoveryCreator[]> {
+  reader.checkpoint();
+  try {
+    const expected = publicIdentityActors(capture);
+    if (typeof actors?.ownerIds?.has !== "function" || typeof actors?.reviewerIds?.has !== "function"
+      || typeof actors?.creatorOwners?.has !== "function" || typeof actors?.creatorOwners?.get !== "function") return retry();
+    // A trusted outer bridge may supply additional actors; captured scope must
+    // still be present with the exact creator-owner mappings.
+    for (const owner of expected.ownerIds) {
       reader.checkpoint();
-      const creator = byId.get(id);
-      if (!creator) continue;
-      if (creator.userId) ownerIds.add(creator.userId);
-      const accounts = await accountsFor(creator), choices = new Map<string, Choice | null>();
-      for (const account of accounts) {
-        reader.checkpoint();
-        if (account.ownershipReviewedBy) reviewerIds.add(account.ownershipReviewedBy);
-        if (!account.publicVisible) continue;
-        const choice = await checked(() => tx.metricsSnapshot.findFirst({
-          where: { accountId: account.id, mappingRevision: account.mappingRevision, excludedAt: null },
-          orderBy: [...choiceOrder], select: choiceSelect,
-        }));
-        choices.set(account.id, choice);
-        if (choice?.approvedBy) reviewerIds.add(choice.approvedBy);
-      }
-      captures.push({ creator, accounts, choices });
+      if (!actors.ownerIds.has(owner)) retry();
     }
+    for (const reviewer of expected.reviewerIds) {
+      reader.checkpoint();
+      if (!actors.reviewerIds.has(reviewer)) retry();
+    }
+    for (const [id, owner] of expected.creatorOwners) {
+      reader.checkpoint();
+      if (!actors.creatorOwners.has(id) || actors.creatorOwners.get(id) !== owner) retry();
+    }
+    const captures = capture.records, now = new Date(capture.asOf);
     if (!captures.length) return [];
-    for (const owner of ownerIds) reviewerIds.delete(owner);
-    if (ownerIds.size > DISCOVERY_LIMITS.ownerUsers || reviewerIds.size > DISCOVERY_LIMITS.reviewerUsers) retry();
-    // Finish the entire batch's User locking before taking any domain lock.
-    const owners = [...ownerIds].sort(), reviewers = [...reviewerIds].sort();
-    if (owners.length) await checked(() => tx.$queryRaw(Prisma.sql`SELECT id FROM "User"
-      WHERE id IN (${Prisma.join(owners)}) ORDER BY id FOR SHARE`));
-    if (reviewers.length) await checked(() => tx.$queryRaw(Prisma.sql`SELECT id FROM "User"
-      WHERE id IN (${Prisma.join(reviewers)}) ORDER BY id FOR SHARE`));
-    const actors: EvidenceActorLocks = { ownerIds, reviewerIds,
-      creatorOwners: new Map(captures.map(capture => [capture.creator.id, capture.creator.userId])), brandOwners: new Map() };
+    const checked = <T>(query: () => Promise<T>) => publicIdentityRead(reader, query);
     const selectedCreatorIds = captures.map(capture => capture.creator.id);
     await checked(() => lockEvidenceDomain(tx, "Creator", selectedCreatorIds));
     const creators = await checked(() => tx.creator.findMany({ where: { id: { in: selectedCreatorIds } },
@@ -125,7 +67,7 @@ export async function loadPublicCreatorIdentities(
     await checked(() => lockEvidenceDomain(tx, "SocialAccount", selectedAccountIds));
     for (const capture of captures) {
       reader.checkpoint();
-      const current = await accountsFor(capture.creator);
+      const current = await publicIdentityAccountReferences(tx, capture.creator, reader);
       if (current.length !== capture.accounts.length) retry();
       for (let index = 0; index < current.length; index++) {
         reader.checkpoint();

@@ -16,7 +16,7 @@ let previousOrigin: string | undefined;
 beforeAll(() => {
   previousOrigin = process.env.APP_ORIGIN;
   process.env.APP_ORIGIN = origin;
-  // The shared domain fixtures use an explicit future observation clock. Freeze
+  // The shared domain fixtures use an explicit fixed observation clock. Freeze
   // Date only so the actual production adapter evaluates that same instant.
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(now);
