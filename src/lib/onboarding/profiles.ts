@@ -6,8 +6,10 @@ import { CurrencyCodeSchema, MoneySchema } from "@/lib/contracts/money";
 import { NICHE_BY_SLUG } from "@/lib/contracts/taxonomy";
 import { acceptedOwnershipProof, acceptedRepresentativeProof, currentBrandOwner, currentCreatorOwner, lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, OnboardingError, parse, persistCommand, record, requireRevision, stateOf, withOwnedDraft, type CommandContext, type DraftDTO, type Json, type Transaction } from "./drafts";
+import { ProfileTextSchema as text, PortfolioContentSchema, type PortfolioContent } from "./portfolio-contract";
+import { creatorPublicationCore } from "./public-creator-core";
+export { PortfolioContentSchema, type PortfolioContent } from "./portfolio-contract";
 
-const text = z.string().trim().min(1).max(500).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+$/);
 const MinorAmountSchema = MoneySchema.shape.amountMinor;
 const rateSchema = z.object({ platform: PlatformSchema, format: DealFormatSchema, currencyCode: CurrencyCodeSchema, amountMinor: MinorAmountSchema.refine((value) => BigInt(value) > BigInt(0)) }).strict().refine((rate) => PLATFORM_FORMATS[rate.platform].includes(rate.format), "Unsupported format");
 const availabilitySchema = z.object({ status: AvailabilitySchema, startsAt: UtcDateTimeSchema.nullable(), endsAt: UtcDateTimeSchema.nullable() }).strict().refine((value) => value.status !== "AVAILABLE" || (value.startsAt !== null && value.endsAt !== null && value.startsAt < value.endsAt), "Availability requires a confirmed period");
@@ -23,8 +25,6 @@ const BrandProfileSchema = z.object({
   companyName: text.max(200), brandSlug: z.string().max(100), description: text.nullable(), location: LocationSchema.nullable(), noWebsite: z.boolean(), website: z.string().max(500).nullable(),
   contactName: text.max(100), representativeRole: text.max(100), targetMarkets: z.array(CountryCodeSchema).max(50), languages: z.array(languageSchema).max(20), preferredCurrency: CurrencyCodeSchema.nullable(),
 }).strict().refine((value) => value.noWebsite ? value.website === null : value.website !== null, "Choose website or no-website path");
-export const PortfolioContentSchema = z.object({ title: text.max(200), bio: z.string().max(1000), sections: z.array(z.object({ heading: text.max(100), text: z.string().max(2000) }).strict()).max(20), method: z.literal("APPROVED_FACT_TEMPLATE") }).strict();
-export type PortfolioContent = z.infer<typeof PortfolioContentSchema>;
 const CommandSchema = CommandBaseSchema.extend({ action: z.enum(["SAVE_PROFILE", "GENERATE_PORTFOLIO", "APPROVE_PORTFOLIO", "PUBLISH", "HIDE"]), payload: z.unknown() }).strict();
 type PortfolioDTO = { version: number; content: PortfolioContent; approvedAt: string | null; inputRevision: number };
 type Result = { draft: DraftDTO; portfolio?: PortfolioDTO; replayed: boolean };
@@ -228,17 +228,13 @@ export async function publicCreator(requestedHandle: string, client: Transaction
     await tx.$queryRaw`SELECT id FROM "CreatorWork" WHERE "creatorId"=${initial.id} ORDER BY id FOR SHARE`;
     const creator = await tx.creator.findUnique({ where: { handle: normalized }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } }, accounts: true, portfolios: { orderBy: { version: "desc" }, take: 1 }, rates: true, work: { where: { approvedAt: { not: null }, publicVisible: true } } } });
     const now = new Date();
-    if (!creator || creator.id !== initial.id || !currentCreatorOwner(actors, creator) || !creator.userId || !profileReady(creator, now) || !creator.user?.active || creator.user.role !== "CREATOR" || creator.user.isTest || !past(creator.user.emailVerifiedAt, now)) return null;
-    const primary = creator.accounts.find(a => a.id === creator.primaryAccountId);
-    if (!primary || !past(primary.intendedConfirmedAt, now) || !past(primary.consentAt, now) || !await acceptedOwnershipProof(tx, primary, creator.userId, now, actors)) return null;
-    // The owner lock prevents draft edits while this projection is assembled.
-    const draft = await tx.onboardingDraft.findUnique({ where: { userId_kind: { userId: creator.userId, kind: "CREATOR" } } });
-    if (draft && record(creator.profileFacts).mappingHash !== canonicalHash(stateOf(draft).sources)) return null;
-    const portfolio = creator.portfolios[0], parsed = PortfolioContentSchema.safeParse(portfolio?.content);
-    if (!portfolio || !past(portfolio.approvedAt, now) || !parsed.success) return null;
-    const accounts: { platform: typeof primary.platform; handle: string; ownership: "VERIFIED" }[] = [];
-    for (const account of creator.accounts) if (account.publicVisible && past(account.intendedConfirmedAt, now) && past(account.consentAt, now) && await acceptedOwnershipProof(tx, account, creator.userId, now, actors)) accounts.push({ platform: account.platform, handle: account.handle, ownership: "VERIFIED" });
-    return { id: creator.id, handle: creator.handle, displayName: creator.displayName, bio: parsed.data.bio, countryCode: creator.countryCode, languages: creator.languages, nicheSlugs: creator.nicheIds, portfolio: parsed.data, accounts,
+    const publication = await creatorPublicationCore(tx, {
+      initialId: initial.id, creator, accounts: creator?.accounts ?? [], portfolio: creator?.portfolios[0],
+      actors, now,
+    });
+    if (!creator || !publication) return null;
+    const accounts = publication.accounts.map(account => ({ platform: account.platform, handle: account.handle, ownership: "VERIFIED" as const }));
+    return { id: creator.id, handle: creator.handle, displayName: creator.displayName, bio: publication.portfolio.bio, countryCode: creator.countryCode, languages: creator.languages, nicheSlugs: creator.nicheIds, portfolio: publication.portfolio, accounts,
       rates: record(creator.profileFacts).ratesVisibility === "PUBLIC" ? creator.rates.map(rate => ({ platform: rate.platform, format: rate.format, currencyCode: rate.currency, amountMinor: rate.amountMinor.toString() })) : [],
       work: creator.work.filter(work => past(work.approvedAt, now)).map(work => ({ title: work.title, description: work.description, url: work.url })) };
   });
