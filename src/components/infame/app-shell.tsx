@@ -42,6 +42,11 @@ export function AppShell({
             href: "/brand/matches",
           },
           {
+            key: "creators",
+            label: { ar: "استكشف صنّاع المحتوى", en: "Explore creators" },
+            href: "/brand/creators",
+          },
+          {
             key: "campaigns",
             label: { ar: "حملاتي", en: "Campaigns" },
             href: "/brand/campaigns",

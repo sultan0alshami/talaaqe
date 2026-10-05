@@ -33,7 +33,10 @@ export async function creatorPublicationCore(
     if (!primaryAccepted) return null;
 
     // The caller's owner lock prevents draft edits during this projection.
-    const draft = await tx.onboardingDraft.findUnique({ where: { userId_kind: { userId: creator.userId, kind: "CREATOR" } } });
+    const draft = reader
+      ? (await tx.$queryRaw<Array<{ input: Prisma.JsonValue }>>`SELECT jsonb_build_object('sources', "input"->'sources') AS "input"
+          FROM "OnboardingDraft" WHERE "userId"=${creator.userId} AND "kind"='CREATOR' LIMIT 1`)[0]
+      : await tx.onboardingDraft.findUnique({ where: { userId_kind: { userId: creator.userId, kind: "CREATOR" } } });
     reader?.checkpoint();
     if (draft && record(creator.profileFacts).mappingHash !== canonicalHash(stateOf(draft).sources)) return null;
     reader?.checkpoint();

@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient, type Creator, type Brand } from "@prisma/client";
+import { Prisma, PrismaClient, type Creator, type Brand, type OnboardingDraft } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { AvailabilitySchema, ArabicDialectSchema, ContentLanguageSchema, ContentStyleSchema, CountryCodeSchema, FameIndustrySchema, LocationSchema, normalizeBrandSlug, normalizeInfameHandle, PLATFORM_FORMATS, PlatformSchema, DealFormatSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
@@ -46,7 +46,7 @@ async function currentPortfolio(tx: Transaction, role: "CREATOR" | "BRAND", prof
   if (!parsed.success) return null;
   return { version: portfolio.version, content: parsed.data, approvedAt: portfolio.approvedAt?.toISOString() ?? null, inputRevision: portfolio.inputRevision };
 }
-async function syncMappedAccounts(tx: Transaction, creator: Creator, draft: Parameters<typeof stateOf>[0], primarySourceKey: string | null) {
+async function syncMappedAccounts(tx: Transaction, creator: Creator, draft: OnboardingDraft, primarySourceKey: string | null) {
   const state = stateOf(draft), consents = consentOf(draft);
   let primaryAccountId: string | null = null;
   for (const [key, mapping] of Object.entries(state.sources)) {

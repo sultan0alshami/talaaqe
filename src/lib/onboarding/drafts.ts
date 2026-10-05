@@ -73,7 +73,7 @@ export function parse<T>(schema: z.ZodType<T>, value: unknown, code = "INVALID_C
   return result.data;
 }
 export function sourceKey(value: unknown): string { return parse(safeKey, value); }
-export function stateOf(draft: OnboardingDraft): DraftState {
+export function stateOf(draft: Pick<OnboardingDraft, "input">): DraftState {
   const state = record(draft.input);
   return {
     version: 1, answers: record(state.answers), sources: record(state.sources) as unknown as Record<string, SourceMapping>,

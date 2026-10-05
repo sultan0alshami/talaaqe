@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma, Platform } from "@prisma/client";
+import type { Prisma, Platform, PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
@@ -238,6 +238,47 @@ describe("shared creator publication core: native synthetic D056", () => {
     expect(canonicalHash(reordered)).toBe(canonicalHash(mapped));
     await prisma.onboardingDraft.update({ where: { id: saved.value.id }, data: { input: inputJson({ ...saved.input, sources: reordered }) } });
     expect(await projected(f)).toMatchObject({ portfolio: parsedContent }); await assertOriginalEligible(f);
+  });
+
+  it("hydrates only matching draft sources for a supplied reader while retaining the legacy full draft query", async () => {
+    const f = await fixture(), mapped = sources(f), saved = await draft(f, mapped);
+    const transcriptCanary = "SYNTHETIC_PRIVATE_DRAFT_TRANSCRIPT_CANARY", answerCanary = "SYNTHETIC_PRIVATE_DRAFT_ANSWER_CANARY", factCanary = "SYNTHETIC_PRIVATE_DRAFT_FACT_CANARY";
+    await prisma.onboardingDraft.update({ where: { id: saved.value.id }, data: {
+      input: inputJson({ ...saved.input, answers: { privateAnswer: answerCanary }, facts: { privateFacts: Array.from({ length: 20 }, () => ({ value: factCanary.repeat(100) })) } }),
+      transcript: [{ speaker: "USER", text: transcriptCanary }],
+    } });
+    const hydrated: unknown[] = [];
+    const client = prisma.$extends({ query: {
+      onboardingDraft: { async findUnique({ args, query }) { const row = await query(args); if (row) hydrated.push(row); return row; } },
+      async $queryRaw({ args, query }) {
+        const result = await query(args);
+        if (args.sql.includes('"OnboardingDraft"') && Array.isArray(result)) hydrated.push(...result);
+        return result;
+      },
+    } }) as unknown as PrismaClient;
+    const result = await client.$transaction(async tx => {
+      const captured = await lockEvidenceActors(tx, { creatorIds: [f.creator.id] });
+      await lockEvidenceDomain(tx, "Creator", [f.creator.id]);
+      await tx.$queryRaw`SELECT id FROM "SocialAccount" WHERE "creatorId"=${f.creator.id} ORDER BY id FOR SHARE`;
+      await tx.$queryRaw`SELECT id FROM "PortfolioVersion" WHERE "creatorId"=${f.creator.id} ORDER BY id FOR SHARE`;
+      const creator = await tx.creator.findUnique({ where: { id: f.creator.id }, include: { user: { select: { active: true, role: true, isTest: true, emailVerifiedAt: true } } } });
+      const accounts = await tx.socialAccount.findMany({ where: { creatorId: f.creator.id }, orderBy: { id: "asc" } });
+      const portfolio = await tx.portfolioVersion.findFirst({ where: { creatorId: f.creator.id }, orderBy: { version: "desc" } });
+      return creatorPublicationCore(tx, { initialId: f.creator.id, creator, accounts, portfolio, actors: captured, now: new Date(), reader: createEvidenceReceiptReader() });
+    });
+    expect(result).toMatchObject({ portfolio: parsedContent });
+    expect(hydrated.length).toBeGreaterThan(0);
+    for (const row of hydrated) {
+      if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error("Native draft projection was not an object");
+      expect(Object.keys(row)).toEqual(["input"]);
+      const input = Reflect.get(row, "input");
+      expect(Object.keys(input)).toEqual(["sources"]);
+      expect(Reflect.get(input, "sources")).toEqual(mapped);
+      for (const privateValue of [transcriptCanary, answerCanary, factCanary]) expect(JSON.stringify(row)).not.toContain(privateValue);
+    }
+    hydrated.length = 0;
+    expect(await publicCreator(f.creator.handle, client)).toMatchObject({ portfolio: parsedContent });
+    expect(hydrated.some(row => JSON.stringify(row).includes(transcriptCanary) && JSON.stringify(row).includes(answerCanary) && JSON.stringify(row).includes(factCanary))).toBe(true);
   });
 
   it.each(["unselected revision", "website origin", "primary confirmation", "removed source", "added source", "missing hash"] as const)("withdraws identity for changed %s instead of comparing only selected sources", async failure => {
