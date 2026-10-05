@@ -1,0 +1,77 @@
+.page { max-width: 1000px; min-width: 0; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; min-width: 0; flex-wrap: wrap; }
+.header > div { min-width: 0; }
+.title { font-size: 24px; font-weight: 700; line-height: 1.7; margin: 0 0 8px; overflow-wrap: anywhere; }
+.title:focus { outline: none; }
+.title:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.comparisonHeading:focus { outline: none; }
+.comparisonHeading:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.subtitle { margin: 0 0 10px; color: var(--muted-foreground); font-size: 14.5px; line-height: 1.7; overflow-wrap: anywhere; }
+.scope { max-width: 100%; height: auto; padding: 4px 10px; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.panel > h2, .panel .header h2 { font-size: 18px; font-weight: 700; line-height: 1.7; margin: 0 0 14px; overflow-wrap: anywhere; }
+.row h3, .note > h3, .unavailable h3 { font-size: 14.5px; font-weight: 600; line-height: 1.7; margin: 0 0 8px; overflow-wrap: anywhere; }
+.panel p, .feedback p, .original, .unavailable p { line-height: 1.7; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; }
+.links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; border-radius: 6px; overflow-wrap: anywhere; }
+.links a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.actions, .pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; min-width: 0; }
+.actions { margin-block-start: 12px; }
+.header > .actions { margin-block-start: 0; }
+.page [data-slot="button"] { min-height: 44px; height: auto; padding: 11px 18px; border-radius: 10px; font-size: 13.5px; white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.page [data-slot="input"], .page [data-slot="textarea"] { font-size: 16px; min-width: 0; max-width: 100%; }
+.status { margin: 0; min-height: 0; font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.status:empty { display: none; }
+.panel, .tableCard, .entry { background: var(--card); border: 1px solid var(--border); border-radius: 18px; min-width: 0; overflow: hidden; }
+.panel { padding: 22px 24px; }
+.panel > p { margin: 0 0 12px; font-size: 14px; overflow-wrap: anywhere; }
+.feedback { border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; background: var(--infame-surface-subtle); min-width: 0; }
+.feedback[role="alert"] { border-color: var(--destructive); }
+.feedback p { font-size: 13.5px; margin: 0; overflow-wrap: anywhere; }
+.tableHeader { padding: 13px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-block-end: 1px solid var(--border); background: var(--background); }
+.tableHeader h2 { margin: 0; font-size: 14.5px; }
+.tableHeader .actions { margin: 0; }
+.columnLabels, .row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: center; }
+.columnLabels { padding: 13px 24px; background: var(--background); border-block-end: 1px solid var(--border); font-size: 12.5px; font-weight: 700; color: var(--muted-foreground); }
+.row { padding: 16px 24px; border-block-end: 1px solid var(--border); }
+.row h3 { margin: 0; white-space: pre-wrap; }
+.row > * { min-width: 0; justify-self: start; }
+.empty { padding: 22px 24px; margin: 0; color: var(--muted-foreground); font-size: 13.5px; overflow-wrap: anywhere; }
+.pagination { padding: 16px 24px; }
+.fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-block: 14px 18px; }
+.field { display: flex; flex-direction: column; min-width: 0; gap: 6px; }
+.field label { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.help { font-size: 13px; color: var(--muted-foreground); line-height: 1.7; overflow-wrap: anywhere; }
+.field .help { margin: 0; }
+.editor { border-block-start: 1px solid var(--border); margin-block-start: 18px; padding-block-start: 16px; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13.5px; cursor: pointer; min-width: 0; max-width: 100%; }
+.check > span { min-width: 0; overflow-wrap: anywhere; }
+.check input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--foreground); cursor: pointer; }
+.check input:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.fields > .check { grid-column: 1 / -1; }
+.list { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.entryTools { padding: 13px 24px; background: var(--background); border-block-end: 1px solid var(--border); }
+.entry > article { border: 0; border-radius: 0; }
+.note { padding: 18px 24px 22px; border-block-start: 1px solid var(--border); min-width: 0; }
+.original { margin: 0; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.unavailable { padding: 22px 24px; min-width: 0; }
+.unavailable p { margin: 0; color: var(--muted-foreground); font-size: 13.5px; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .header { flex-direction: column; align-items: stretch; }
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .columnLabels { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .row h3 { grid-column: 1 / -1; }
+  .row > [data-slot="button"] { justify-self: end; }
+}
+@media (max-width: 420px) {
+  .panel, .empty, .unavailable { padding: 18px; }
+  .tableHeader, .row, .entryTools, .note, .pagination { padding-inline: 18px; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .row > [data-slot="button"] { justify-self: stretch; width: 100%; }
+  .actions > [data-slot="button"], .pagination > [data-slot="button"] { flex: 1 1 130px; }
+  .scope { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .page [data-slot="button"]:active { transform: none; }
+}

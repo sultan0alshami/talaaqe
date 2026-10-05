@@ -51,6 +51,11 @@ export function AppShell({
             label: { ar: "حملاتي", en: "Campaigns" },
             href: "/brand/campaigns",
           },
+          {
+            key: "collections",
+            label: { ar: "قوائم صنّاع المحتوى", en: "Creator collections" },
+            href: "/brand/collections",
+          },
         ]
       : []),
     ...(role !== "ADMIN"

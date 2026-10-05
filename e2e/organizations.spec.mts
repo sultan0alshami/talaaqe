@@ -276,7 +276,9 @@ test("pending membership acceptance and two genuine client grants expose only ea
   await expect(clientRow(page, a.clients[0].id).getByText(f.brands[0].name.trim(), { exact: true })).toHaveCount(1);
   await expect(clientRow(page, a.clients[1].id)).toHaveCount(0); await expect(page.locator("main").getByText(f.brands[1].name.trim(), { exact: true })).toHaveCount(0);
   await expect(clientRow(page, a.clients[0].id).getByRole("button")).toHaveCount(0);
-  await expect(clientRow(page, a.clients[0].id).getByRole("link")).toHaveCount(0);
+  const collections = clientRow(page, a.clients[0].id).getByRole("link", { name: label("قوائم صنّاع المحتوى", "Creator collections"), exact: true });
+  await expect(collections).toHaveCount(1);
+  await expect(collections).toHaveAttribute("href", `/brand/collections?clientId=${a.clients[0].id}`);
   for (const client of a.clients) {
     for (const capability of ["plan", "approveShortlist", "reviewContent", "signCustomer", "financial", "manageGrants"] as const) {
       const denied = await page.request.get(`/api/organization-clients/${client.id}/authority?capability=${capability}`);
@@ -284,6 +286,15 @@ test("pending membership acceptance and two genuine client grants expose only ea
     }
   }
   expect((await page.request.get(`/api/organization-clients/${a.clients[1].id}/authority?capability=view`)).status()).toBe(404);
+  // The new destination permits current view only; it cannot infer plan or
+  // substitute the other client. Native grants above remain unchanged.
+  expect((await page.request.get(`/api/collections?scope=CLIENT&clientId=${a.clients[0].id}`)).status()).toBe(200);
+  expect((await page.request.get(`/api/collections?scope=CLIENT&clientId=${a.clients[1].id}`)).status()).toBe(404);
+  await collections.click();
+  await expect(page).toHaveURL(new RegExp(`/brand/collections\\?clientId=${a.clients[0].id}$`));
+  await expect(page.locator("#collection-create-text")).toHaveCount(0);
+  await expect(page.locator("main").getByRole("button", { name: label("إنشاء القائمة", "Create list"), exact: true })).toHaveCount(0);
+  await page.goto(`/brand/organizations/${a.organization.id}`);
   const refresh = page.getByRole("button", { name: label("تحديث", "Refresh"), exact: true });
   const keyboardRefresh = page.waitForResponse(response => clientEndpoint(a.organization.id)(new URL(response.url())) && response.status() === 200);
   await refresh.focus(); await expect(refresh).toBeFocused(); await page.keyboard.press("Enter"); await keyboardRefresh;

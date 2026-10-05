@@ -2,7 +2,7 @@ import { Prisma, type ClientGrant, type Organization, type OrganizationClient, t
 import { z } from "zod";
 import { canonicalHash, inputJson } from "@/lib/onboarding/drafts";
 import {
-  checkOrganizationActor, lockOrganization, organizationDb, validateClientDelegation, withOrganizationTransaction,
+  checkOrganizationActor, lockOrganization, organizationAwait, organizationDb, validateClientDelegation, withOrganizationTransaction,
   type OrganizationActor, type OrganizationOptions, type OrganizationTransaction,
 } from "./context";
 import {
@@ -43,17 +43,19 @@ export function grantRecord(row: ClientGrant): ClientGrantDTO {
 
 // Table names are a closed internal whitelist; all identity values remain parameters.
 export async function lockOrganizationRows(tx: OrganizationTransaction,
-  table: "OrganizationMembership" | "OrganizationClient" | "ClientGrant" | "Brand", ids: readonly string[], write = false) {
+  table: "OrganizationMembership" | "OrganizationClient" | "ClientGrant" | "Brand", ids: readonly string[], write = false,
+  checkpoint?: () => void) {
   const ordered = [...new Set(ids)].sort();
   if (!ordered.length) return;
-  await tx.$queryRaw(Prisma.sql`SELECT id FROM ${Prisma.raw('"' + table + '"')}
-    WHERE id IN (${Prisma.join(ordered)}) ORDER BY id ${write ? Prisma.raw("FOR UPDATE") : Prisma.raw("FOR SHARE")}`);
+  await organizationAwait(checkpoint, () => tx.$queryRaw(Prisma.sql`SELECT id FROM ${Prisma.raw('"' + table + '"')}
+    WHERE id IN (${Prisma.join(ordered)}) ORDER BY id ${write ? Prisma.raw("FOR UPDATE") : Prisma.raw("FOR SHARE")}`));
 }
-export async function activeOrganizationMembership(tx: OrganizationTransaction, organizationId: string, userId: string, write = false) {
-  const initial = await tx.organizationMembership.findUnique({ where: { organizationId_userId: { organizationId, userId } } });
+export async function activeOrganizationMembership(tx: OrganizationTransaction, organizationId: string, userId: string, write = false,
+  checkpoint?: () => void) {
+  const initial = await organizationAwait(checkpoint, () => tx.organizationMembership.findUnique({ where: { organizationId_userId: { organizationId, userId } } }));
   if (!initial) return missing();
-  await lockOrganizationRows(tx, "OrganizationMembership", [initial.id], write);
-  const member = await tx.organizationMembership.findUnique({ where: { id: initial.id } });
+  await lockOrganizationRows(tx, "OrganizationMembership", [initial.id], write, checkpoint);
+  const member = await organizationAwait(checkpoint, () => tx.organizationMembership.findUnique({ where: { id: initial.id } }));
   if (!member || member.organizationId !== organizationId || member.userId !== userId || member.state !== "ACTIVE") return missing();
   return member;
 }

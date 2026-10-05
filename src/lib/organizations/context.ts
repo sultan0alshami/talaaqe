@@ -16,10 +16,11 @@ function claims(actor: OrganizationActor) {
   if (!parsed.success) throw new OrganizationError("UNAUTHENTICATED", 401);
   return parsed.data;
 }
-async function checkpointed<T>(checkpoint: (() => void) | undefined, query: () => Promise<T>) {
+export async function organizationAwait<T>(checkpoint: (() => void) | undefined, query: () => Promise<T>) {
   checkpoint?.();
   try { return await query(); } finally { checkpoint?.(); }
 }
+const checkpointed = organizationAwait;
 async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor, checkpoint?: () => void) {
   const user = await checkpointed(checkpoint, () => tx.user.findUnique({ where: { id: actor.userId }, select: { id: true, active: true, role: true, sessionVersion: true } }));
   const session = await checkpointed(checkpoint, () => tx.authSession.findUnique({ where: { id: actor.sessionId } }));
@@ -29,8 +30,8 @@ async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSe
   }
   if (user.role !== "BRAND") throw new OrganizationError("FORBIDDEN", 403);
 }
-export async function checkOrganizationActor(actor: OrganizationActor, options: OrganizationOptions = {}) {
-  await authorizeActor(organizationDb(options), claims(actor));
+export async function checkOrganizationActor(actor: OrganizationActor, options: OrganizationOptions = {}, checkpoint?: () => void) {
+  await authorizeActor(organizationDb(options), claims(actor), checkpoint);
 }
 function retryConflict(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034"
@@ -76,10 +77,10 @@ export async function withOrganizationTransaction<T>(actorInput: OrganizationAct
   throw new OrganizationError("RETRY_REQUIRED", 503);
 }
 
-export async function lockOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false) {
-  const organization = await lockStoredOrganization(tx, id, lockedUsers, write);
+export async function lockOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false, checkpoint?: () => void) {
+  const organization = await lockStoredOrganization(tx, id, lockedUsers, write, checkpoint);
   if (!organization.active) throw new OrganizationError("NOT_FOUND", 404);
-  const owner = await tx.user.findUnique({ where: { id: organization.ownerUserId }, select: { active: true, role: true } });
+  const owner = await organizationAwait(checkpoint, () => tx.user.findUnique({ where: { id: organization.ownerUserId }, select: { active: true, role: true } }));
   if (!owner?.active || owner.role !== "BRAND") throw new OrganizationError("NOT_FOUND", 404);
   return organization;
 }
@@ -87,10 +88,10 @@ export async function lockOrganization(tx: OrganizationTransaction, id: string, 
 // Only rights-removal, own recipient membership metadata and current Brand-owner
 // history may use stored identity. Each caller proves its own narrow binding.
 // This does not authorize an inactive organization, its owner or any delegation.
-export async function lockStoredOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false) {
-  if (write) await tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR UPDATE`;
-  else await tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR SHARE`;
-  const organization = await tx.organization.findUnique({ where: { id } });
+export async function lockStoredOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false, checkpoint?: () => void) {
+  await organizationAwait(checkpoint, () => write ? tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR UPDATE`
+    : tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR SHARE`);
+  const organization = await organizationAwait(checkpoint, () => tx.organization.findUnique({ where: { id } }));
   if (!organization) throw new OrganizationError("NOT_FOUND", 404);
   if (!lockedUsers.has(organization.ownerUserId)) throw new OrganizationError("RETRY_REQUIRED", 503);
   return organization;
@@ -99,13 +100,13 @@ export async function lockStoredOrganization(tx: OrganizationTransaction, id: st
 // Call after Org→Membership→Client→Grant locks. Association state alone is insufficient.
 export async function validateClientDelegation(tx: OrganizationTransaction, client: {
   brandId: string; state: string; authorizingUserId: string | null; authorizingSessionVersion: number | null; allowedCapabilities: unknown;
-}, lockedUsers: ReadonlySet<string>) {
+}, lockedUsers: ReadonlySet<string>, checkpoint?: () => void) {
   if (client.state !== "ACTIVE") throw new OrganizationError("NOT_FOUND", 404);
-  await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${client.brandId} FOR SHARE`;
-  const brand = await tx.brand.findUnique({ where: { id: client.brandId }, select: { id: true, userId: true, name: true } });
+  await organizationAwait(checkpoint, () => tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${client.brandId} FOR SHARE`);
+  const brand = await organizationAwait(checkpoint, () => tx.brand.findUnique({ where: { id: client.brandId }, select: { id: true, userId: true, name: true } }));
   if (!brand || brand.userId !== client.authorizingUserId) throw new OrganizationError("NOT_FOUND", 404);
   if (!lockedUsers.has(brand.userId)) throw new OrganizationError("RETRY_REQUIRED", 503);
-  const owner = await tx.user.findUnique({ where: { id: brand.userId }, select: { active: true, role: true, sessionVersion: true } });
+  const owner = await organizationAwait(checkpoint, () => tx.user.findUnique({ where: { id: brand.userId }, select: { active: true, role: true, sessionVersion: true } }));
   const caps = ClientCapabilitiesSchema.safeParse(client.allowedCapabilities);
   if (!owner?.active || owner.role !== "BRAND" || owner.sessionVersion !== client.authorizingSessionVersion || !caps.success) throw new OrganizationError("NOT_FOUND", 404);
   return { brand, capabilities: caps.data };

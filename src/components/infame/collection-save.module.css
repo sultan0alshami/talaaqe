@@ -1,0 +1,8 @@
+.dialog { max-height: 90dvh; overflow-y: auto; overflow-wrap: anywhere; }
+.dialog p { margin: 0; white-space: pre-wrap; }
+.dialog label { font-weight: 600; }
+.dialog input, .dialog select, .dialog [data-slot="button"] { min-height: 44px; height: auto; font-size: 16px; }
+.dialog [data-slot="button"] { white-space: normal; overflow-wrap: anywhere; }
+.dialog select { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--input); border-radius: 10px; color: var(--foreground); background: var(--background); font: inherit; }
+.dialog select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .dialog, .dialog [data-slot="button"], .dialog input, .dialog textarea { animation: none !important; transition: none !important; } }

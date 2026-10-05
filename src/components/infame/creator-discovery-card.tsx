@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ReachBand } from "@/lib/commercial/contracts";
@@ -22,8 +23,10 @@ const reachBands: Record<ReachBand, { labels: [string, string]; minimum: string;
   MEGA: { labels: ["ميغا", "Mega"], minimum: "1000000", maximumExclusive: null },
 };
 
-export function CreatorDiscoveryCard({ creator, lang, countryNames }: {
+export function CreatorDiscoveryCard({ creator, lang, countryNames, actions, headingIdPrefix = "discovery" }: {
   creator: PublicDiscoveryCreator; lang: Lang; countryNames: Readonly<Record<string, string>>;
+  actions?: ReactNode;
+  headingIdPrefix?: string;
 }) {
   const isAr = lang === "ar";
   const copy = (ar: string, en: string) => isAr ? ar : en;
@@ -48,7 +51,7 @@ export function CreatorDiscoveryCard({ creator, lang, countryNames }: {
   const observationDate = (value: string) => new Intl.DateTimeFormat(lang, {
     dateStyle: "medium", timeStyle: "short", timeZone: "UTC",
   }).format(new Date(value));
-  const headingId = `discovery-${creator.handle}`;
+  const headingId = `${headingIdPrefix}-${creator.handle}`;
 
   return <article className={styles.discoveryCard} lang={lang} dir={isAr ? "rtl" : "ltr"} aria-labelledby={headingId}>
     <div className={styles.summary}>
@@ -90,6 +93,7 @@ export function CreatorDiscoveryCard({ creator, lang, countryNames }: {
             `View profile: ${creator.displayName}`,
           )}>{copy("اعرض الملف الشخصي", "View profile")}</Link>
         </Button>
+        {actions}
       </div>
     </div>
     <details className={styles.details}>

@@ -6,19 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DiscoveryPageSchema, DiscoveryQuerySchema, type DiscoveryPage, type DiscoveryQuery } from "@/lib/discovery/contracts";
 import type { DiscoveryCountryOptions } from "@/lib/discovery/presentation";
+import type { PublicDiscoveryCreator } from "@/lib/discovery/contracts";
+import type { CollectionScope } from "@/lib/collections/contracts";
+import type { ClientAuthorityDTO } from "@/lib/organizations/contracts";
+import { CollectionSaveDialog } from "./collection-save";
 import { useI18n } from "@/lib/i18n";
 import { CreatorDiscoveryCard } from "./creator-discovery-card";
 import styles from "./creator-discovery.module.css";
 
 type CapturedRead = { query: DiscoveryQuery; cursor: string | null; history: (string | null)[] };
 const defaults = DiscoveryQuerySchema.parse({});
-export function CreatorDiscoveryScreen({ initialPage, initialError = null, countryOptions }: {
+export function CreatorDiscoveryScreen({ initialPage, initialError = null, countryOptions, collectionScope = null, planAuthority = null }: {
   initialPage: DiscoveryPage | null; initialError?: string | null; countryOptions: DiscoveryCountryOptions;
+  collectionScope?: CollectionScope | null; planAuthority?: ClientAuthorityDTO | null;
 }) {
   const { lang, isAr } = useI18n(), copy = (ar: string, en: string) => isAr ? ar : en;
   const initialDenied = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"].includes(initialError ?? "");
   const [page, setPage] = useState(initialDenied ? null : initialPage), [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false), [denied, setDenied] = useState(initialDenied);
+  const [savingCreator, setSavingCreator] = useState<PublicDiscoveryCreator | null>(null);
+  const saveOpener = useRef<HTMLButtonElement | null>(null), heading = useRef<HTMLHeadingElement | null>(null);
   const [draft, setDraft] = useState({ q: "", residenceCountryCode: "", platform: "", reachBand: "", limit: "12" });
   const [applied, setApplied] = useState(defaults), [cursor, setCursor] = useState<string | null>(null);
   const [history, setHistory] = useState<(string | null)[]>([]);
@@ -40,6 +47,7 @@ export function CreatorDiscoveryScreen({ initialPage, initialError = null, count
       // Denial clears the old snapshot before potentially malformed JSON.
       if ([401, 403, 404].includes(response.status)) {
         setPage(null); setHistory([]); setCursor(null); setDenied(true); retry.current = null;
+        setSavingCreator(null);
         setError(response.status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN"); return;
       }
       if (!response.ok) throw new Error(response.status === 503 ? "RETRY_REQUIRED" : "REQUEST_FAILED");
@@ -90,7 +98,7 @@ export function CreatorDiscoveryScreen({ initialPage, initialError = null, count
   return <section className={styles.page} aria-labelledby="creator-discovery-heading" aria-busy={busy}>
     <header className={styles.header}>
       <div>
-        <h1 id="creator-discovery-heading" className={styles.title}>{copy("استكشف صنّاع المحتوى", "Explore creators")}</h1>
+        <h1 id="creator-discovery-heading" className={styles.title} ref={heading} tabIndex={-1}>{copy("استكشف صنّاع المحتوى", "Explore creators")}</h1>
         <p className={styles.subtitle}>{copy("ملفات عامة بإذن أصحابها، ومعلومات بتاريخ ومصدر واضحين.", "Public profiles shared with permission, with dated and sourced information.")}</p>
       </div>
       <Button variant="outline" disabled={busy || denied} onClick={() => void load({ query: applied, cursor, history })}>{copy("تحديث النتائج", "Refresh results")}</Button>
@@ -140,7 +148,9 @@ export function CreatorDiscoveryScreen({ initialPage, initialError = null, count
     </div>}
     {page && <>
       <p className={styles.snapshot}>{error || busy || dirty ? copy("آخر نتائج ناجحة:", "Last successful results:") : copy("تاريخ النتائج:", "Results as of:")} <time dateTime={page.asOf}>{new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(page.asOf))}</time> <bdi dir="ltr">UTC</bdi></p>
-      {page.creators.length ? <ul className={styles.list}>{page.creators.map(creator => <li key={creator.id}><CreatorDiscoveryCard creator={creator} lang={lang} countryNames={countryNames} /></li>)}</ul>
+      {page.creators.length ? <ul className={styles.list}>{page.creators.map(creator => <li key={creator.id}><CreatorDiscoveryCard creator={creator} lang={lang} countryNames={countryNames}
+        actions={collectionScope && <Button variant="outline" disabled={busy || denied || savingCreator !== null || collectionScope.kind === "CLIENT" && planAuthority === null}
+          onClick={event => { saveOpener.current = event.currentTarget; setSavingCreator(creator); }}>{copy("حفظ في قائمة", "Save to collection")}</Button>} /></li>)}</ul>
         : <p className={styles.status}>{copy("لا توجد ملفات عامة مطابقة في هذه النتائج. جرّب خيارات أخرى أو تابع للنتائج التالية إن كانت متاحة.", "No matching public profiles in this result page. Try other filters or continue to the next results when available.")}</p>}
       <nav className={styles.pagination} aria-label={copy("خطوات نتائج البحث", "Search result steps")}>
         <Button variant="outline" disabled={busy || denied || !!error || !history.length} onClick={() => void load({ query: applied, cursor: history[history.length - 1], history: history.slice(0, -1) })}>{copy("السابق", "Previous")}</Button>
@@ -148,5 +158,8 @@ export function CreatorDiscoveryScreen({ initialPage, initialError = null, count
       </nav>
     </>}
     </div>
+    {collectionScope && <CollectionSaveDialog scope={collectionScope} planAuthority={planAuthority} creator={savingCreator}
+      onRestoreFocus={() => { const target = saveOpener.current?.isConnected ? saveOpener.current : heading.current; target?.focus(); }}
+      onClose={() => setSavingCreator(null)} onDenied={() => { setSavingCreator(null); setPage(null); setHistory([]); setCursor(null); setDenied(true); retry.current = null; setError("FORBIDDEN"); }} />}
   </section>;
 }

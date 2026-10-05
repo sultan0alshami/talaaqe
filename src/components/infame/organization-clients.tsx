@@ -40,6 +40,7 @@ export function OrganizationClients({ organizationId, organization, initial, ini
       {snapshot?.clients.length === 0 && <p>{copy("لا توجد صلاحية عرض نشطة لأي عميل.", "You have no active permission to view a client.")}</p>}
       {snapshot?.clients.map(client => <div className={styles.row} key={client.id} data-organization-client-id={client.id}>
         <div><h3 dir="auto">{client.brandName}</h3><p>{copy("تفويض عرض نشط", "Active viewing permission")}</p></div>
+        <Button asChild variant="outline"><Link prefetch={false} href={`/brand/collections?clientId=${encodeURIComponent(client.id)}`}>{copy("قوائم صنّاع المحتوى", "Creator collections")}</Link></Button>
       </div>)}
       {snapshot?.nextCursor && <Button asChild variant="outline"><Link prefetch={false} href={`/brand/organizations/${encodeURIComponent(organizationId)}?after=${encodeURIComponent(snapshot.nextCursor)}`}>{copy("التالي", "Next")}</Link></Button>}
     </Card>
