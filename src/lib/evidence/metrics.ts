@@ -5,6 +5,7 @@ import { accountContext, canonicalHash, event, Id, identityHash, inputJson, Key,
 import { usableAsset } from "./assets";
 import { EvidenceError } from "./storage";
 import { snapshotScopeHash } from "./metrics-readiness";
+import { metricFields, SnapshotSharingCommandSchema as ApproveSnapshot } from "./metrics-sharing-contract";
 const Count = z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v => BigInt(v) <= BigInt(Number.MAX_SAFE_INTEGER));
 const Percent = z.number().finite().min(0).max(100);
 const Context = z.object({ unit: z.literal("PERCENT"), window: DateRangeSchema, definition: z.string().trim().min(1).max(500), visibility: VisibilitySchema.default("PRIVATE") }).strict();
@@ -30,18 +31,6 @@ export function snapshotDTO(s: MetricsSnapshot) { return { id: s.id, accountId: 
   engagementRate: s.engagementRate?.toString() ?? null, demographics: s.demographics, formatMetrics: s.formatMetrics, engagementContext: s.engagementContext,
   approvedAt: s.approvedAt?.toISOString() ?? null, reviewStatus: s.reviewStatus, evidenceAssetId: s.evidenceAssetId }; }
 export type MetricsSnapshotDTO = ReturnType<typeof snapshotDTO>;
-const FieldVisibility = z.record(z.string().regex(/^(followers|averageViews|engagementRate|demographics\.(age|gender|countries|cities)|formatMetrics\.(STORY|POST|REEL|LIVE|CAMPAIGN|VIDEO|SHORT))$/), VisibilitySchema).refine(v => Object.keys(v).length > 0 && Object.keys(v).length <= 20);
-const ApproveSnapshot = z.object({ operationKey: Key, expectedMappingRevision: Revision, expectedEvidenceRevision: Revision, visibility: FieldVisibility }).strict();
-function metricFields(s: Pick<MetricsSnapshot, "followers" | "averageViews" | "engagementRate" | "demographics" | "formatMetrics">) {
-  const fields: string[] = [];
-  if (s.followers !== null) fields.push("followers");
-  if (s.averageViews !== null) fields.push("averageViews");
-  if (s.engagementRate !== null) fields.push("engagementRate");
-  const demographic = record(s.demographics);
-  for (const key of ["age", "gender", "countries", "cities"]) if (demographic[key] !== null && demographic[key] !== undefined) fields.push("demographics." + key);
-  if (Array.isArray(s.formatMetrics)) for (const row of s.formatMetrics) { const format = record(row).format; if (typeof format === "string") fields.push("formatMetrics." + format); }
-  return fields;
-}
 async function snapshotBinding(tx: Tx, id: string, owner: string) {
   const records = await tx.evidenceCommand.findMany({ where: { resourceType: "MetricsSnapshot", resourceId: id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
   return records.find(r => record(r.resultJson).ownerUserId === owner && typeof record(r.resultJson).identityHash === "string");
@@ -65,7 +54,12 @@ export async function approveMetricsSnapshot(actor: string, id: string, input: u
     else if (snapshot.reviewStatus !== "VERIFIED" || !snapshot.approvedAt || !snapshot.approvedBy) throw new EvidenceError("INVALID_STATE");
     await tx.socialAccount.update({ where: { id: account.id }, data: { evidenceRevision: { increment: 1 }, factsApprovedAt: now, fieldVisibility: inputJson({ ...record(account.fieldVisibility), ...command.visibility }) } });
     await clearPublication(tx, creator.id);
-    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", id, account.evidenceRevision + 1, now, { identityHash: identityHash(account), ownerUserId: actor });
+    await receipt(tx, actor, command.operationKey, hash, "MetricsSnapshot", id, account.evidenceRevision + 1, now, {
+      action: "APPROVE_SCREENSHOT_FIELDS", identityHash: identityHash(account), ownerUserId: actor,
+      accountId: account.id, mappingRevision: account.mappingRevision, snapshotScopeHash: snapshotScopeHash(snapshot),
+      expectedMappingRevision: command.expectedMappingRevision, expectedEvidenceRevision: command.expectedEvidenceRevision,
+      visibility: command.visibility,
+    });
     await event(tx, actor, command.operationKey, "facts.approved", "MetricsSnapshot", id, account.evidenceRevision + 1, now, { accountId: account.id, fields: Object.keys(command.visibility) });
     return { snapshot: snapshotDTO(snapshot), replayed: false };
   });
