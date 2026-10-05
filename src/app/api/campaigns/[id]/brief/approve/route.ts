@@ -9,5 +9,6 @@ export const POST = domainHandler(async (request: Request, context: CampaignRout
   const session = await requireRole("BRAND");
   const { id } = await context.params;
   // Policy review comes only from a reviewed server resolver when available.
-  return approveCampaignBrief(session.userId, CampaignIdSchema.parse(id), await parseBody(request, ApprovalInputSchema), prisma, { channel: "FORM", policyReviewResolver: resolveCampaignPolicyReview });
+  return approveCampaignBrief(session.userId, CampaignIdSchema.parse(id), await parseBody(request, ApprovalInputSchema), prisma,
+    { channel: "FORM", policyReviewResolver: resolveCampaignPolicyReview, serverAuth: session });
 });

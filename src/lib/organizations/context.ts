@@ -16,6 +16,9 @@ function claims(actor: OrganizationActor) {
   if (!parsed.success) throw new OrganizationError("UNAUTHENTICATED", 401);
   return parsed.data;
 }
+export function captureOrganizationActor(actor: OrganizationActor): Readonly<OrganizationActor> {
+  return Object.freeze(claims(actor));
+}
 export async function organizationAwait<T>(checkpoint: (() => void) | undefined, query: () => Promise<T>) {
   checkpoint?.();
   try { return await query(); } finally { checkpoint?.(); }
@@ -32,6 +35,11 @@ async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSe
     throw new OrganizationError("UNAUTHENTICATED", 401);
   }
   if (!allowedRoles.includes(user.role)) throw new OrganizationError("FORBIDDEN", 403);
+}
+// Trusted callers hold owner/reviewer User locks and the exact AuthSession lock.
+// This fixed BRAND predicate reads current authority and acquires no new locks.
+export async function assertLockedOrganizationActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor) {
+  await authorizeActor(tx, claims(actor));
 }
 export async function checkOrganizationActor(actor: OrganizationActor, options: OrganizationOptions = {}, checkpoint?: () => void) {
   await authorizeActor(organizationDb(options), claims(actor), checkpoint);

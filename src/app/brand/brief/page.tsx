@@ -12,5 +12,5 @@ export default async function BrandBriefPage({ searchParams }: { searchParams: P
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true } });
   if (campaignId && !row) notFound();
   if (!row) return <BriefScreen key="empty" brief={null} projectId={null} />;
-  return <CampaignScreen key={row.id} initialCampaign={await getCampaign(actor.userId, row.id)} />;
+  return <CampaignScreen key={row.id} initialCampaign={await getCampaign(actor.userId, row.id, undefined, actor)} />;
 }

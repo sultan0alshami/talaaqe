@@ -7,7 +7,7 @@ export default async function CampaignsPage() {
   let list = null;
   let profileRequired = false;
   try {
-    list = await listCampaigns(actor.userId);
+    list = await listCampaigns(actor.userId, {}, undefined, actor);
   } catch (error) {
     if (
       error instanceof CampaignError &&

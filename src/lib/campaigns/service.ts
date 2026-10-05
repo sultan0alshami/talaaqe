@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { canonicalHash, checkedJson, inputJson } from "@/lib/onboarding/drafts";
 import { lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { OriginalTextSchema } from "@/lib/contracts/vocabulary";
+import { AuthenticationInvalidated } from "@/lib/identity";
+import { assertLockedOrganizationActor, captureOrganizationActor, type OrganizationActor } from "@/lib/organizations/context";
 import {
   CampaignBriefContentSchema, CampaignDraftFieldsSchema, CampaignFieldObjectSchema, CampaignFieldsSchema,
   CampaignPolicyReviewSchema, CampaignProposalSchema, CampaignRequirementsSchema, parseBriefContent,
@@ -15,7 +17,8 @@ export class CampaignError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "CampaignError"; }
 }
 type Transaction = Prisma.TransactionClient;
-export type CampaignCommandContext = { channel: "FORM" | "CHAT_TOOL" | "PARAGRAPH_TOOL" | "SERVER"; policyReview?: CampaignPolicyReview | null;
+export type CampaignServerAuth = OrganizationActor;
+export type CampaignCommandContext = { channel: "FORM" | "CHAT_TOOL" | "PARAGRAPH_TOOL" | "SERVER"; serverAuth?: CampaignServerAuth; policyReview?: CampaignPolicyReview | null;
   policyReviewResolver?: (tx: Transaction, requirements: CampaignRequirementsDTO, now?: Date, actors?: EvidenceActorLocks) => Promise<CampaignPolicyReview | null> };
 type Proposal = { id: string; patch: CampaignDraftFields; originalText: z.infer<typeof OriginalTextSchema>; basedOnFieldsRevision: number; createdAt: string; appliedAt: string | null };
 type DraftState = { schemaVersion: 1; fields: CampaignDraftFields; fieldsRevision: number; proposals: Proposal[]; clarificationCount: number };
@@ -59,22 +62,45 @@ export async function campaignDTO(tx: Transaction, campaign: Campaign): Promise<
     currentBriefVersion: campaign.currentBriefVersion, briefs: briefs.map(briefDTO), updatedAt: campaign.updatedAt.toISOString() };
 }
 
-async function authorize(tx: Transaction, actorUserId: string, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>): Promise<Brand> {
+function captureServerAuth(actorUserId: string, input?: CampaignServerAuth) {
+  if (input === undefined) return undefined;
+  const actor = captureOrganizationActor(input);
+  if (actor.userId !== actorUserId || actor.role !== "BRAND") throw new AuthenticationInvalidated();
+  return actor;
+}
+function withCampaignTransaction<T>(client: PrismaClient, auth: CampaignServerAuth | undefined,
+  action: (tx: Transaction) => Promise<T>, options?: { maxWait: number; timeout: number }): Promise<T> {
+  return client.$transaction(async tx => {
+    const result = await action(tx);
+    // Keep this outside the callback: replay returns require the same current
+    // actual-clock session check, and expiry rolls back tentative effects.
+    if (auth) await assertLockedOrganizationActor(tx, auth);
+    return result;
+  }, options);
+}
+async function authorize(tx: Transaction, actorUserId: string, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>,
+  auth?: CampaignServerAuth): Promise<Brand> {
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${actorUserId} FOR UPDATE`;
   const user = await tx.user.findUnique({ where: { id: actorUserId }, select: { role: true, active: true } });
   if (!user?.active || user.role !== "BRAND") throw new CampaignError("FORBIDDEN", 403);
   const brand = await tx.brand.findUnique({ where: { userId: actorUserId } });
   if (!brand) throw new CampaignError("BRAND_PROFILE_REQUIRED");
   await beforeDomainLock?.(tx, brand);
+  if (auth) {
+    await tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${auth.sessionId} FOR SHARE`;
+    await assertLockedOrganizationActor(tx, auth);
+  }
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id = ${brand.id} FOR SHARE`;
   const current = await tx.brand.findUniqueOrThrow({ where: { id: brand.id } });
   if (current.userId !== actorUserId) throw new CampaignError("NOT_FOUND", 404);
   return current;
 }
 export async function withOwnedCampaign<T>(client: PrismaClient, actorUserId: string, campaignId: string,
-  action: (tx: Transaction, campaign: Campaign, brand: Brand) => Promise<T>, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>): Promise<T> {
-  return client.$transaction(async (tx) => {
-    const brand = await authorize(tx, actorUserId, beforeDomainLock);
+  action: (tx: Transaction, campaign: Campaign, brand: Brand) => Promise<T>, beforeDomainLock?: (tx: Transaction, brand: Brand) => Promise<void>,
+  serverAuth?: CampaignServerAuth): Promise<T> {
+  const auth = captureServerAuth(actorUserId, serverAuth);
+  return withCampaignTransaction(client, auth, async (tx) => {
+    const brand = await authorize(tx, actorUserId, beforeDomainLock, auth);
     if (!await tx.campaign.findFirst({ where: { id: campaignId, brandId: brand.id }, select: { id: true } })) throw new CampaignError("NOT_FOUND", 404);
     await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id = ${campaignId} FOR UPDATE`;
     const current = await tx.campaign.findUniqueOrThrow({ where: { id: campaignId } });
@@ -101,11 +127,13 @@ async function update(tx: Transaction, campaign: Campaign, expectedRevision: num
   return tx.campaign.findUniqueOrThrow({ where: { id: campaign.id } });
 }
 
-export async function createCampaign(actorUserId: string, input: unknown, client: PrismaClient = prisma): Promise<{ campaign: CampaignDTO; replayed: boolean }> {
+export async function createCampaign(actorUserId: string, input: unknown, client: PrismaClient = prisma,
+  serverAuth?: CampaignServerAuth): Promise<{ campaign: CampaignDTO; replayed: boolean }> {
+  const auth = captureServerAuth(actorUserId, serverAuth);
   checkedJson(input);
   const command = parse(CreateSchema, input), key = `create:${command.operationKey}`, hash = canonicalHash(command);
-  return client.$transaction(async (tx) => {
-    const brand = await authorize(tx, actorUserId);
+  return withCampaignTransaction(client, auth, async (tx) => {
+    const brand = await authorize(tx, actorUserId, undefined, auth);
     const previous = await replay<{ campaign: CampaignDTO }>(tx, actorUserId, key, hash);
     if (previous) return { ...previous, replayed: true };
     const state: DraftState = { schemaVersion: 1, fields: { desiredCreatorCount: 1, ...command.fields }, fieldsRevision: 1, proposals: [], clarificationCount: 0 };
@@ -115,13 +143,15 @@ export async function createCampaign(actorUserId: string, input: unknown, client
     return { ...result, replayed: false };
   });
 }
-export async function getCampaign(actorUserId: string, campaignId: string, client: PrismaClient = prisma): Promise<CampaignDTO> {
-  return withOwnedCampaign(client, actorUserId, campaignId, (tx, campaign) => campaignDTO(tx, campaign));
+export async function getCampaign(actorUserId: string, campaignId: string, client: PrismaClient = prisma, serverAuth?: CampaignServerAuth): Promise<CampaignDTO> {
+  return withOwnedCampaign(client, actorUserId, campaignId, (tx, campaign) => campaignDTO(tx, campaign), undefined, serverAuth);
 }
-export async function listCampaigns(actorUserId: string, input: { limit?: number; cursor?: string } = {}, client: PrismaClient = prisma) {
+export async function listCampaigns(actorUserId: string, input: { limit?: number; cursor?: string } = {}, client: PrismaClient = prisma,
+  serverAuth?: CampaignServerAuth) {
+  const auth = captureServerAuth(actorUserId, serverAuth);
   const query = parse(z.object({ limit: z.number().int().min(1).max(50).default(20), cursor: z.string().min(1).max(200).optional() }).strict(), input);
-  return client.$transaction(async (tx) => {
-    const brand = await authorize(tx, actorUserId);
+  return withCampaignTransaction(client, auth, async (tx) => {
+    const brand = await authorize(tx, actorUserId, undefined, auth);
     if (query.cursor && !await tx.campaign.findFirst({ where: { id: query.cursor, brandId: brand.id }, select: { id: true } })) throw new CampaignError("NOT_FOUND", 404);
     const rows = await tx.campaign.findMany({ where: { brandId: brand.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}), select: { id: true, title: true, revision: true, status: true, currentBriefVersion: true, createdAt: true, updatedAt: true } });
@@ -141,6 +171,7 @@ async function newBrief(tx: Transaction, campaign: Campaign, brand: Brand, state
 
 export async function applyCampaignMutation(actorUserId: string, campaignId: string, input: unknown, client: PrismaClient = prisma,
   context: CampaignCommandContext = { channel: "FORM" }): Promise<{ campaign: CampaignDTO; proposalId: string | null; replayed: boolean }> {
+  const auth = captureServerAuth(actorUserId, context.serverAuth);
   checkedJson(input);
   const command = parse(MutationSchema, input), key = `campaign:${campaignId}:${command.operationKey}`, hash = canonicalHash({ ...command, channel: context.channel });
   if ((command.action === "UPDATE_FIELDS" || command.action === "APPLY_PROPOSAL") && context.channel !== "FORM") throw new CampaignError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
@@ -193,10 +224,12 @@ export async function applyCampaignMutation(actorUserId: string, campaignId: str
     const result = { campaign: await campaignDTO(tx, updated), proposalId };
     await journal(tx, campaignId, actorUserId, key, hash, result);
     return { ...result, replayed: false };
-  });
+  }, undefined, auth);
 }
 
-export async function generateCampaignBrief(actorUserId: string, campaignId: string, input: unknown, client: PrismaClient = prisma): Promise<{ campaign: CampaignDTO; brief: CampaignBriefDTO; replayed: boolean }> {
+export async function generateCampaignBrief(actorUserId: string, campaignId: string, input: unknown, client: PrismaClient = prisma,
+  serverAuth?: CampaignServerAuth): Promise<{ campaign: CampaignDTO; brief: CampaignBriefDTO; replayed: boolean }> {
+  const auth = captureServerAuth(actorUserId, serverAuth);
   checkedJson(input);
   const command = parse(GenerateSchema, input), key = `campaign:${campaignId}:${command.operationKey}`, hash = canonicalHash({ action: "GENERATE_BRIEF", ...command });
   return withOwnedCampaign(client, actorUserId, campaignId, async (tx, campaign, brand) => {
@@ -214,11 +247,12 @@ export async function generateCampaignBrief(actorUserId: string, campaignId: str
     const result = { campaign: await campaignDTO(tx, updated), brief: briefDTO(brief) };
     await journal(tx, campaignId, actorUserId, key, hash, result);
     return { ...result, replayed: false };
-  });
+  }, undefined, auth);
 }
 
 export async function approveCampaignBrief(actorUserId: string, campaignId: string, input: unknown, client: PrismaClient = prisma,
   context: CampaignCommandContext = { channel: "FORM" }): Promise<{ campaign: CampaignDTO; brief: CampaignBriefDTO; replayed: boolean }> {
+  const auth = captureServerAuth(actorUserId, context.serverAuth);
   checkedJson(input);
   const command = parse(ApprovalSchema, input), key = `campaign:${campaignId}:${command.operationKey}`;
   if (context.channel !== "FORM") throw new CampaignError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
@@ -256,14 +290,15 @@ export async function approveCampaignBrief(actorUserId: string, campaignId: stri
     return { ...result, replayed: false };
   }, context.policyReviewResolver ? async (tx, brand) => {
     evidenceActors = await lockEvidenceActors(tx, { brandIds: [brand.id], otherOwnerIds: [actorUserId], includePolicies: true, updateOwners: true });
-  } : undefined);
+  } : undefined, auth);
 }
 
-export async function getApprovedRequirements(actorUserId: string, campaignId: string, client: PrismaClient = prisma): Promise<CampaignRequirementsDTO> {
+export async function getApprovedRequirements(actorUserId: string, campaignId: string, client: PrismaClient = prisma,
+  serverAuth?: CampaignServerAuth): Promise<CampaignRequirementsDTO> {
   return withOwnedCampaign(client, actorUserId, campaignId, async (tx, campaign) => {
     if (!campaign.currentBriefVersion || !["BRIEF_APPROVED", "SHORTLISTED", "IN_DEALS"].includes(campaign.status)) throw new CampaignError("BRIEF_NOT_APPROVED");
     const brief = await tx.campaignBrief.findUnique({ where: { campaignId_version: { campaignId, version: campaign.currentBriefVersion } } });
     if (!brief?.approvedAt || !brief.approvedByUserId || brief.inputRevision !== stateOf(campaign).fieldsRevision) throw new CampaignError("BRIEF_NOT_APPROVED");
     return briefDTO(brief).content.requirements;
-  });
+  }, undefined, serverAuth);
 }

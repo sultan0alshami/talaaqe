@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ getSession }));
+import { openSession, resolveSession } from "@/lib/identity";
+import { SESSION_COOKIE } from "@/lib/jwt";
+// Only Next's request-cookie context is a seam. Signed tokens, current native
+// User/AuthSession records, ownership and campaign/policy producers are real.
+let token: string | null = null;
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => name === SESSION_COOKIE && token ? { name, value: token } : undefined }) }));
 import { GET as list, POST as create } from "@/app/api/campaigns/route";
 import { GET as read } from "@/app/api/campaigns/[id]/route";
 import { POST as mutate } from "@/app/api/campaigns/[id]/commands/route";
@@ -13,10 +17,12 @@ import { POST as paragraph } from "@/app/api/campaigns/[id]/paragraph/route";
 import { campaignFields } from "./fixtures";
 
 const users: string[] = [];
+const tokens = new Map<string, string>();
 const origin = "http://127.0.0.1:3100";
 let previousOrigin: string | undefined;
 beforeAll(() => { previousOrigin = process.env.APP_ORIGIN; process.env.APP_ORIGIN = origin; });
 afterAll(async () => {
+  token = null; tokens.clear();
   if (previousOrigin === undefined) delete process.env.APP_ORIGIN; else process.env.APP_ORIGIN = previousOrigin;
   await prisma.outboxEvent.deleteMany({ where: { OR: users.map((id) => ({ payload: { path: ["actorUserId"], equals: id } })) } });
   await prisma.adminAudit.deleteMany({ where: { actorUserId: { in: users } } });
@@ -25,10 +31,14 @@ afterAll(async () => {
 });
 async function actor(role: "BRAND" | "CREATOR" = "BRAND") {
   const id = randomUUID();
-  await prisma.user.create({ data: { id, name: "Synthetic campaign API", email: `${id}@example.invalid`, passwordHash: "not-a-login", role, isTest: true } });
+  const user = await prisma.user.create({ data: { id, name: "Synthetic campaign API", email: `${id}@example.invalid`, passwordHash: "not-a-login", role, active: true, isTest: true } });
   users.push(id);
-  if (role === "BRAND") await prisma.brand.create({ data: { userId: id, slug: `api-${id}`, name: "Synthetic API brand", countryCode: "KW" } });
-  getSession.mockResolvedValue({ userId: id, role, email: `${id}@example.invalid`, name: "Synthetic campaign API" });
+  if (role === "BRAND") await prisma.brand.create({ data: { userId: id, slug: `api-${id}`, name: "Synthetic API brand", countryCode: "KW", isTest: true } });
+  else await prisma.creator.create({ data: { userId: id, handle: "api_" + id.replace(/-/g, "").slice(0, 16), displayName: "Synthetic campaign API creator", isTest: true } });
+  token = await openSession(id, user.sessionVersion, user.passwordHash);
+  const session = await resolveSession(token);
+  if (!session) throw new Error("Synthetic native campaign route session did not resolve");
+  expect(session.userId).toBe(id); expect(session.role).toBe(role); tokens.set(id, token);
   return id;
 }
 function request(path: string, body?: unknown, requestOrigin = origin) {
@@ -40,7 +50,7 @@ async function newCampaign() {
   expect(response.status).toBe(200);
   return (await response.json()).data.campaign as { id: string; revision: number };
 }
-describe("campaign transport: mocked session issuer and real PostgreSQL domain authorization", () => {
+describe("campaign transport: genuine signed native sessions and PostgreSQL domain authorization", () => {
   it("returns canonical request envelopes/private no-store and lists only the current owner's campaigns", async () => {
     const owner = await actor();
     const campaign = await newCampaign();
@@ -55,12 +65,15 @@ describe("campaign transport: mocked session issuer and real PostgreSQL domain a
     expect(outsider.status).toBe(404);
     expect((await outsider.json()).error.code).toBe("NOT_FOUND");
     expect((await (await list(request(""))).json()).data.campaigns).toEqual([]);
-    getSession.mockResolvedValue({ userId: owner, role: "BRAND" });
+    token = tokens.get(owner)!;
     await prisma.user.update({ where: { id: owner }, data: { active: false } });
-    expect((await list(request(""))).status).toBe(403);
+    // Genuine resolveSession rejects suspension before route authorization;
+    // the former issuer mock bypassed that check and reached domain403 instead.
+    expect(await resolveSession(token)).toBeNull();
+    expect((await list(request(""))).status).toBe(401);
   });
   it("rejects anonymous/wrong-role callers, wrong Origin and forged server contexts/actions", async () => {
-    getSession.mockResolvedValue(null);
+    token = null;
     expect((await list(request(""))).status).toBe(401);
     await actor("CREATOR");
     expect((await create(request("", { operationKey: randomUUID(), fields: {} }))).status).toBe(403);

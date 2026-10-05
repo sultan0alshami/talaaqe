@@ -7,5 +7,5 @@ export const POST = domainHandler(async (request: Request, context: CampaignRout
   const session = await requireRole("BRAND");
   const { id } = await context.params;
   // Deterministic generation uses the complete explicit fields; there is no AI call.
-  return generateCampaignBrief(session.userId, CampaignIdSchema.parse(id), await parseBody(request, CommandInputSchema));
+  return generateCampaignBrief(session.userId, CampaignIdSchema.parse(id), await parseBody(request, CommandInputSchema), undefined, session);
 });

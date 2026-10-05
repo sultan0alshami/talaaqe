@@ -12,7 +12,7 @@ export default async function CampaignPage({
   const { id } = await params;
   let campaign;
   try {
-    campaign = await getCampaign(actor.userId, id);
+    campaign = await getCampaign(actor.userId, id, undefined, actor);
   } catch (error) {
     if (
       error instanceof CampaignError &&

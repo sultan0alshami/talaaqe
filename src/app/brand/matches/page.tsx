@@ -13,6 +13,6 @@ export default async function BrandMatchesPage({ searchParams }: { searchParams:
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }], select: { id: true } });
   if (campaignId && !row) notFound();
   if (!row) return <EmptyMatches key="empty" matches={[]} projectId={null} titleAr="" titleEn="" />;
-  const { summary, run, accessUnavailable, readinessError } = await loadMatchingPage(actor.userId, row.id);
+  const { summary, run, accessUnavailable, readinessError } = await loadMatchingPage(actor.userId, row.id, actor);
   return <MatchesScreen key={row.id} initialCampaign={summary} initialRun={run} accessUnavailable={accessUnavailable} initialReadinessError={readinessError} />;
 }

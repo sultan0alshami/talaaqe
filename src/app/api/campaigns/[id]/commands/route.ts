@@ -7,5 +7,6 @@ export const POST = domainHandler(async (request: Request, context: CampaignRout
   const session = await requireRole("BRAND");
   const { id } = await context.params;
   // Browser form input cannot supply a model/server capability or actor context.
-  return applyCampaignMutation(session.userId, CampaignIdSchema.parse(id), await parseBody(request, FormMutationSchema));
+  return applyCampaignMutation(session.userId, CampaignIdSchema.parse(id), await parseBody(request, FormMutationSchema), undefined,
+    { channel: "FORM", serverAuth: session });
 });

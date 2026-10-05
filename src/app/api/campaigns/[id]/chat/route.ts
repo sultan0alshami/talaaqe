@@ -7,6 +7,6 @@ export const POST = domainHandler(async (_request: Request, context: CampaignRou
   void _request;
   const session = await requireRole("BRAND");
   const { id } = await context.params;
-  await getCampaign(session.userId, CampaignIdSchema.parse(id));
+  await getCampaign(session.userId, CampaignIdSchema.parse(id), undefined, session);
   throw new CampaignError("CAPABILITY_UNAVAILABLE", 503);
 });
