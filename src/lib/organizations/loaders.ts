@@ -4,11 +4,12 @@ import {
   type OrganizationActor, type OrganizationOptions, type OrganizationTransaction,
 } from "./context";
 import {
-  ClientAuthoritySchema, ClientCapabilitySchema, OrganizationClientsQuerySchema, OrganizationClientsSchema,
+  OrganizationClientsQuerySchema, OrganizationClientsSchema,
   OrganizationError, OrganizationIdSchema, parseOrganizationInput,
   type ClientAuthorityDTO, type ClientCapability, type MembershipDTO, type OrganizationClientsDTO, type OrganizationDTO,
 } from "./contracts";
 import { activeOrganizationMembership, auditOrganizationRead, lockOrganizationRows, membershipRecord, organizationRecord } from "./service";
+import { withClientAuthority } from "./authority";
 
 const missing = (): never => { throw new OrganizationError("NOT_FOUND", 404); };
 const retry = (): never => { throw new OrganizationError("RETRY_REQUIRED", 503); };
@@ -51,30 +52,11 @@ export async function getOrganization(actor: OrganizationActor, organizationIdIn
 }
 
 export async function getClientAuthority(actor: OrganizationActor, clientIdInput: string, capabilityInput: ClientCapability, options: OrganizationOptions = {}): Promise<ClientAuthorityDTO> {
-  await checkOrganizationActor(actor, options);
-  const clientId = parseOrganizationInput(OrganizationIdSchema, clientIdInput), capability = parseOrganizationInput(ClientCapabilitySchema, capabilityInput);
-  const initial = await organizationDb(options).organizationClient.findUnique({ where: { id: clientId },
-    include: { organization: { select: { ownerUserId: true } }, brand: { select: { userId: true } } } });
-  if (!initial) return missing();
-  return withOrganizationTransaction(actor, options, { write: false, userIds: [initial.organization.ownerUserId, initial.brand.userId] }, async (tx, lockedUsers) => {
-    const organization = await lockOrganization(tx, initial.organizationId, lockedUsers);
-    const membership = await activeOrganizationMembership(tx, organization.id, actor.userId);
-    await lockOrganizationRows(tx, "OrganizationClient", [clientId]);
-    const client = await tx.organizationClient.findUnique({ where: { id: clientId } });
-    if (!client || client.organizationId !== organization.id || client.brandId !== initial.brandId) return missing();
-    const first = await tx.clientGrant.findUnique({ where: { membershipId_clientId: { membershipId: membership.id, clientId } } });
-    if (!first) return missing();
-    await lockOrganizationRows(tx, "ClientGrant", [first.id]);
-    const grant = await tx.clientGrant.findUnique({ where: { id: first.id } });
-    if (!grant || grant.organizationId !== organization.id || grant.membershipId !== membership.id || grant.clientId !== clientId || !grant.active || !grant[capability]) return missing();
-    const delegation = await validateClientDelegation(tx, client, lockedUsers);
-    if (!delegation.capabilities[capability]) return missing();
-    const result = ClientAuthoritySchema.parse({ organizationId: organization.id, clientId, brandId: delegation.brand.id,
-      membershipId: membership.id, grantId: grant.id, capability, organizationRevision: organization.revision,
-      membershipRevision: membership.revision, clientRevision: client.revision, grantRevision: grant.revision });
-    await auditOrganizationRead(tx, actor, "organization.authority_read", organization.id, "OrganizationClient", clientId, client.revision);
-    return result;
-  });
+  return withClientAuthority(actor, clientIdInput, capabilityInput, { write: false, execute: async (tx, current) => {
+    await auditOrganizationRead(tx, actor, "organization.authority_read", current.organizationId,
+      "OrganizationClient", current.clientId, current.clientRevision);
+    return current;
+  } }, options);
 }
 
 export async function getOrganizationClients(actor: OrganizationActor, organizationIdInput: string, input: unknown = {}, options: OrganizationOptions = {}): Promise<OrganizationClientsDTO> {
