@@ -16,9 +16,13 @@ function claims(actor: OrganizationActor) {
   if (!parsed.success) throw new OrganizationError("UNAUTHENTICATED", 401);
   return parsed.data;
 }
-async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor) {
-  const user = await tx.user.findUnique({ where: { id: actor.userId }, select: { id: true, active: true, role: true, sessionVersion: true } });
-  const session = await tx.authSession.findUnique({ where: { id: actor.sessionId } });
+async function checkpointed<T>(checkpoint: (() => void) | undefined, query: () => Promise<T>) {
+  checkpoint?.();
+  try { return await query(); } finally { checkpoint?.(); }
+}
+async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor, checkpoint?: () => void) {
+  const user = await checkpointed(checkpoint, () => tx.user.findUnique({ where: { id: actor.userId }, select: { id: true, active: true, role: true, sessionVersion: true } }));
+  const session = await checkpointed(checkpoint, () => tx.authSession.findUnique({ where: { id: actor.sessionId } }));
   if (!user?.active || user.role !== actor.role || user.sessionVersion !== actor.sessionVersion || !session
     || session.userId !== actor.userId || session.version !== actor.sessionVersion || session.revokedAt || session.expiresAt <= new Date()) {
     throw new OrganizationError("UNAUTHENTICATED", 401);
@@ -36,21 +40,32 @@ function retryConflict(error: unknown) {
 // Preflight identity IDs are locks only, never an authority claim. The handler
 // must recheck every owner/membership/client binding under these native locks.
 export async function withOrganizationTransaction<T>(actorInput: OrganizationActor, options: OrganizationOptions,
-  config: { write: boolean; userIds?: string[] }, action: (tx: OrganizationTransaction, lockedUserIds: ReadonlySet<string>) => Promise<T>): Promise<T> {
+  config: { write: boolean; userIds?: string[]; reviewerIds?: string[]; checkpoint?: () => void },
+  action: (tx: OrganizationTransaction, lockedUserIds: ReadonlySet<string>, reviewerIds: ReadonlySet<string>) => Promise<T>): Promise<T> {
   const actor = claims(actorInput);
   const ids = z.array(OrganizationIdSchema).max(63).parse(config.userIds ?? []);
   const ordered = [...new Set([actor.userId, ...ids])].sort();
+  const reviewerIds = [...new Set(z.array(OrganizationIdSchema).max(2412).parse(config.reviewerIds ?? []))].sort();
+  const owners = new Set(ordered), logicalReviewers = new Set(reviewerIds);
+  const reviewers = reviewerIds.filter(id => !owners.has(id));
+  const checkpoint = config.checkpoint;
   const client = organizationDb(options);
   const attempts = config.write ? 3 : 1;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
+      checkpoint?.();
       return await client.$transaction(async tx => {
-        if (config.write) await tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR UPDATE`);
-        else await tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR SHARE`);
-        await tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${actor.sessionId} FOR SHARE`;
-        await authorizeActor(tx, actor);
-        const result = await action(tx, new Set(ordered));
-        await authorizeActor(tx, actor);
+        checkpoint?.();
+        await checkpointed(checkpoint, () => config.write
+          ? tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR UPDATE`)
+          : tx.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ordered)}) ORDER BY id FOR SHARE`));
+        if (reviewers.length) await checkpointed(checkpoint, () => tx.$queryRaw(Prisma.sql`SELECT id FROM "User"
+          WHERE id IN (${Prisma.join(reviewers)}) ORDER BY id FOR SHARE`));
+        await checkpointed(checkpoint, () => tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${actor.sessionId} FOR SHARE`);
+        await authorizeActor(tx, actor, checkpoint);
+        const result = await checkpointed(checkpoint, () => action(tx, new Set(owners), new Set(logicalReviewers)));
+        await authorizeActor(tx, actor, checkpoint);
+        checkpoint?.();
         return result;
       }, { isolationLevel: config.write ? "Serializable" : "RepeatableRead", maxWait: 10000, timeout: 20000 });
     } catch (error) {

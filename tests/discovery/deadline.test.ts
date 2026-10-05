@@ -8,15 +8,15 @@ import type { OrganizationActor } from "@/lib/organizations/context";
 import * as receiptReaders from "@/lib/evidence/receipt-reader";
 import { canonicalHash } from "@/lib/onboarding/drafts";
 import { DiscoveryPageSchema, type PublicDiscoveryCreator } from "@/lib/discovery/contracts";
-import { loadPublicCreatorIdentities } from "@/lib/discovery/public-identity";
+import { projectPublicCreatorIdentities } from "@/lib/discovery/public-identity";
 import { getDiscoveryPage } from "@/lib/discovery/service";
 
 // Root alone activates and executes this guarded native witness. The producer
 // leaf is mocked; User/AuthSession authorization, candidate queries, reader,
 // real page parsing and audit transaction remain native. A controlled CPU delay
 // exercises the deadline boundary, never live metric/publication acceptance.
-vi.mock("@/lib/discovery/public-identity", () => ({ loadPublicCreatorIdentities: vi.fn() }));
-const projection = vi.mocked(loadPublicCreatorIdentities);
+vi.mock("@/lib/discovery/public-identity", () => ({ projectPublicCreatorIdentities: vi.fn() }));
+const projection = vi.mocked(projectPublicCreatorIdentities);
 const users: string[] = [], creators: string[] = [];
 afterEach(async () => {
   vi.restoreAllMocks(); projection.mockReset();
@@ -44,9 +44,9 @@ it("stops before the native audit query when real page parsing and controlled CP
     sessionId: session.sessionId, sessionVersion: session.sessionVersion };
   const card: PublicDiscoveryCreator = { id: creator.id, handle, displayName: creator.displayName,
     bio: "Synthetic adapter-only public biography", residenceCountryCode: null, languages: [], nicheSlugs: [], accounts: [] };
-  projection.mockImplementation(async (_tx, ids, _now, reader) => {
+  projection.mockImplementation(async (_tx, capture, _actors, reader) => {
     reader.checkpoint();
-    return ids.includes(creator.id) ? [card] : [];
+    return capture.records.some(record => record.creator.id === creator.id) ? [card] : [];
   });
 
   const nativeFactory = receiptReaders.createEvidenceReceiptReader;

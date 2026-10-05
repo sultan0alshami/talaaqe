@@ -8,7 +8,7 @@ import type { OrganizationActor } from "@/lib/organizations/context";
 import { EvidenceReceiptReadError } from "@/lib/evidence/receipt-reader";
 import { DiscoveryPageSchema, DiscoveryQuerySchema, type PublicDiscoveryAccount, type PublicDiscoveryCreator } from "@/lib/discovery/contracts";
 import { decodeDiscoveryCursor } from "@/lib/discovery/cursor";
-import { loadPublicCreatorIdentities } from "@/lib/discovery/public-identity";
+import { projectPublicCreatorIdentities } from "@/lib/discovery/public-identity";
 import { getDiscoveryPage } from "@/lib/discovery/service";
 
 // Projection is intentionally mocked ONLY at this batch adapter. Native current
@@ -16,8 +16,9 @@ import { getDiscoveryPage } from "@/lib/discovery/service";
 // continuation crypto and audit writes are real guarded disposable DB witnesses.
 // These tests do not establish live publication, metric or provider acceptance;
 // the independently authored public-identity suite owns that protocol evidence.
-vi.mock("@/lib/discovery/public-identity", () => ({ loadPublicCreatorIdentities: vi.fn() }));
-const projection = vi.mocked(loadPublicCreatorIdentities);
+vi.mock("@/lib/discovery/public-identity", () => ({ projectPublicCreatorIdentities: vi.fn() }));
+const projection = vi.mocked(projectPublicCreatorIdentities);
+const projectedIds = () => projection.mock.calls.map(([, capture]) => capture.records.map(record => record.creator.id));
 const ownedUsers: string[] = [], ownedCreators: string[] = [];
 const publicCards = new Map<string, PublicDiscoveryCreator>();
 const privateSentinel = "PRIVATE-DISCOVERY-PAGE-NOT-A-PUBLIC-FIELD";
@@ -27,7 +28,8 @@ const cardKeys = ["accounts", "bio", "displayName", "handle", "id", "languages",
 
 beforeEach(() => {
   projection.mockReset(); publicCards.clear();
-  projection.mockImplementation(async (_tx, ids, _now, reader) => {
+  projection.mockImplementation(async (_tx, capture, _actors, reader) => {
+    const ids = capture.records.map(record => record.creator.id);
     reader.checkpoint();
     return ids.flatMap(id => publicCards.has(id) ? [publicCards.get(id)!] : []);
   });
@@ -214,7 +216,7 @@ it("prefilters native public publication, owner, verification and public-account
   for (const [index, options] of excluded.entries()) await candidate(search, index + 1, { publicPlatform: "INSTAGRAM", ...options });
   const page = await getDiscoveryPage(current.actor, { q: search, residenceCountryCode: "SA", platform: "INSTAGRAM" }, { now: trustedAsOf });
   expect(page.creators).toEqual([accepted.card]); expect(page.nextCursor).toBeNull();
-  expect(projection).toHaveBeenCalledTimes(1); expect(projection.mock.calls[0][1]).toEqual([accepted.creator.id]);
+  expect(projection).toHaveBeenCalledTimes(1); expect(projectedIds()[0]).toEqual([accepted.creator.id]);
   expect((await audits(current.actor))[0].snapshot).toMatchObject({ scanned: 1, returned: 1 });
 });
 
@@ -229,12 +231,13 @@ it("scans only limit plus one in ascending native identity order and projects on
     const page = await getDiscoveryPage(current.actor, { q: search, limit: 12 }, { client, now: trustedAsOf });
     expect(page.creators.map(row => row.id)).toEqual(sorted.slice(0, 12).map(row => row.creator.id));
     expect(projection).toHaveBeenCalledTimes(1);
-    const [tx, ids, at, reader] = projection.mock.calls[0];
+    const [tx, capture, actors, reader] = projection.mock.calls[0];
+    const ids = capture.records.map(record => record.creator.id), at = new Date(capture.asOf);
     expect(ids).toEqual(sorted.slice(0, 12).map(row => row.creator.id)); expect(ids).toHaveLength(12);
     expect(at).toEqual(trustedAsOf); expect(tx).toHaveProperty("adminAudit"); expect(reader.bounded).toBe(true);
     expect(typeof reader.scan).toBe("function"); expect(() => reader.checkpoint()).not.toThrow();
     const scans = queries.filter(row => /\bFROM\s+(?:(?:"[^"]+"|\w+)\.)?"Creator"/i.test(row.query));
-    expect(scans).toHaveLength(1);
+    expect(scans).toHaveLength(3); // Candidate IDs, thin references, scanned-ID-only recheck.
     const sql = scans[0].query.replaceAll('"', "");
     expect(sql).toMatch(/ORDER BY\s+(?:[\w]+\.)*id(?:\s+ASC)?\s+LIMIT/i);
     const bound = /\bLIMIT\s+(?:\$(\d+)|(\d+))/i.exec(sql); expect(bound).not.toBeNull();
@@ -243,7 +246,8 @@ it("scans only limit plus one in ascending native identity order and projects on
     expect(queries.some(row => /SET TRANSACTION ISOLATION LEVEL REPEATABLE READ/i.test(row.query))).toBe(true);
     const actorLocks = queries.filter(row => /FROM\s+"User"[\s\S]*FOR SHARE/i.test(row.query));
     expect(actorLocks).toHaveLength(1);
-    expect(JSON.parse(actorLocks[0].params)).toEqual([current.user.id]);
+    expect(JSON.parse(actorLocks[0].params)).toEqual([current.user.id, ...sorted.slice(0, 12).map(row => row.owner!.id)].sort());
+    expect(actors.ownerIds).toEqual(new Set([current.user.id, ...sorted.slice(0, 12).map(row => row.owner!.id)]));
     expect(page.nextCursor).not.toBeNull(); opaque(page.nextCursor!, [current.user.id, search, ...sorted.map(row => row.creator.id)]);
     expect(decodeDiscoveryCursor(page.nextCursor!, current.user.id, DiscoveryQuerySchema.parse({ q: search, limit: 12 }),
       trustedAsOf, runtimeConfig().AUTH_SECRET)).toBe(sorted[11].creator.id);
@@ -265,7 +269,7 @@ it("returns a genuine empty native DB page and makes opaque progress over masked
   expect(second.creators).toEqual([]); expect(second.nextCursor).not.toBeNull(); expect(second.nextCursor).not.toBe(first.nextCursor);
   const third = await getDiscoveryPage(current.actor, { q: search, limit: 2, cursor: second.nextCursor! }, { now: trustedAsOf });
   expect(third.creators).toEqual([rows[4].card]); expect(third.nextCursor).toBeNull();
-  expect(projection.mock.calls.map(call => call[1])).toEqual([rows.slice(0, 2).map(row => row.creator.id), rows.slice(2, 4).map(row => row.creator.id), [rows[4].creator.id]]);
+  expect(projectedIds()).toEqual([rows.slice(0, 2).map(row => row.creator.id), rows.slice(2, 4).map(row => row.creator.id), [rows[4].creator.id]]);
   for (const cursor of [first.nextCursor!, second.nextCursor!]) opaque(cursor, [search, current.user.id, ...rows.map(row => row.creator.id)]);
   privateSafe([first, second, third], rows.slice(0, 4).map(row => row.creator.id));
   expect(decodeDiscoveryCursor(first.nextCursor!, current.user.id, DiscoveryQuerySchema.parse({ q: search, limit: 2 }), trustedAsOf,
@@ -299,9 +303,9 @@ it("searches only published public handle or displayName with case-insensitive e
   await candidate(search, 2, { displayName: `public ${search}XX name; ${search}Xliteral` });
   await candidate(search, 3, { displayName: "ordinary public name", bio: `private ${literal} ${handle.creator.handle}` });
   const byName = await getDiscoveryPage(current.actor, { q: `  ${literal.toUpperCase()}  ` }, { now: trustedAsOf });
-  expect(byName.creators).toEqual([name.card]); expect(projection.mock.calls[0][1]).toEqual([name.creator.id]);
+  expect(byName.creators).toEqual([name.card]); expect(projectedIds()[0]).toEqual([name.creator.id]);
   const byHandle = await getDiscoveryPage(current.actor, { q: handle.creator.handle.toUpperCase() }, { now: trustedAsOf });
-  expect(byHandle.creators).toEqual([handle.card]); expect(projection.mock.calls[1][1]).toEqual([handle.creator.id]);
+  expect(byHandle.creators).toEqual([handle.card]); expect(projectedIds()[1]).toEqual([handle.creator.id]);
   const snapshots = (await audits(current.actor)).map(row => row.snapshot);
   privateSafe(snapshots, [literal, literal.toUpperCase(), handle.creator.handle, privateSentinel]);
 });
@@ -317,7 +321,7 @@ it("postfilters actual permitted DTO country and platform and only the selected 
   publicCards.set(rows[5].creator.id, { ...rows[5].card, residenceCountryCode: null, accounts: [account("INSTAGRAM", "15000")] });
   const query = { q: search, residenceCountryCode: "SA", platform: "INSTAGRAM", reachBand: "MICRO", limit: 12 };
   const page = await getDiscoveryPage(current.actor, query, { now: trustedAsOf });
-  expect(projection.mock.calls[0][1]).toEqual(rows.map(row => row.creator.id));
+  expect(projectedIds()[0]).toEqual(rows.map(row => row.creator.id));
   expect(page.creators).toEqual([publicCards.get(rows[0].creator.id)]); expect(page.nextCursor).toBeNull();
   expect((await audits(current.actor))[0].snapshot).toMatchObject({ scanned: 6, returned: 1 });
   const unknownAllowed = await getDiscoveryPage(current.actor, { q: search, residenceCountryCode: "SA", platform: "INSTAGRAM" }, { now: trustedAsOf });
@@ -350,8 +354,8 @@ it("propagates bounded projection uncertainty as503 with no empty/partial page o
   const current = await actor(), search = marker(); await candidate(search, 0); await candidate(search, 1);
   // This adapter failure isolates orchestration rollback/propagation. Actual
   // shared-reader budget/exhaustion acceptance belongs to the native proof suite.
-  projection.mockImplementationOnce(async (tx: Prisma.TransactionClient, ids, _now, reader) => {
-    expect(ids).toHaveLength(2); reader.checkpoint();
+  projection.mockImplementationOnce(async (tx: Prisma.TransactionClient, capture, _actors, reader) => {
+    expect(capture.records).toHaveLength(2); reader.checkpoint();
     await tx.adminAudit.create({ data: { actorUserId: current.user.id, action: "synthetic.discovery_projection_failure",
       resourceType: "SyntheticDiscoveryWitness", resourceId: "owned_projection_failure", snapshot: { partial: true } } });
     throw new EvidenceReceiptReadError();

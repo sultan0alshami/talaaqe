@@ -1,10 +1,11 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { checkOrganizationActor, withOrganizationTransaction, type OrganizationActor } from "@/lib/organizations/context";
+import { checkOrganizationActor, organizationDb, withOrganizationTransaction, type OrganizationActor } from "@/lib/organizations/context";
 import { runtimeConfig } from "@/lib/env";
 import { createEvidenceReceiptReader } from "@/lib/evidence/receipt-reader";
 import { DiscoveryError, DiscoveryPageSchema, DiscoveryQuerySchema, PublicDiscoveryCreatorSchema, type DiscoveryPage } from "./contracts";
 import { decodeDiscoveryCursor, discoveryQueryHash, encodeDiscoveryCursor } from "./cursor";
-import { loadPublicCreatorIdentities } from "./public-identity";
+import { projectPublicCreatorIdentities } from "./public-identity";
+import { capturePublicCreatorIdentities, publicIdentityActors, publicIdentityRead } from "./public-identity-capture";
 
 export type DiscoveryOptions = { client?: PrismaClient; now?: Date };
 export async function getDiscoveryPage(
@@ -12,34 +13,55 @@ export async function getDiscoveryPage(
 ): Promise<DiscoveryPage> {
   await checkOrganizationActor(actor, options);
   if (options.now && !Number.isFinite(options.now.getTime())) throw new DiscoveryError("INVALID_CLOCK", 400);
-  return withOrganizationTransaction(actor, options, { write: false }, async tx => {
-    const parsed = DiscoveryQuerySchema.safeParse(input);
-    if (!parsed.success) throw new DiscoveryError("VALIDATION", 422);
-    const query = parsed.data, now = options.now ?? new Date();
-    const reader = createEvidenceReceiptReader();
-    const secret = runtimeConfig().AUTH_SECRET;
-    const after = query.cursor ? decodeDiscoveryCursor(query.cursor, actor.userId, query, now, secret) : null;
-    const literal = query.q.replace(/[\\%_]/g, value => "\\" + value);
-    const where: Prisma.CreatorWhereInput = {
-      state: "PUBLISHED", isTest: false, userId: { not: null }, publicConsentAt: { not: null, lte: now },
-      user: { active: true, role: "CREATOR", isTest: false, emailVerifiedAt: { not: null, lte: now } },
-      ...(after ? { id: { gt: after } } : {}),
-      ...(query.residenceCountryCode ? { countryCode: query.residenceCountryCode } : {}),
-      ...(query.platform ? { accounts: { some: { publicVisible: true, platform: query.platform } } } : {}),
-      ...(literal ? { OR: [{ handle: { contains: literal, mode: "insensitive" } }, { displayName: { contains: literal, mode: "insensitive" } }] } : {}),
-    };
+  const parsed = DiscoveryQuerySchema.safeParse(input);
+  if (!parsed.success) throw new DiscoveryError("VALIDATION", 422);
+  const query = parsed.data, now = new Date(options.now?.getTime() ?? Date.now());
+  const reader = createEvidenceReceiptReader();
+  const secret = runtimeConfig().AUTH_SECRET;
+  const after = query.cursor ? decodeDiscoveryCursor(query.cursor, actor.userId, query, now, secret) : null;
+  const literal = query.q.replace(/[\\%_]/g, value => "\\" + value);
+  const where: Prisma.CreatorWhereInput = {
+    state: "PUBLISHED", isTest: false, userId: { not: null }, publicConsentAt: { not: null, lte: now },
+    user: { active: true, role: "CREATOR", isTest: false, emailVerifiedAt: { not: null, lte: now } },
+    ...(after ? { id: { gt: after } } : {}),
+    ...(query.residenceCountryCode ? { countryCode: query.residenceCountryCode } : {}),
+    ...(query.platform ? { accounts: { some: { publicVisible: true, platform: query.platform } } } : {}),
+    ...(literal ? { OR: [{ handle: { contains: literal, mode: "insensitive" } }, { displayName: { contains: literal, mode: "insensitive" } }] } : {}),
+  };
+  reader.checkpoint();
+  const prepared = await organizationDb(options).$transaction(async tx => {
     reader.checkpoint();
-    const rows = await tx.creator.findMany({ where, select: { id: true }, orderBy: { id: "asc" }, take: query.limit + 1 });
-    reader.checkpoint();
+    const rows = await publicIdentityRead(reader, () => tx.creator.findMany({
+      where, select: { id: true }, orderBy: { id: "asc" }, take: query.limit + 1,
+    }));
     const scanned = rows.slice(0, query.limit), ids = scanned.map(row => row.id);
-    const projected = ids.length ? await loadPublicCreatorIdentities(tx, ids, now, reader) : [];
+    const capture = await capturePublicCreatorIdentities(tx, ids, now, reader);
+    return { rows, scanned, ids, capture };
+  }, { isolationLevel: "RepeatableRead", maxWait: 10000, timeout: 20000 });
+  reader.checkpoint();
+  const { rows, scanned, ids, capture } = prepared;
+  const capturedActors = publicIdentityActors(capture);
+  reader.checkpoint();
+  return withOrganizationTransaction(actor, options, {
+    write: false, userIds: [...capturedActors.ownerIds], reviewerIds: [...capturedActors.reviewerIds],
+    checkpoint: () => reader.checkpoint(),
+  }, async (tx, owners, reviewers) => {
+    const projected = ids.length ? await projectPublicCreatorIdentities(tx, capture, {
+      ...capturedActors, ownerIds: owners, reviewerIds: reviewers,
+    }, reader) : [];
     reader.checkpoint();
-    const allowed = new Set(ids);
+    // Recheck only scanned IDs under the captured domain locks. Query changes
+    // never add another candidate/User or fill a sparse page.
+    const current = ids.length ? await publicIdentityRead(reader, () => tx.creator.findMany({
+      where: { AND: [where, { id: { in: ids } }] }, select: { id: true }, orderBy: { id: "asc" }, take: query.limit,
+    })) : [];
+    const allowed = new Set(ids), matching = new Set(current.map(row => row.id));
     const creators = projected.filter(creator => {
       reader.checkpoint();
       const valid = PublicDiscoveryCreatorSchema.safeParse(creator);
       reader.checkpoint();
       if (!valid.success || !allowed.has(creator.id)) throw new DiscoveryError("RETRY_REQUIRED");
+      if (!matching.has(creator.id)) return false;
       if (query.residenceCountryCode && creator.residenceCountryCode !== query.residenceCountryCode) return false;
       return (!query.platform && !query.reachBand) || creator.accounts.some(account => {
         reader.checkpoint();
