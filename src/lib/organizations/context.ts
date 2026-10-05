@@ -62,13 +62,22 @@ export async function withOrganizationTransaction<T>(actorInput: OrganizationAct
 }
 
 export async function lockOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false) {
+  const organization = await lockStoredOrganization(tx, id, lockedUsers, write);
+  if (!organization.active) throw new OrganizationError("NOT_FOUND", 404);
+  const owner = await tx.user.findUnique({ where: { id: organization.ownerUserId }, select: { active: true, role: true } });
+  if (!owner?.active || owner.role !== "BRAND") throw new OrganizationError("NOT_FOUND", 404);
+  return organization;
+}
+
+// Only rights-removal, own recipient membership metadata and current Brand-owner
+// history may use stored identity. Each caller proves its own narrow binding.
+// This does not authorize an inactive organization, its owner or any delegation.
+export async function lockStoredOrganization(tx: OrganizationTransaction, id: string, lockedUsers: ReadonlySet<string>, write = false) {
   if (write) await tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Organization" WHERE id=${id} FOR SHARE`;
   const organization = await tx.organization.findUnique({ where: { id } });
-  if (!organization?.active) throw new OrganizationError("NOT_FOUND", 404);
+  if (!organization) throw new OrganizationError("NOT_FOUND", 404);
   if (!lockedUsers.has(organization.ownerUserId)) throw new OrganizationError("RETRY_REQUIRED", 503);
-  const owner = await tx.user.findUnique({ where: { id: organization.ownerUserId }, select: { active: true, role: true } });
-  if (!owner?.active || owner.role !== "BRAND") throw new OrganizationError("NOT_FOUND", 404);
   return organization;
 }
 

@@ -11,7 +11,7 @@ import styles from "./organization-settings.module.css";
 
 const CreateResult = z.object({ organization: OrganizationSchema, replayed: z.boolean() }).strict();
 const MembershipResult = z.object({ membership: MembershipSchema, replayed: z.boolean() }).strict();
-type PendingCommand = { action: "CREATE" | "ACCEPT_MEMBERSHIP"; resourceId?: string; command: Record<string, unknown> };
+type PendingCommand = { action: "CREATE" | "ACCEPT_MEMBERSHIP" | "WITHDRAW_MEMBERSHIP"; resourceId?: string; command: Record<string, unknown> };
 export function OrganizationSettings({ initial, initialError, after }: { initial: OrganizationDirectoryDTO | null; initialError?: string; after?: string }) {
   const { isAr } = useI18n(), copy = (ar: string, en: string) => isAr ? ar : en;
   const [snapshot, setSnapshot] = useState(initial), [error, setError] = useState(initialError ?? ""), [busy, setBusy] = useState(false);
@@ -26,7 +26,7 @@ export function OrganizationSettings({ initial, initialError, after }: { initial
   function deny() { setSnapshot(null); setDenied(true); setPending(null); commandRef.current = null; confirmed.current = false; setAwaitingReload(false); setNotice(""); }
   async function readDirectory() {
     const response = await fetch(`/api/organizations${after ? `?after=${encodeURIComponent(after)}` : ""}`, { cache: "no-store" });
-    if (response.status === 401 || response.status === 403) { deny(); throw new Error("ACCESS_DENIED"); }
+    if ([401, 403, 404].includes(response.status)) { deny(); throw new Error("ACCESS_DENIED"); }
     if (!response.ok) throw new Error("LOAD_FAILED");
     const parsed = OrganizationDirectorySchema.safeParse((await response.json()).data);
     if (!parsed.success) throw new Error("LOAD_FAILED");
@@ -49,7 +49,7 @@ export function OrganizationSettings({ initial, initialError, after }: { initial
     commandRef.current = command; confirmed.current = false; setAwaitingReload(false); setPending(command);
     try {
       const response = await fetch("/api/organizations/commands", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(command) });
-      if (response.status === 401 || response.status === 403) { deny(); setError("ACCESS_DENIED"); return; }
+      if ([401, 403, 404].includes(response.status)) { deny(); setError("ACCESS_DENIED"); return; }
       if (!response.ok) {
         if (response.status < 500) { commandRef.current = null; setPending(null); }
         setError(response.status === 409 ? "STALE_VERSION" : "SAVE_FAILED"); return;
@@ -57,6 +57,14 @@ export function OrganizationSettings({ initial, initialError, after }: { initial
       const body = await response.json();
       const parsed = (command.action === "CREATE" ? CreateResult : MembershipResult).safeParse(body.data);
       if (!parsed.success) throw new Error("SAVE_FAILED");
+      if (command.action === "CREATE") {
+        const saved = CreateResult.parse(body.data).organization;
+        if (saved.name !== command.command.nameOriginal || saved.kind !== command.command.kind) throw new Error("SAVE_FAILED");
+      } else {
+        const saved = MembershipResult.parse(body.data).membership;
+        if (saved.id !== command.resourceId || saved.revision !== Number(command.command.expectedRevision) + 1
+          || saved.state !== (command.action === "ACCEPT_MEMBERSHIP" ? "ACTIVE" : "REVOKED")) throw new Error("SAVE_FAILED");
+      }
       confirmed.current = true; setAwaitingReload(true);
       try { await readDirectory(); } catch { setError("LOAD_FAILED"); }
     } catch { setError("SAVE_FAILED"); }
@@ -86,10 +94,15 @@ export function OrganizationSettings({ initial, initialError, after }: { initial
       <Button variant="outline" onClick={() => void refresh()} disabled={busy || denied}>{copy("تحديث", "Refresh")}</Button></div>
       {snapshot && <time dateTime={snapshot.asOf} className={styles.timestamp}>{new Date(snapshot.asOf).toLocaleString(isAr ? "ar-SA" : "en-GB", { timeZone: "UTC" })} UTC</time>}
       {snapshot?.organizations.length === 0 && <p>{copy("لا توجد عضويات نشطة أو بانتظار قبولك.", "You have no active memberships or memberships awaiting your acceptance.")}</p>}
-      {snapshot?.organizations.map(({ organization, membership }) => <div className={styles.row} key={organization.id} data-organization-id={organization.id}>
+      {snapshot?.organizations.map(({ organization, membership, isOwner, available }) => <div className={styles.row} key={organization.id} data-organization-id={organization.id}>
         <div><h3 dir="auto">{organization.name}</h3><p>{organization.kind === "AGENCY" ? copy("وكالة", "Agency") : copy("شركة", "Business")} · {membership.state === "PENDING" ? copy("بانتظار قبولك", "Awaiting your acceptance") : copy("عضوية نشطة", "Active membership")}</p></div>
-        {membership.state === "PENDING" ? <Button disabled={blocked} onClick={() => void send({ action: "ACCEPT_MEMBERSHIP", resourceId: membership.id, command: { operationKey: crypto.randomUUID(), expectedRevision: membership.revision } })}>{copy("قبول العضوية", "Accept membership")}</Button>
+        <div className={styles.actions}>{!available && <p>{isOwner ? copy("المؤسسة غير متاحة. عضوية المالك محمية.", "Organization unavailable. The owner membership is protected.") : copy("المؤسسة غير متاحة؛ يمكنك سحب عضويتك.", "Organization unavailable; you may withdraw your membership.")}</p>}
+          {membership.state === "PENDING" ? <Button disabled={blocked || !available} onClick={() => void send({ action: "ACCEPT_MEMBERSHIP", resourceId: membership.id, command: { operationKey: crypto.randomUUID(), expectedRevision: membership.revision } })}>{copy("قبول العضوية", "Accept membership")}</Button>
+          : !available ? null
           : blocked ? <Button disabled variant="outline">{copy("عرض العملاء", "View clients")}</Button> : <Button asChild variant="outline"><Link onClick={guardNavigation} onAuxClick={guardNavigation} prefetch={false} href={`/brand/organizations/${encodeURIComponent(organization.id)}`}>{copy("عرض العملاء", "View clients")}</Link></Button>}
+          {isOwner && available && (blocked ? <Button disabled variant="outline">{copy("إدارة المؤسسة", "Manage organization")}</Button> : <Button asChild variant="outline"><Link onClick={guardNavigation} onAuxClick={guardNavigation} prefetch={false} href={`/brand/organizations/${encodeURIComponent(organization.id)}/manage`}>{copy("إدارة المؤسسة", "Manage organization")}</Link></Button>)}
+          {!isOwner && <Button variant="outline" disabled={blocked} onClick={() => void send({ action: "WITHDRAW_MEMBERSHIP", resourceId: membership.id, command: { operationKey: crypto.randomUUID(), expectedRevision: membership.revision } })}>{membership.state === "PENDING" ? copy("رفض العضوية", "Decline membership") : copy("مغادرة المؤسسة", "Leave organization")}</Button>}
+        </div>
       </div>)}
       {snapshot?.nextCursor && (blocked ? <Button disabled variant="outline">{copy("التالي", "Next")}</Button> : <Button asChild variant="outline"><Link onClick={guardNavigation} onAuxClick={guardNavigation} prefetch={false} href={`/brand/organizations?after=${encodeURIComponent(snapshot.nextCursor)}`}>{copy("التالي", "Next")}</Link></Button>)}
     </Card>

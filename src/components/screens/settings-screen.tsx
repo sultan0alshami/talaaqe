@@ -68,6 +68,9 @@ export function SettingsScreen({ organizationSettings = false }: { organizationS
         <Link href="/brand/organizations" style={{ ...actionBtn, display: "inline-flex", textDecoration: "none", minHeight: 44, alignItems: "center" }}>
           {copy("عرض المؤسسات", "View organizations")}
         </Link>
+        <Link href="/brand/settings/agency-access" style={{ ...actionBtn, display: "inline-flex", textDecoration: "none", minHeight: 44, alignItems: "center", marginInlineStart: 12 }}>
+          {copy("وصول الوكالات ومراجع حسابك", "Agency access and your account references")}
+        </Link>
       </div>}
       <div style={card}>
         <h3 style={{ ...cardTitle, marginBottom: 14 }}>{t.setNotifT}</h3>

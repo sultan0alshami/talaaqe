@@ -15,5 +15,13 @@
 .error { color:var(--destructive); overflow-wrap:anywhere; }
 .status { min-height:24px; font-size:14px; }
 .timestamp { color:var(--muted-foreground); font-size:12px; }
+.permissions { display:grid; gap:8px; min-width:0; border:1px solid var(--border); border-radius:10px; padding:12px; }
+.permissions legend { font-size:14px; padding:0 4px; }
+.permissions label { display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; overflow-wrap:anywhere; }
+.permissions input { width:18px; height:18px; flex-shrink:0; accent-color:var(--primary); }
+.permissions input:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.reference { display:block; max-width:100%; overflow-wrap:anywhere; font-size:13px; padding:8px 0; user-select:all; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.actions button, .actions a, .form button { min-height:44px; white-space:normal; max-width:100%; }
 @media(max-width:480px) { .card { padding:18px; } .row { align-items:stretch; flex-direction:column; } .row button, .row a { align-self:flex-start; max-width:100%; white-space:normal; } }
 @media(prefers-reduced-motion:reduce) { .page * { transition:none !important; animation:none !important; } }

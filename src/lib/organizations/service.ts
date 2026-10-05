@@ -34,7 +34,7 @@ export function membershipRecord(row: OrganizationMembership): MembershipDTO {
 export function clientRecord(row: OrganizationClient): OrganizationClientDTO {
   return OrganizationClientSchema.parse({ id: row.id, organizationId: row.organizationId, brandId: row.brandId, state: row.state, revision: row.revision });
 }
-function grantRecord(row: ClientGrant): ClientGrantDTO {
+export function grantRecord(row: ClientGrant): ClientGrantDTO {
   return ClientGrantSchema.parse({ id: row.id, organizationId: row.organizationId, membershipId: row.membershipId,
     clientId: row.clientId, active: row.active, revision: row.revision,
     capabilities: { view: row.view, plan: row.plan, approveShortlist: row.approveShortlist, reviewContent: row.reviewContent,
@@ -57,17 +57,17 @@ export async function activeOrganizationMembership(tx: OrganizationTransaction, 
   if (!member || member.organizationId !== organizationId || member.userId !== userId || member.state !== "ACTIVE") return missing();
   return member;
 }
-function requireRevision(actual: number, expected: number) {
+export function requireRevision(actual: number, expected: number) {
   if (actual !== expected) throw new OrganizationError("STALE_VERSION");
 }
-function nextRevision(actual: number) {
+export function nextRevision(actual: number) {
   if (actual >= 2147483646) throw new OrganizationError("VERSION_EXHAUSTED");
   return actual + 1;
 }
-async function advanceOrganization(tx: OrganizationTransaction, organization: Organization) {
+export async function advanceOrganization(tx: OrganizationTransaction, organization: Organization) {
   await tx.organization.update({ where: { id: organization.id }, data: { revision: nextRevision(organization.revision) } });
 }
-async function currentBrandUser(tx: OrganizationTransaction, userId: string, lockedUsers: ReadonlySet<string>) {
+export async function currentBrandUser(tx: OrganizationTransaction, userId: string, lockedUsers: ReadonlySet<string>) {
   if (!lockedUsers.has(userId)) return retry();
   const user = await tx.user.findUnique({ where: { id: userId }, select: { active: true, role: true } });
   if (!user?.active || user.role !== "BRAND") return missing();
@@ -89,14 +89,14 @@ async function preflightMembership(membershipId: string, options: OrganizationOp
 function requireOwner(organization: Organization, actor: OrganizationActor) {
   if (organization.ownerUserId !== actor.userId) return missing();
 }
-async function previousResult<T extends { replayed: boolean }>(tx: OrganizationTransaction, actor: OrganizationActor,
+export async function previousResult<T extends { replayed: boolean }>(tx: OrganizationTransaction, actor: OrganizationActor,
   operationKey: string, hash: string, schema: z.ZodType<T>): Promise<T | null> {
   const previous = await tx.organizationCommand.findUnique({ where: { actorUserId_operationKey: { actorUserId: actor.userId, operationKey } } });
   if (!previous) return null;
   if (previous.payloadHash !== hash) throw new OrganizationError("IDEMPOTENCY_CONFLICT");
   return { ...schema.parse(previous.result), replayed: true };
 }
-async function saveResult<T extends { replayed: boolean }>(tx: OrganizationTransaction, actor: OrganizationActor, operationKey: string,
+export async function saveResult<T extends { replayed: boolean }>(tx: OrganizationTransaction, actor: OrganizationActor, operationKey: string,
   hash: string, organizationId: string, action: string, resourceType: string, resourceId: string, resourceRevision: number, result: T): Promise<T> {
   const now = new Date();
   const receipt = await tx.organizationCommand.create({ data: { actorUserId: actor.userId, operationKey, payloadHash: hash,
@@ -113,7 +113,7 @@ export async function auditOrganizationRead(tx: OrganizationTransaction, actor: 
   await tx.adminAudit.create({ data: { actorUserId: actor.userId, action, resourceType, resourceId,
     snapshot: { organizationId, resourceRevision } } });
 }
-async function mutation<T>(actor: OrganizationActor, options: OrganizationOptions, userIds: string[],
+export async function mutation<T>(actor: OrganizationActor, options: OrganizationOptions, userIds: string[],
   action: (tx: OrganizationTransaction, lockedUsers: ReadonlySet<string>) => Promise<T>) {
   try { return await withOrganizationTransaction(actor, options, { write: true, userIds }, action); }
   catch (error) {
@@ -205,6 +205,10 @@ export async function authorizeClientAssociation(actor: OrganizationActor, clien
     const previous = await previousResult(tx, actor, command.operationKey, hash, ClientResultSchema);
     if (previous) return previous;
     requireRevision(client.revision, command.expectedRevision);
+    // Withdrawal removes the association's current two-party consent. A fresh
+    // agency proposal is required before new customer authorization; replay
+    // above returns only the historical receipt and never renews the record.
+    if (client.state === "REVOKED") throw new OrganizationError("INVALID_STATE");
     const saved = await tx.organizationClient.update({ where: { id: client.id }, data: { state: "ACTIVE",
       revision: nextRevision(client.revision), authorizingUserId: actor.userId, authorizingSessionVersion: actor.sessionVersion,
       allowedCapabilities: inputJson(command.capabilities) } });

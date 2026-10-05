@@ -39,9 +39,34 @@ export const OrganizationClientsSchema = z.object({ organizationId: Organization
 export type OrganizationClientsDTO = z.infer<typeof OrganizationClientsSchema>;
 export const OrganizationDirectorySchema = z.object({ asOf: z.iso.datetime(),
   organizations: z.array(z.object({ organization: OrganizationSchema,
-    membership: MembershipSchema.extend({ state: z.enum(["PENDING", "ACTIVE"]) }).strict() }).strict()).max(30),
+    membership: MembershipSchema.extend({ state: z.enum(["PENDING", "ACTIVE"]) }).strict(), isOwner: z.boolean(), available: z.boolean() }).strict()).max(30),
   nextCursor: OrganizationIdSchema.nullable() }).strict();
 export type OrganizationDirectoryDTO = z.infer<typeof OrganizationDirectorySchema>;
+export const OwnOrganizationReferencesSchema = z.object({ asOf: z.iso.datetime(), userId: OrganizationIdSchema,
+  brandId: OrganizationIdSchema.nullable() }).strict();
+export type OwnOrganizationReferencesDTO = z.infer<typeof OwnOrganizationReferencesSchema>;
+export const DelegationStateSchema = z.enum(["PENDING", "CURRENT", "RENEWAL_REQUIRED", "REVOKED"]);
+const associationManagementFields = {
+  client: OrganizationClientSchema,
+  savedCapabilities: ClientCapabilitiesSchema.nullable(), delegation: DelegationStateSchema,
+  brandName: z.string().max(10000).nullable(), canManageGrants: z.boolean(),
+};
+export const OrganizationMembersSchema = z.object({ asOf: z.iso.datetime(), organization: OrganizationSchema,
+  members: z.array(z.object({ membership: MembershipSchema, displayName: z.string().max(10000).nullable(),
+    protectedOwner: z.boolean(), canReceiveGrant: z.boolean() }).strict()).max(30), nextCursor: OrganizationIdSchema.nullable() }).strict();
+export type OrganizationMembersDTO = z.infer<typeof OrganizationMembersSchema>;
+export const OrganizationAssociationsSchema = z.object({ asOf: z.iso.datetime(), organization: OrganizationSchema,
+  associations: z.array(z.object(associationManagementFields).strict()).max(30), nextCursor: OrganizationIdSchema.nullable() }).strict();
+export type OrganizationAssociationsDTO = z.infer<typeof OrganizationAssociationsSchema>;
+export const OwnBrandAssociationsSchema = z.object({ asOf: z.iso.datetime(), brandId: OrganizationIdSchema.nullable(),
+  associations: z.array(z.object({ ...associationManagementFields, organization: OrganizationSchema,
+    canAuthorize: z.boolean(), canRevoke: z.boolean() }).strict()).max(30), nextCursor: OrganizationIdSchema.nullable() }).strict();
+export type OwnBrandAssociationsDTO = z.infer<typeof OwnBrandAssociationsSchema>;
+export const ClientGrantsSchema = z.object({ asOf: z.iso.datetime(), organization: OrganizationSchema, client: OrganizationClientSchema,
+  delegation: DelegationStateSchema, canManageGrants: z.boolean(), savedCapabilities: ClientCapabilitiesSchema.nullable(),
+  grants: z.array(z.object({ grant: ClientGrantSchema, membership: MembershipSchema,
+    canReceiveGrant: z.boolean(), effectiveCapabilities: ClientCapabilitiesSchema }).strict()).max(30), nextCursor: OrganizationIdSchema.nullable() }).strict();
+export type ClientGrantsDTO = z.infer<typeof ClientGrantsSchema>;
 export class OrganizationError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "OrganizationError"; }
 }

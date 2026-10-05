@@ -1,5 +1,18 @@
 # Infame / إنفيم UI composition and acceptance map
 
+## Current managed organization screens — D019a/D051
+
+The founder's full Talaqee platform composition takes precedence over older redesign proposals below. M01B reuses the retained720px Settings reading column,24px heading,18px cards,24px desktop padding/18px mobile padding and18px card spacing. The previously researched Studio Radix-compatible Button/Card/Input primitives and semantic Infame tokens compose these screens; no replacement starter dashboard or newly generated Figma frame is claimed. IBM Plex Arabic/Latin, original content once, RTL/LTR,44px labelled permission targets and reduced-motion behavior remain.
+
+| Actual route | Composition and action | Current permission/recovery boundary |
+| --- | --- | --- |
+| `/brand/organizations` | Original Settings cards; organization creation and own active/pending memberships | Explicit availability/owner booleans; native recipient accept/decline/leave, unavailable organization withdrawal, protected owner; no implicit client access |
+| `/brand/organizations/[id]/manage` | Two original Settings forms plus separate team/client lists | Active owner only; known shared references, no email directory; pending consent hides private names; own/client grants are separate |
+| `/brand/settings/agency-access` | Own-reference card and per-agency seven-permission fieldset | Actual current Brand owner; withdrawal remains usable through inactive agency; new request required after withdrawal; no team auto-grant |
+| `/brand/organization-clients/[id]/grants` | Original Settings editor and bounded saved/effective permission list | Actual Brand owner or currently authorized agency owner; explicit subset ceiling, stale revision/eligibility review; no client impersonation or legacy access widening |
+
+Snapshots use actual GET completion and UTC. Captured command keys/payloads survive unknown replies; confirmed commands recover through GET alone. Denial clears private data before body parsing. Native checkbox labels include keyboard focus and44px touch targets. Mobile long original names/references use wrapping plus actual text Range checks; document width alone is insufficient. Local synthetic browser fixtures prove UI/service behavior, not external agency invitations, legal consent or delivery. Full acceptance belongs in PROGRESS.
+
 Specification: both original handoffs read completely, 2026-10-01. This is the design/behavior contract for adapting Talaqee; it is not a statement that every mapped route, integration or acceptance test is implemented. Existing server ownership/authorization and domain state machines remain authoritative. Catalog provenance and source/dependency boundaries are in [SHADCN_RESEARCH.md](SHADCN_RESEARCH.md).
 
 ## Foundations and composition contract

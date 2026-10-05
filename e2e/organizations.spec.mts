@@ -221,7 +221,7 @@ test("real organization creation retains original input through uncertain replay
   expect(directory.organizations).toHaveLength(1);
   safe(directory, [actor.sessionId, f.owner.email, privateSentinel, "passwordHash"]);
   await page.reload(); await expect(entry(page, committedId).getByText(originalName.trim(), { exact: true })).toHaveCount(1);
-  const open = entry(page, committedId).getByRole("link");
+  const open = entry(page, committedId).getByRole("link", { name: label("عرض العملاء", "View clients"), exact: true });
   await expect(open).toHaveAttribute("href", `/brand/organizations/${committedId}`);
   await open.focus(); await expect(open).toBeFocused(); await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/brand/organizations/${committedId}$`));

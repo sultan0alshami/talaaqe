@@ -5,6 +5,8 @@ import { checkOrganizationActor } from "./context";
 import { ClientCapabilitySchema, OrganizationError, OrganizationIdSchema, parseOrganizationInput } from "./contracts";
 import { getClientAuthority, getOrganization, getOrganizationClients } from "./loaders";
 import { getOrganizationDirectory } from "./directory";
+import { getClientGrants, getOrganizationAssociations, getOrganizationMembers, getOwnBrandAssociations, getOwnReferences } from "./management";
+import { revokeClientAssociation, withdrawClientProposal, withdrawMembership } from "./lifecycle";
 import { acceptMembership, associateOwnedBrand, authorizeClientAssociation, createOrganization, proposeClientAssociation,
   proposeMember, revokeClientGrant, revokeMembership, setClientGrant } from "./service";
 
@@ -36,6 +38,27 @@ export const loadClientAuthority = domainHandler(async (request: Request, contex
   const input = parseOrganizationInput(z.object({ capability: ClientCapabilitySchema }).strict(), query(request));
   return getClientAuthority(actor, parseOrganizationInput(OrganizationIdSchema, (await context.params).id), input.capability);
 });
+export const loadOwnReferences = domainHandler(async (request: Request) => {
+  const actor = await requireRole("BRAND"); await checkOrganizationActor(actor);
+  if (new URL(request.url).search) throw new OrganizationError("VALIDATION", 422);
+  return getOwnReferences(actor);
+});
+export const loadOrganizationMembers = domainHandler(async (request: Request, context: ResourceContext) => {
+  const actor = await requireRole("BRAND"); await checkOrganizationActor(actor);
+  return getOrganizationMembers(actor, parseOrganizationInput(OrganizationIdSchema, (await context.params).id), query(request));
+});
+export const loadOrganizationAssociations = domainHandler(async (request: Request, context: ResourceContext) => {
+  const actor = await requireRole("BRAND"); await checkOrganizationActor(actor);
+  return getOrganizationAssociations(actor, parseOrganizationInput(OrganizationIdSchema, (await context.params).id), query(request));
+});
+export const loadOwnBrandAssociations = domainHandler(async (request: Request) => {
+  const actor = await requireRole("BRAND"); await checkOrganizationActor(actor);
+  return getOwnBrandAssociations(actor, query(request));
+});
+export const loadClientGrants = domainHandler(async (request: Request, context: ResourceContext) => {
+  const actor = await requireRole("BRAND"); await checkOrganizationActor(actor);
+  return getClientGrants(actor, parseOrganizationInput(OrganizationIdSchema, (await context.params).id), query(request));
+});
 const operations = {
   CREATE: (actor: Parameters<typeof createOrganization>[0], _id: string | undefined, command: unknown) => createOrganization(actor, command),
   ASSOCIATE_OWNED_BRAND: associateOwnedBrand,
@@ -46,6 +69,9 @@ const operations = {
   REVOKE_MEMBERSHIP: revokeMembership,
   SET_GRANT: setClientGrant,
   REVOKE_GRANT: revokeClientGrant,
+  WITHDRAW_MEMBERSHIP: withdrawMembership,
+  REVOKE_CLIENT: revokeClientAssociation,
+  WITHDRAW_CLIENT_PROPOSAL: withdrawClientProposal,
 };
 export const OrganizationCommandRequestSchema = z.object({
   action: z.enum(Object.keys(operations) as [keyof typeof operations, ...(keyof typeof operations)[]]),
