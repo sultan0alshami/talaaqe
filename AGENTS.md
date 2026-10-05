@@ -8,7 +8,9 @@ Keep inherited history/migrations. Reuse audited Next App Router, server pages/c
 
 The coordinator owns schema/migrations, auth, shared contracts/env/brand, dependencies, primitives/shells, dictionary composition, CI/deployment. Domain workers own explicitly assigned paths. You share the checkout: preserve other agents' work; ask the coordinator before editing a shared path. Independent reviews return findings to the owner.
 
-Use docs/plans/00-08 in dependency order. A task declares prerequisites, paths, acceptance/failure tests and reviewer. Work test-first for consequential domain behavior. Record current evidence in docs/PROGRESS.md. Never call fixtures or mocked calls live acceptance.
+Approved commercial direction (2026-10-05, D048): new campaigns are managed Infame services, with private Infame–creator procurement and optional limited company/agency AI subscriptions. Preserve accepted legacy direct agreements and their actual parties. Follow docs/plans/09-managed-platform.md after the reused foundation prerequisites; billing/providers remain gated by actual readiness. OpenAI stays disabled.
+
+Use docs/plans/00-08 and 09 in dependency order. A task declares prerequisites, paths, acceptance/failure tests and reviewer. Work test-first for consequential domain behavior. Record current evidence in docs/PROGRESS.md. Never call fixtures or mocked calls live acceptance.
 
 Run all four gates before each commit through npm run check: TypeScript, warning-free ESLint, guarded Vitest and Next production build. The supported Webpack build also checks actual deployment traces for private development paths (D045). Add appropriate migration, browser, ownership, failure and concurrency checks. Use truthful authorship; no fabricated coauthors.
 

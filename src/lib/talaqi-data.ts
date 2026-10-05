@@ -344,7 +344,7 @@ export const I18N = {
     portfolioItems: ["متجر عطور الياسمين — Shopify", "متجر تمور المدينة — WooCommerce", "منصة اشتراكات القهوة — Shopify Plus"],
     servicesItems: ["تطوير متجر إلكتروني متكامل", "تكامل بوابات الدفع السعودية", "ربط أنظمة الشحن المحلية", "تحسين سرعة المتاجر"],
     // admin
-    aNavOverview: "نظرة عامة", aNavUsers: "المستخدمون", aNavProviders: "مقدمو الخدمة", aNavProjects: "الحملات", aNavBriefs: "مراجعة الملخصات", aNavCats: "التصنيفات والمهارات", aNavSettings: "الإعدادات",
+    aNavOverview: "نظرة عامة", aNavUsers: "المستخدمون", aNavProviders: "المؤثرون", aNavProjects: "الحملات", aNavBriefs: "مراجعة الملخصات", aNavCats: "التصنيفات والمهارات", aNavSettings: "الإعدادات",
     adminTitle: "نظرة عامة على المنصة", adminSub: "آخر تحديث: اليوم 09:41 ص",
     aUsers: "إجمالي المستخدمين", aClients: "العملاء", aProviders: "مقدمو الخدمة", aProjects: "إجمالي المشاريع",
     aWeekly: "مشاريع هذا الأسبوع", aBriefs: "ملخصات مولّدة", aPending: "طلبات انضمام معلّقة", aMatchRate: "نسبة نجاح التوافق",
@@ -585,7 +585,7 @@ export const I18N = {
     pfSkills: "Skills", pfServices: "Services", pfPortfolio: "Portfolio", addSkill: "+ Add",
     portfolioItems: ["Yasmine Perfumes store — Shopify", "Madinah Dates store — WooCommerce", "Coffee subscriptions platform — Shopify Plus"],
     servicesItems: ["Full e-commerce store development", "Saudi payment gateways integration", "Local shipping systems integration", "Store speed optimization"],
-    aNavOverview: "Overview", aNavUsers: "Users", aNavProviders: "Providers", aNavProjects: "Campaigns", aNavBriefs: "Briefs review", aNavCats: "Categories & skills", aNavSettings: "Settings",
+    aNavOverview: "Overview", aNavUsers: "Users", aNavProviders: "Creators", aNavProjects: "Campaigns", aNavBriefs: "Briefs review", aNavCats: "Categories & skills", aNavSettings: "Settings",
     adminTitle: "Platform overview", adminSub: "Last updated: today 09:41 AM",
     aUsers: "Total users", aClients: "Clients", aProviders: "Providers", aProjects: "Total projects",
     aWeekly: "Projects this week", aBriefs: "AI briefs generated", aPending: "Pending approvals", aMatchRate: "Matching success rate",

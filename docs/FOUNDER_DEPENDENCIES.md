@@ -1,6 +1,6 @@
 # Founder and external dependencies
 
-Updated 2026-10-01. All rows below remain **unverified/pending** unless linked dated evidence is added. Product names/access authorization are decisions, not proof that accounts, providers, registrations or launch services are configured. No secrets belong here.
+Updated 2026-10-05. All rows below remain **unverified/pending** unless linked dated evidence is added. Product names/access authorization are decisions, not proof that accounts, providers, registrations or launch services are configured. No secrets belong here.
 
 Code work and public research continue while external dependencies are pending. The coordinator prepares concrete setup/exports/review artifacts before requiring founder action. Sending outreach, purchasing services/domains, submitting registrations, external publication or moving money needs explicit authorization for that action.
 
@@ -35,5 +35,17 @@ Code work and public research continue while external dependencies are pending. 
 | Seed permission and ownership | Founder/operator + admin owner | Permission/publication basis for any founder CSV; unclaimed visibility; secure claim challenge and authorized contact routing | Real imports/invites | Synthetic fixtures only until evidence provided |
 | Usability/beta recruitment | Founder + design/verifier | 5–8 representative creator/company sessions, Saudi/non-Saudi speakers; measured corrections/control and phone conditions; 30–50 creator/five brand cohort | UX claim and beta validation | Targets only; outreach assets can be prepared, sending requires scope |
 | Beta market/vertical | Founder | Initial demand cohort and support focus selected; measures segmented by campaign market | Targeted recruitment/benchmark calibration | Pending; global signup remains V1 |
+
+## Managed commercial launch gates (D048)
+
+The founder approved local implementation of plan09; these are actual activation dependencies, not another request to approve routine code. The isolated implementation branch is `infame/managed-platform`. Earlier local evidence and source history remain preserved. Commercial supersession does not establish a merchant account, tax registration or lawful template.
+
+| Dependency | Required concrete outcome | Current activation state |
+|---|---|---|
+| Moyasar own-service checkout | Approved real Infame legal merchant identity, supported methods/hosted API, contracted fees/settlement/refund terms, private keys, server verification and independently witnessed controlled transaction | Unavailable until merchant and managed-order acceptance; do not infer approval from a key |
+| Recurring AI billing | Merchant-approved recurring/token/customer agreement, cancellation/renewal/webhook acceptance and the actual supported methods | Separately unavailable; hosted one-time payment is insufficient |
+| Principal contracts and tax | Reviewed company–Infame and Infame–creator terms, cancellation versus inability remedies, exact retail allocations, place of supply/VAT/e-invoicing and supplier tax treatment | Structural code/tax examples only; actual legal/tax approval pending |
+| Pilot funding and creator bank payout | Verified founder-funded loss/refund capacity, five-slot operating plan, bank authorization/finance approval/payee validation and actual statement reconciliation | No actual funds or payout evidence; acceptance fixtures do not fulfil this gate |
+| Whole-session Anthropic planning | Genuine dated Arabic quality/injection/failure/usage evaluation of ten turns plus all four artifacts at the75-session plan, measured variable cost versus the10% internal target, trusted budgets/reconciliation | New entitlement/orchestration still required; purchase disabled; OpenAI stays disabled |
 
 Evidence update format: `status | checkedAtUTC | responsible owner | nonsecret request/reference ID | artifact/link | next dependency`. Completed requires an observed outcome. Never print credential values, claim a submitted request is approved, or count mocked checks as live evidence. Keep code readiness and operational launch checklists distinct.

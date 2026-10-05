@@ -1,38 +1,20 @@
+import { redirect } from "next/navigation";
 import { requirePageSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { PROVIDER_TYPE_LABELS } from "@/lib/domain";
+import { AdminReadError, type AdminCreatorsDTO } from "@/lib/admin/contracts";
+import { getAdminCreators, parseAdminCreatorsQuery } from "@/lib/admin/creators";
 import { ProvidersScreen } from "@/components/screens/admin/providers-screen";
 
-// Admin providers — mirrors GET /api/admin/providers.
-export default async function AdminProvidersPage() {
-  await requirePageSession("ADMIN");
-  const providers = await prisma.provider.findMany({
-    include: { user: true },
-    orderBy: [{ verifiedStatus: "asc" }, { rating: "desc" }],
-  });
-
-  return (
-    <ProvidersScreen
-      providers={providers.map((p) => {
-        const type = PROVIDER_TYPE_LABELS[p.providerType];
-        return {
-          id: p.id,
-          nameAr: p.user.name,
-          nameEn: p.user.nameEn ?? p.user.name,
-          roleAr: p.roleTitleAr ?? "",
-          roleEn: p.roleTitleEn ?? "",
-          typeAr: type.ar,
-          typeEn: type.en,
-          cityAr: p.locationAr ?? "",
-          cityEn: p.locationEn ?? "",
-          rating: p.rating,
-          priceMin: p.priceRangeMin,
-          priceMax: p.priceRangeMax,
-          verifiedStatus: p.verifiedStatus,
-          avatarColor: p.avatarColor ?? "#1B3568",
-          avatarInitial: p.avatarInitial ?? p.user.name.charAt(0),
-        };
-      })}
-    />
-  );
+export default async function AdminProvidersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const actor = await requirePageSession("ADMIN");
+  const query = await searchParams;
+  let creators: AdminCreatorsDTO | null = null, errorCode: string | null = null, after: string | undefined;
+  try {
+    after = parseAdminCreatorsQuery(query).after;
+    creators = await getAdminCreators(actor, after ? { after } : {});
+  } catch (error) {
+    if (!(error instanceof AdminReadError)) throw error;
+    if (error.status === 401 || error.status === 403) redirect("/login");
+    errorCode = error.code;
+  }
+  return <ProvidersScreen key={after === undefined ? "first" : "after:" + after} initialCreators={creators} after={after} errorCode={errorCode} />;
 }

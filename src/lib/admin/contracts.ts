@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CampaignStatusSchema, OriginalTextSchema } from "@/lib/contracts/vocabulary";
+import { CampaignStatusSchema, ClaimStatusSchema, CountryCodeSchema, OriginalTextSchema, OwnershipStatusSchema, ProfileStateSchema } from "@/lib/contracts/vocabulary";
 import { MoneySchema } from "@/lib/contracts/money";
 
 export const AdminEvidenceKindSchema = z.enum(["OWNERSHIP", "SCREENSHOT", "ADVERTISING_LICENCE", "REPRESENTATIVE", "BUSINESS_REGISTRATION"]);
@@ -46,6 +46,24 @@ export const AdminCampaignsSchema = z.object({
 export const AdminCampaignsQuerySchema = AdminUsersQuerySchema;
 export type AdminCampaignDTO = z.infer<typeof AdminCampaignSchema>;
 export type AdminCampaignsDTO = z.infer<typeof AdminCampaignsSchema>;
+
+export const AdminCreatorAccountCountsSchema = z.object({
+  total: count, UNPROVED: count, PENDING: count, VERIFIED: count, REJECTED: count, REVOKED: count,
+}).strict().refine(value => value.total === OwnershipStatusSchema.options.reduce((sum, status) => sum + value[status], 0));
+export const AdminCreatorSchema = z.object({
+  id: z.string().min(1).max(200), displayName: z.string().max(10000), handle: z.string().max(10000),
+  state: ProfileStateSchema, countryCode: CountryCodeSchema.nullable(),
+  cityLabel: z.string().max(100).refine(value => value.trim().length > 0).nullable(),
+  // Describes a saved User association; neither a completed claim nor proof of ownership.
+  claimStatus: ClaimStatusSchema, accountCounts: AdminCreatorAccountCountsSchema,
+}).strict();
+export const AdminCreatorsSchema = z.object({
+  asOf: z.iso.datetime(), scope: z.literal("ALL_STORED_RECORDS"),
+  creators: z.array(AdminCreatorSchema).max(30), nextCursor: z.string().min(1).max(200).nullable(),
+}).strict();
+export const AdminCreatorsQuerySchema = AdminUsersQuerySchema;
+export type AdminCreatorDTO = z.infer<typeof AdminCreatorSchema>;
+export type AdminCreatorsDTO = z.infer<typeof AdminCreatorsSchema>;
 
 export class AdminReadError extends Error {
   constructor(public readonly code: string, public readonly status: number) { super(code); this.name = "AdminReadError"; }

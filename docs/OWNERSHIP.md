@@ -1,8 +1,8 @@
 # Infame ownership and integration
 
-Updated 2026-10-01. Status: assignments below define boundaries; future domain specialists are not implicitly running or finished. Coordinator owns integration and must explicitly activate a bounded task. Every worker is told: **you share the codebase; preserve other agents' work, inspect current changes and do not revert edits you do not own.**
+Updated 2026-10-05. Status: assignments below define boundaries; future domain specialists are not implicitly running or finished. Coordinator owns integration and must explicitly activate a bounded task. Every worker is told: **you share the codebase; preserve other agents' work, inspect current changes and do not revert edits you do not own.**
 
-Source: isolated full clone at `C:/Users/Asus/Claude_Code/Infame`, branch `infame/mvp`, inherited source `b001002526c7952da97268c75dbeb9ae21414d9b`. Do not modify source Talaqee checkout or act on another workspace's instructions.
+Source: isolated full clone at `C:/Users/Asus/Claude_Code/Infame`, original conversion branch `infame/mvp`, current authorized implementation branch `infame/managed-platform`, inherited source `b001002526c7952da97268c75dbeb9ae21414d9b`. Do not modify source Talaqee checkout or act on another workspace's instructions.
 
 ## Shared paths: one writer
 
@@ -43,3 +43,8 @@ Exact allowed files are narrowed again in each task. A broad directory row does 
 Before editing: inspect Git status/diff, read local instructions and installed Next guide relevant to the task, confirm prerequisite evidence and exact ownership. Keep one writer per shared path. Send required cross-domain changes to coordinator with expected behavior/tests, do not patch a shared file opportunistically. Never commit secrets or silently reset/resume data. Preserve original content/history while adopting the Infame contract; source specs are superseded where `DECISIONS.md` says so.
 
 Review gates: owner runs meaningful failing test before implementation, relevant validation after, independent reviewer checks correctness/ownership/visibility/security and failure/race cases, owner fixes findings, verifier rechecks, then coordinator runs all four gates. No task status is complete until required acceptance is recorded; unavailable live providers remain launch dependencies even when adapters are code-tested.
+
+
+## Approved managed-plan integration
+
+Plan09 extends the reused foundations; it does not transfer shared-path ownership automatically. The coordinator owns managed commercial contracts, tenant authorization/context, schema/migrations, routes/session/brand composition and integration gates. Domain implementations and independently authored tests are assigned exact leaves per bounded mission. A test owner may author a failing native witness while the root owns the matching product paths; avoid writes to mutable targets while another coordinator-controlled run holds them. Local research/output remains unrelated unstaged work; do not include private evidence in Cloud or deployment inputs.
