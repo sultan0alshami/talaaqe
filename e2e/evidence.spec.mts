@@ -197,7 +197,7 @@ test("private screenshot upload and immutable review replay retain unknowns, sep
     const snapshot = await db.metricsSnapshot.findUniqueOrThrow({ where: { id: parentId } });
     expect(snapshot.followers).toBe(BigInt(0)); expect(snapshot.averageViews).toBeNull(); expect(snapshot.engagementRate).toBeNull(); expect(snapshot.reviewStatus).toBe("PENDING");
     expect(snapshot.demographics).toEqual({ countries: { value: [{ key: "GB", percent: 13.5 }], visibility: "PUBLIC" } });
-    expect(snapshot.formatMetrics).toEqual([{ format: "REEL", value: 0, unit: "IMPRESSIONS", window: { startsAt: `${starts}.000Z`, endsAt: `${ends}.000Z`, timeZone: "Asia/Kuwait" }, definition, visibility: "PUBLIC" }]);
+    expect(snapshot.formatMetrics).toEqual([{ format: "REEL", value: 0, unit: "IMPRESSIONS", window: { startsAt: new Date(`${starts}Z`).toISOString(), endsAt: new Date(`${ends}Z`).toISOString(), timeZone: "Asia/Kuwait" }, definition, visibility: "PUBLIC" }]);
     expect((await db.socialAccount.findUniqueOrThrow({ where: { id: f.account.id } })).fieldVisibility).toEqual({ followers: "PRIVATE", "demographics.countries": "PRIVATE", "formatMetrics.REEL": "PRIVATE" });
     await expect(parent.locator("dl > div").filter({ has: page.getByText(copy("متوسط المشاهدات", "Average views"), { exact: true }) })).toContainText(copy("غير معروف", "Unknown"));
     await admin.page.goto("/admin/evidence");

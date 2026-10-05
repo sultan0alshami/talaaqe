@@ -263,3 +263,11 @@ Screenshots were visually inspected through CUA; saved Playwright artifact produ
 
 For every mapped screen, a reviewer should check the actual implementation URL, role, locale, theme, viewport, loaded source/evidence state, interaction, network/server result and persisted domain record. A static Figma screen or passing build cannot establish a complete journey.
 
+## Managed M02 discovery composition — investigated, implementation pending
+
+Read-only source inspection on2026-10-05 found no independent Talaqee browse/comparison/filter page. Reuse its original client Recommended providers composition, already retained in Infame's canonical matching CSS:1000px page,25px title/14.5px subtitle,12px basis note,16px vertical gaps and18px cards with22x24px padding. Summary columns remain auto/minmax(0,1fr)/auto with20px gaps,58px/r16 avatar, wrapping identity/chips/public facts, logical3px source-note border and140px profile-action column. Retain existing760px/420px card reflow and232px desktop sidebar/288px small-screen Radix drawer.
+
+Proposed coordinator mount is /brand/creators with an Explore creators/استكشف صنّاع المحتوى nav item. The existing /brand/matches and campaign-specific deterministic matching stay separate. Discovery uses the public identity/account/dated-observation DTO and actual /@handle profile link; it has no campaign fit percentage or offer/proposal action. Free manual discovery and later genuinely authorized collections do not convey procurement authority. Reuse existing semantic Button/Input/Card/Badge/Checkbox/native labelled select and details controls within the retained composition; no new starter or shell. The retired inherited matches screen's optimistic proposal POST/demo profile behavior cannot be reused.
+
+New presentation leaves will be creator-discovery.tsx, creator-discovery-card.tsx and creator-discovery.module.css after bounded identity/API acceptance; collections receives its own service/schema/permission freeze. Original/source findings are not rendered UI or public data acceptance. Required browser evidence includes360px AR/EN, native long-text Range/overflow, keyboard/focus/reduced motion, actual bounded queries/pagination and truthful loading/empty/error/current-session recovery.
+
