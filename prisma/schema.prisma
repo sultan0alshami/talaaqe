@@ -85,6 +85,11 @@ model User {
   notifications           Notification[]
   ownedOrganizations      Organization[]
   organizationMemberships OrganizationMembership[]
+  submittedBrandContexts BrandContextSubmission[] @relation("BrandContextSubmissionSubmitter")
+  targetedBrandContextReviews BrandContextSubmission[] @relation("BrandContextSubmissionTarget")
+  approvedBrandContextVersions BrandContextVersion[] @relation("BrandContextVersionApprover")
+  submittedCampaignPlans CampaignPlanningSubmission[] @relation("CampaignPlanningSubmissionSubmitter")
+  targetedCampaignPlanReviews CampaignPlanningSubmission[] @relation("CampaignPlanningSubmissionTarget")
 }
 
 model Client {
@@ -468,6 +473,7 @@ model Brand {
   updatedAt       DateTime                @updatedAt
 
   @@index([state, isTest])
+  planningWorkspaces PlanningWorkspace[]
 }
 
 // Additive client-scoped authority. Legacy Brand ownership and deal parties stand.
@@ -539,6 +545,7 @@ model OrganizationClient {
   @@unique([id, organizationId])
   @@unique([id, organizationId, brandId])
   @@index([brandId, state])
+  planningWorkspaces PlanningWorkspace[]
 }
 
 enum CreatorCollectionScope {
@@ -891,6 +898,8 @@ model Campaign {
   updatedAt           DateTime          @updatedAt
 
   @@index([brandId, createdAt])
+  planningBindings CampaignPlanningBinding[]
+  @@unique([id, brandId], map: "Campaign_id_brandId_key")
 }
 
 model CampaignBrief {
@@ -905,6 +914,8 @@ model CampaignBrief {
   createdAt        DateTime  @default(now())
 
   @@unique([campaignId, version])
+  planningProvenances CampaignBriefProvenance[]
+  @@unique([id, campaignId], map: "CampaignBrief_id_campaignId_key")
 }
 
 model MatchDecisionRecord {
@@ -1314,4 +1325,355 @@ model AdminCommand {
 
   @@unique([actorUserId, operationKey])
   @@index([resourceId, createdAt])
+}
+
+// Additive private context/planning projection; SQL owns native checks and triggers.
+// Apply only together with the existing-model additions in the companion file.
+// The migration owns partial indexes, CHECK constraints and lifecycle triggers.
+// New TEXT identifiers have no database default. No automatic updatedAt writes.
+
+enum PlanningWorkspaceScope {
+  OWN_BRAND
+  CLIENT
+}
+
+enum PlanningReviewState {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model PlanningWorkspace {
+  id               String                  @id
+  scope            PlanningWorkspaceScope
+  brandId          String
+  organizationId   String?
+  clientId         String?
+  createdAt        DateTime                @default(now()) @db.Timestamp(3)
+  brand            Brand                   @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  client           OrganizationClient?     @relation(fields: [clientId, organizationId, brandId], references: [id, organizationId, brandId], onDelete: Restrict, onUpdate: Restrict)
+  contexts         BrandContext[]
+  campaignBindings CampaignPlanningBinding[]
+
+  @@unique([id, brandId])
+  @@index([clientId, organizationId, brandId], map: "PlanningWorkspace_client_scope")
+  // SQL-only partial uniques: PlanningWorkspace_own_brand, PlanningWorkspace_client.
+}
+
+model BrandContext {
+  id            String                   @id
+  workspaceId   String
+  name          String
+  nameLanguage  String?
+  content       Json                     @db.JsonB
+  revision      Int                      @default(1)
+  inputRevision Int                      @default(1)
+  archived      Boolean                  @default(false)
+  createdAt     DateTime                 @default(now()) @db.Timestamp(3)
+  updatedAt     DateTime                 @db.Timestamp(3)
+  workspace     PlanningWorkspace        @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  submissions   BrandContextSubmission[]
+  commands      BrandContextCommand[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId, archived, id], map: "BrandContext_workspace_archived_id")
+}
+
+model BrandContextSubmission {
+  id                        String                 @id
+  contextId                 String
+  workspaceId               String
+  inputRevision             Int
+  name                      String
+  nameLanguage              String?
+  content                   Json                   @db.JsonB
+  contentHash               String
+  submittedByUserId         String
+  targetOwnerUserId         String
+  targetOwnerSessionVersion Int
+  clientRevision            Int?
+  state                     PlanningReviewState    @default(PENDING)
+  revision                  Int                    @default(1)
+  decidedByUserId           String?
+  decidedAt                 DateTime?              @db.Timestamp(3)
+  createdAt                 DateTime               @default(now()) @db.Timestamp(3)
+  context                   BrandContext           @relation(fields: [contextId, workspaceId], references: [id, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  submittedBy               User                   @relation("BrandContextSubmissionSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  targetOwner               User                   @relation("BrandContextSubmissionTarget", fields: [targetOwnerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  versions                  BrandContextVersion[]
+  reviewCommands            PlanningReviewCommand[]
+
+  @@unique([id, contextId, workspaceId])
+  @@unique([id, workspaceId])
+  @@index([contextId, id], map: "BrandContextSubmission_context_id")
+  @@index([targetOwnerUserId, state, id], map: "BrandContextSubmission_target_state_id")
+  @@index([workspaceId, id], map: "BrandContextSubmission_workspace_id")
+  @@index([submittedByUserId], map: "BrandContextSubmission_submitter")
+}
+
+model BrandContextVersion {
+  id               String                    @id
+  contextId        String
+  workspaceId      String
+  submissionId     String                    @unique
+  version          Int
+  inputRevision    Int
+  contentHash      String
+  approvedByUserId String
+  approvedAt       DateTime                  @db.Timestamp(3)
+  createdAt        DateTime                  @default(now()) @db.Timestamp(3)
+  submission       BrandContextSubmission    @relation(fields: [submissionId, contextId, workspaceId], references: [id, contextId, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  approvedBy       User                      @relation("BrandContextVersionApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  selections       CampaignContextSelection[]
+
+  @@unique([contextId, version])
+  @@unique([id, workspaceId, contentHash])
+  @@index([workspaceId, id], map: "BrandContextVersion_workspace_id")
+  @@index([approvedByUserId], map: "BrandContextVersion_approver")
+}
+
+model CampaignPlanningBinding {
+  campaignId           String                       @id
+  workspaceId          String
+  brandId              String
+  createdAt            DateTime                     @default(now()) @db.Timestamp(3)
+  campaign             Campaign                     @relation(fields: [campaignId, brandId], references: [id, brandId], onDelete: Restrict, onUpdate: Restrict)
+  workspace            PlanningWorkspace            @relation(fields: [workspaceId, brandId], references: [id, brandId], onDelete: Restrict, onUpdate: Restrict)
+  selections           CampaignContextSelection[]
+  states               CampaignPlanningState[]
+  proposalDependencies CampaignProposalDependency[]
+  commands             CampaignPlanningCommand[]
+
+  @@unique([campaignId, workspaceId])
+  @@index([workspaceId, campaignId], map: "CampaignPlanningBinding_workspace_campaign")
+  @@index([brandId], map: "CampaignPlanningBinding_brand")
+}
+
+model CampaignContextSelection {
+  id                   String                       @id
+  campaignId           String
+  workspaceId          String
+  revision             Int
+  contextVersionId     String?
+  contentHash          String?
+  createdAt            DateTime                     @default(now()) @db.Timestamp(3)
+  binding              CampaignPlanningBinding      @relation(fields: [campaignId, workspaceId], references: [campaignId, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  contextVersion       BrandContextVersion?         @relation(fields: [contextVersionId, workspaceId, contentHash], references: [id, workspaceId, contentHash], onDelete: Restrict, onUpdate: Restrict)
+  states               CampaignPlanningState[]
+  proposalDependencies CampaignProposalDependency[]
+  briefProvenances     CampaignBriefProvenance[]
+
+  @@unique([campaignId, revision])
+  @@unique([id, campaignId, workspaceId, revision])
+  @@index([workspaceId], map: "CampaignContextSelection_workspace")
+  @@index([contextVersionId, workspaceId, contentHash], map: "CampaignContextSelection_version_scope_hash")
+}
+
+model CampaignPlanningState {
+  campaignId        String                  @id
+  workspaceId       String
+  revision          Int                     @default(1)
+  selectionId       String
+  selectionRevision Int
+  narrative         Json?                   @db.JsonB
+  createdAt         DateTime                @default(now()) @db.Timestamp(3)
+  updatedAt         DateTime                @db.Timestamp(3)
+  binding           CampaignPlanningBinding @relation(fields: [campaignId, workspaceId], references: [campaignId, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  selection         CampaignContextSelection @relation(fields: [selectionId, campaignId, workspaceId, selectionRevision], references: [id, campaignId, workspaceId, revision], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([workspaceId], map: "CampaignPlanningState_workspace")
+  @@index([selectionId], map: "CampaignPlanningState_selection")
+}
+
+model CampaignProposalDependency {
+  campaignId        String
+  proposalId        String
+  workspaceId       String
+  fieldsRevision    Int
+  selectionId       String
+  selectionRevision Int
+  createdAt         DateTime                 @default(now()) @db.Timestamp(3)
+  binding           CampaignPlanningBinding  @relation(fields: [campaignId, workspaceId], references: [campaignId, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  selection         CampaignContextSelection @relation(fields: [selectionId, campaignId, workspaceId, selectionRevision], references: [id, campaignId, workspaceId, revision], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([campaignId, proposalId])
+  @@index([workspaceId], map: "CampaignProposalDependency_workspace")
+  @@index([selectionId], map: "CampaignProposalDependency_selection")
+}
+
+model CampaignBriefProvenance {
+  briefId             String                       @id
+  campaignId          String
+  workspaceId         String
+  selectionId         String
+  selectionRevision   Int
+  createdAt           DateTime                     @default(now()) @db.Timestamp(3)
+  brief               CampaignBrief                @relation(fields: [briefId, campaignId], references: [id, campaignId], onDelete: Restrict, onUpdate: Restrict)
+  selection           CampaignContextSelection     @relation(fields: [selectionId, campaignId, workspaceId, selectionRevision], references: [id, campaignId, workspaceId, revision], onDelete: Restrict, onUpdate: Restrict)
+  planningSubmissions CampaignPlanningSubmission[]
+
+  @@unique([briefId, campaignId, workspaceId, selectionId, selectionRevision])
+  @@index([campaignId], map: "CampaignBriefProvenance_campaign")
+  @@index([workspaceId], map: "CampaignBriefProvenance_workspace")
+  @@index([selectionId], map: "CampaignBriefProvenance_selection")
+}
+
+model CampaignPlanningSubmission {
+  id                        String                   @id
+  campaignId                String
+  workspaceId               String
+  briefId                   String
+  selectionId               String
+  selectionRevision         Int
+  inputRevision             Int
+  campaignRevision          Int
+  content                   Json                     @db.JsonB
+  contentHash               String
+  submittedByUserId         String
+  targetOwnerUserId         String
+  targetOwnerSessionVersion Int
+  clientRevision            Int?
+  state                     PlanningReviewState      @default(PENDING)
+  revision                  Int                      @default(1)
+  decidedByUserId           String?
+  decidedAt                 DateTime?                @db.Timestamp(3)
+  createdAt                 DateTime                 @default(now()) @db.Timestamp(3)
+  provenance                CampaignBriefProvenance  @relation(fields: [briefId, campaignId, workspaceId, selectionId, selectionRevision], references: [briefId, campaignId, workspaceId, selectionId, selectionRevision], onDelete: Restrict, onUpdate: Restrict)
+  submittedBy               User                     @relation("CampaignPlanningSubmissionSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  targetOwner               User                     @relation("CampaignPlanningSubmissionTarget", fields: [targetOwnerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reviewCommands            PlanningReviewCommand[]
+
+  @@unique([id, workspaceId])
+  @@index([campaignId], map: "CampaignPlanningSubmission_campaign")
+  @@index([workspaceId], map: "CampaignPlanningSubmission_workspace")
+  @@index([targetOwnerUserId, state, id], map: "CampaignPlanningSubmission_target_state_id")
+  @@index([submittedByUserId], map: "CampaignPlanningSubmission_submitter")
+  @@index([briefId, campaignId, workspaceId, selectionId, selectionRevision], map: "CampaignPlanningSubmission_provenance")
+}
+
+model BrandContextCommand {
+  id           String       @id
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  contextId    String
+  workspaceId  String
+  action       String
+  result       Json         @db.JsonB
+  createdAt    DateTime     @default(now()) @db.Timestamp(3)
+  context      BrandContext @relation(fields: [contextId, workspaceId], references: [id, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([actorUserId, operationKey])
+  @@index([contextId], map: "BrandContextCommand_context")
+  @@index([workspaceId], map: "BrandContextCommand_workspace")
+}
+
+model CampaignPlanningCommand {
+  id           String                  @id
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  campaignId   String
+  workspaceId  String
+  action       String
+  result       Json                    @db.JsonB
+  createdAt    DateTime                @default(now()) @db.Timestamp(3)
+  binding      CampaignPlanningBinding @relation(fields: [campaignId, workspaceId], references: [campaignId, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([actorUserId, operationKey])
+  @@index([campaignId], map: "CampaignPlanningCommand_campaign")
+  @@index([workspaceId], map: "CampaignPlanningCommand_workspace")
+}
+
+model PlanningReviewCommand {
+  id                   String                      @id
+  actorUserId          String
+  operationKey         String
+  payloadHash          String
+  workspaceId          String
+  contextSubmissionId  String?
+  campaignSubmissionId String?
+  action               String
+  result               Json                        @db.JsonB
+  createdAt            DateTime                    @default(now()) @db.Timestamp(3)
+  contextSubmission    BrandContextSubmission?     @relation(fields: [contextSubmissionId, workspaceId], references: [id, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+  campaignSubmission   CampaignPlanningSubmission? @relation(fields: [campaignSubmissionId, workspaceId], references: [id, workspaceId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([actorUserId, operationKey])
+  @@index([contextSubmissionId], map: "PlanningReviewCommand_context")
+  @@index([campaignSubmissionId], map: "PlanningReviewCommand_campaign")
+  @@index([workspaceId], map: "PlanningReviewCommand_workspace")
+}
+// Additive migration 17 models. Composite foreign keys/lifecycle guards are
+// owned by reviewed SQL; these scalar sidecars do not alter migration 16 hashes.
+model ContextAssetBinding {
+  id             String   @id
+  contextId      String
+  workspaceId    String
+  assetId        String   @unique
+  uploaderUserId String
+  purpose        String
+  createdAt      DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, contextId, workspaceId])
+  @@index([contextId, workspaceId])
+}
+
+model ContextReferenceManifest {
+  id                String   @id
+  contextId         String
+  workspaceId       String
+  referenceRevision Int
+  hash              String
+  itemCount         Int
+  items             Json     @db.JsonB
+  createdAt         DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([contextId, referenceRevision])
+  @@unique([id, contextId, workspaceId])
+  @@unique([id, contextId, workspaceId, referenceRevision, hash])
+  @@index([contextId, workspaceId])
+}
+
+model ContextReferenceState {
+  contextId         String   @id
+  workspaceId       String
+  referenceRevision Int
+  manifestId        String
+  manifestHash      String
+  createdAt         DateTime @default(now()) @db.Timestamp(3)
+  updatedAt         DateTime @db.Timestamp(3)
+
+  @@index([workspaceId])
+  @@index([manifestId, contextId, workspaceId, referenceRevision, manifestHash], map: "ContextReferenceState_manifest")
+}
+
+model ContextSubmissionReferences {
+  submissionId      String   @id
+  contextId         String
+  workspaceId       String
+  referenceRevision Int
+  manifestId        String
+  manifestHash      String
+  createdAt         DateTime @default(now()) @db.Timestamp(3)
+
+  @@index([contextId, workspaceId])
+  @@index([manifestId, contextId, workspaceId, referenceRevision, manifestHash], map: "ContextSubmissionReferences_manifest")
+}
+
+model ContextReferenceCommand {
+  id           String   @id
+  actorUserId  String
+  operationKey String
+  payloadHash  String
+  contextId    String
+  workspaceId  String
+  action       String
+  manifestId   String
+  result       Json     @db.JsonB
+  createdAt    DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([actorUserId, operationKey])
+  @@index([contextId, workspaceId])
+  @@index([manifestId])
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { BRAND, THEME_COOKIE, type Theme } from "@/lib/brand";
 import { INFAME_COPY } from "@/lib/infame-copy";
 import { useI18n } from "@/lib/i18n";
+import { InfameBrandPattern } from "./brand-pattern";
 
 export function PublicShell({ children, initialTheme = "light" }: { children: React.ReactNode; initialTheme?: Theme }) {
   const { lang, isAr, toggleLang } = useI18n();
@@ -61,7 +62,7 @@ export function PublicShell({ children, initialTheme = "light" }: { children: Re
       <main id="infame-main" tabIndex={-1} className="infame-main">{children}</main>
       <footer className="infame-footer">
         <div className="infame-container infame-footer-grid">
-          <div><Link href="/" className="infame-wordmark"><span className="infame-brand-dot" aria-hidden="true" />{isAr ? BRAND.nameAr : BRAND.name}</Link><p>{copy.footer.description}</p><p className="infame-footer-location">{copy.footer.location}</p></div>
+          <div><InfameBrandPattern compact /><Link href="/" className="infame-wordmark"><span className="infame-brand-dot" aria-hidden="true" />{isAr ? BRAND.nameAr : BRAND.name}</Link><p>{copy.footer.description}</p><p className="infame-footer-location">{copy.footer.location}</p></div>
           <nav aria-label={isAr ? "روابط التذييل" : "Footer links"}>{navLinks}<Link href="/contact" className="infame-nav-link">{copy.footer.contact}</Link></nav>
         </div>
         <div className="infame-container infame-footer-bottom"><span>{copy.footer.copyright}</span><span dir="ltr">{BRAND.domain}</span></div>

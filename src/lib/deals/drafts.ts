@@ -7,6 +7,7 @@ import { TimeZoneSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
 import { canonicalHash, inputJson, record } from "@/lib/onboarding/drafts";
 import { DealError, type DealOptions } from "./contracts";
 import { dealParticipantContext } from "./service";
+import { assertFreshDirectCampaign } from "@/lib/campaign-planning/legacy";
 
 const Id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 // Presence of a field means its actual value is validated. Missing fields remain
@@ -28,9 +29,9 @@ async function creatorDraftParty(tx: Prisma.TransactionClient, actor: string, ca
 export async function getOfferDraft(actor: string, draftId: string, options: DealOptions = {}): Promise<OfferDraftDTO> {
   parse(Id, draftId);
   return (options.client ?? prisma).$transaction(async tx => {
-    const draft = await tx.offerDraft.findFirst({ where: { id: draftId, actorUserId: actor } });
+    const draft = await tx.offerDraft.findFirst({ where: { id: draftId, actorUserId: actor }, select: { campaignId: true, creatorId: true } });
     if (!draft) throw new DealError("NOT_FOUND", 404);
-    const ctx = await dealParticipantContext(tx, actor, draft.campaignId, draft.creatorId, false);
+    const ctx = await dealParticipantContext(tx, actor, draft.campaignId, draft.creatorId, false, undefined, "FRESH_READ");
     await creatorDraftParty(tx, actor, draft.campaignId, draft.creatorId, ctx.role);
     await tx.$queryRaw`SELECT id FROM "OfferDraft" WHERE id=${draftId} FOR SHARE`;
     return dto(await tx.offerDraft.findUniqueOrThrow({ where: { id: draftId } }));
@@ -40,13 +41,14 @@ export async function saveOfferDraft(actor: string, input: unknown, options: Dea
   const command = parse(SaveSchema, input), hash = canonicalHash(command), now = options.now ?? new Date();
   if (!Number.isFinite(now.getTime())) throw new DealError("INVALID_CLOCK", 400);
   return (options.client ?? prisma).$transaction(async tx => {
-    const ctx = await dealParticipantContext(tx, actor, command.campaignId, command.creatorId, true);
+    const ctx = await dealParticipantContext(tx, actor, command.campaignId, command.creatorId, true, undefined, "CREATE_REPLAY");
     await creatorDraftParty(tx, actor, command.campaignId, command.creatorId, ctx.role);
     const previous = await tx.offerDraftCommand.findUnique({ where: { actorUserId_operationKey: { actorUserId: actor, operationKey: command.operationKey } } });
     if (previous) {
       if (previous.payloadHash !== hash) throw new DealError("IDEMPOTENCY_CONFLICT");
       return { draft: dto(await tx.offerDraft.findUniqueOrThrow({ where: { id: previous.draftId } })), replayed: true };
     }
+    await assertFreshDirectCampaign(tx, command.campaignId);
     let draft = await tx.offerDraft.findUnique({ where: { actorUserId_campaignId_creatorId: { actorUserId: actor, campaignId: command.campaignId, creatorId: command.creatorId } } });
     if (!draft) {
       if (command.expectedRevision !== 0) throw new DealError("STALE_VERSION");

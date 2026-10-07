@@ -2,13 +2,14 @@
 
 // Retained Talaqee dashboard: compact sticky top bar, 232px sidebar and
 // 28px/30px desktop content spacing. Infame supplies current routes/data.
-import Link from "next/link";
+import { GuardedLink as Link, useGuardedNavigationRequest } from "./navigation-guard";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { BRAND, THEME_COOKIE, type Theme } from "@/lib/brand";
 import { useI18n, type Dict } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { InfameBrandPattern } from "@/components/infame/brand-pattern";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   const { t, isAr, toggleLang, pick } = useI18n();
+  const requestNavigation = useGuardedNavigationRequest();
   const pathname = usePathname(),
     router = useRouter();
   const [theme, setTheme] = useState(initialTheme),
@@ -135,6 +137,7 @@ export function DashboardShell({
   function sidebarFooter() {
     return (
       <div className="mt-auto rounded-[14px] border border-border bg-background p-3.5">
+        <InfameBrandPattern compact className="mb-2" />
         <p className="mb-1 text-[13px] font-bold">
           {copy(
             "تعاون واضح، من البداية",
@@ -156,6 +159,7 @@ export function DashboardShell({
         {copy("انتقل للمحتوى", "Skip to content")}
       </a>
       <header className="sticky top-0 z-40 border-b border-border bg-card">
+        <div className="infame-brand-ribbon" aria-hidden="true" />
         <div className="flex items-center gap-2 px-3 py-2.5 lg:gap-[18px] lg:px-5">
           <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
             <DialogTrigger asChild>
@@ -243,7 +247,10 @@ export function DashboardShell({
             <Button
               variant="ghost"
               className="px-2 text-[13px] font-semibold text-muted-foreground lg:h-[34px] lg:px-0"
-              onClick={logout}
+              onClick={event => {
+                const proceed = () => { void logout(); };
+                if (!requestNavigation?.(proceed, event.currentTarget)) proceed();
+              }}
               disabled={busy}
               aria-label={copy("تسجيل الخروج", "Sign out")}
             >

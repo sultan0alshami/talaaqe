@@ -342,3 +342,40 @@ All ten Figma documentation introductions and purposes above were read, followed
 The design-to-code overview distinguishes exact existing block CLI retrieval from generation for customized frames. The plugin offers Radix and Base UI output; Infame chooses Radix explicitly. BYOK generation remains separate from paid entitlement. Plugin-generated code still requires dependency review, real data binding, authorization, accessible state behavior and RTL/mobile testing. No BYOK key was entered and no provider-backed plugin generation was run.
 
 The complete plugin guide confirms that its Create Theme action changes only the existing Themes collection's Default mode; the separate Light/Dark Mode collection and other theme presets are unchanged. It supports CSS-variable import and Tailwind 4 export. Infame requires deliberate semantic binding and paired light/dark review rather than assuming that pressing Apply establishes code/design parity. The copied kit retains its Tailwind primitive scale; brand changes belong in semantic/theme variables. Free-plan duplication is supported, while cross-file library publishing requires a paid Figma plan; no publishing or plan change was attempted.
+
+## Guided campaign source refresh — 2026-10-06
+
+The existing Chrome Studio account was authenticated; Radix Code/download tabs
+were actually available. Downloaded and ZIP-inspected outside Git:
+
+| Source | Artifact | SHA256 |
+| --- | --- | --- |
+| [Chat Bubble01](https://shadcnstudio.com/blocks/marketing-ui/ai-chat-bubble-component#chat-bubble-01) | C:/Users/Asus/Downloads/chat-bubble-01.zip,24923 bytes | B340C9A818496DF2F5DF5B74D8B388D5019830882D96B0B0D89F97B67F388DE2 |
+| [File Upload02](https://shadcnstudio.com/blocks/dashboard-and-application/file-upload#file-upload-2) | C:/Users/Asus/Downloads/file-upload-02.zip,23166 bytes | 13ABA0A93A48098AEDC0EF11B1DC80D164215B5C321C6195A5B4D7B022CD6A1B |
+
+Chat source contains components/ui/chat-bubble.tsx and the chat-bubble-01 block.
+Its InputGroup arrangement uses logical inline-start/end addons. The primitive
+is a320px initially open Popover with local/resetting history and physical
+origin-bottom-right. Sample local messages display Sent without any real transport;
+attachment/emoji buttons are inert. Adapt only suitable composer/message concepts
+inside the retained Talaqee campaign canvas with server-owned durable state.
+
+Upload source contains the file-upload-02 block and hooks/use-file-upload.ts.
+Its native selection/drop/previews/removal are useful, but unrestricted defaults,
+sample six-file/5MB limits and random/timer simulateUpload are not Infame behavior.
+Bind reviewed exact-purpose server limits, real transfer/cancellation/recovery,
+preview cleanup and permission-safe downloads; never copy simulated progress.
+
+Popover/Accordion/Field/InputGroup/Avatar/ScrollArea/DropdownMenu/Label/Select
+wrappers used by these samples are absent and must be deliberately adapted from
+compatible source if selected. Existing Button/Card/Input/Textarea/Checkbox and
+Radix foundations remain reused. Localize labels/errors; maintain44px targets,
+logical placement, keyboard/drop-zone semantics, IBM typography, D066 tokens and
+Arabic360/English acceptance. These archives contain no working recording,
+transcription, speech or live-voice implementation.
+
+No Studio MCP tool is exposed. Connected Figma's design-context call hit its
+current Starter MCP tool-call limit; no account/plan/credential changes or repeated
+calls followed. Actual source download establishes source availability, not
+installed components or functioning AI/media/voice. No vendor logo/sample FAQ or
+whole starter template is selected for Infame.

@@ -3,14 +3,17 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --infame-yellow: #fffc00; --infame-coral: #f58529; --infame-rose: #dd2a7b; --infame-purple: #8134af;
+  --infame-ink: #121214; --infame-paper: #faf9f4;
+  --infame-brand-gradient: linear-gradient(150deg, var(--infame-coral), var(--infame-rose) 55%, var(--infame-purple));
   --background: #faf9f4; --foreground: #121214;
   --card: #fff; --card-foreground: #121214;
   --popover: #fff; --popover-foreground: #121214;
-  --primary: #fffc00; --primary-foreground: #121214;
+  --primary: var(--infame-yellow); --primary-foreground: var(--infame-ink);
   --secondary: #eeede5; --secondary-foreground: #121214;
   --muted: #eeede5; --muted-foreground: #606068;
-  --accent: #efeee7; --accent-foreground: #121214;
-  --destructive: #b82020; --border: #dcdad1; --input: #88877f; --ring: #62626e; --radius: .75rem;
+  --accent: color-mix(in srgb, var(--infame-purple) 7%, #fff); --accent-foreground: #121214;
+  --destructive: #b82020; --border: #dcdad1; --input: #88877f; --ring: var(--infame-purple); --radius: .75rem;
   --infame-surface-subtle: #f1f0e8; --infame-success: #20643b; --infame-success-bg: #e4f2e8;
   --infame-danger-bg: #ffeded; --infame-gold: #b88a00;
   --sidebar: var(--card); --sidebar-foreground: var(--foreground);
@@ -98,11 +101,14 @@ input, textarea, select { font-size: 16px; }
 .infame-story-panel { position: relative; isolation: isolate; min-width: 0; background: var(--infame-surface-subtle); border: 1px solid var(--border); border-radius: 28px; padding: 30px; overflow: hidden; }
 .infame-story-kicker { margin: 0; color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
 .infame-story-art { position: relative; width: 100%; height: 176px; margin-block: 20px 12px; }
-.infame-story-art > span:not(.infame-story-spark) { position: absolute; width: 136px; height: 136px; border-radius: 50%; inset-block-start: 24px; inset-inline-start: calc(50% - 98px); background: linear-gradient(150deg, #f58529, #dd2a7b 55%, #8134af); }
+.infame-story-art > span:not(.infame-story-spark) { position: absolute; width: 136px; height: 136px; border-radius: 50%; inset-block-start: 24px; inset-inline-start: calc(50% - 98px); background: var(--infame-brand-gradient); }
 .infame-story-art > span:nth-child(2) { inset-inline-start: calc(50% - 32px); background: var(--primary); mix-blend-mode: multiply; }
 .dark .infame-story-art > span:nth-child(2) { mix-blend-mode: normal; opacity: .9; }
 .infame-story-art > span:nth-child(3) { width: 24px; height: 24px; inset-block-start: 14px; inset-inline-start: calc(50% + 105px); background: var(--foreground); }
 .infame-story-spark { position: absolute; inset-block-start: 106px; inset-inline-start: calc(50% - 128px); font-size: 56px; line-height: 1; color: var(--foreground); }
+.infame-brand-pattern-compact { position: relative; width: 84px; height: 42px; flex: none; overflow: hidden; }
+.infame-brand-pattern-compact .infame-story-art { position: absolute; width: 340px; height: 176px; margin: 0; top: 50%; left: 50%; direction: rtl; transform: translate(-50%, -50%) scale(.25); transform-origin: center; }
+.infame-brand-ribbon { height: 2px; background: linear-gradient(90deg, var(--infame-yellow), var(--infame-coral), var(--infame-rose), var(--infame-purple)); }
 .infame-story-words { text-align: center; }
 .infame-story-words h2 { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.45; text-wrap: balance; }
 .infame-story-words p { font-size: 14px; color: var(--muted-foreground); margin: 8px 0 24px; }

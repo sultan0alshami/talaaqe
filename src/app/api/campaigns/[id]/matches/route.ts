@@ -10,9 +10,9 @@ type Context = { params: Promise<{ id: string }> };
 export const GET = domainHandler(async (request: Request, context: Context) => {
   const actor = await requireRole("BRAND"), { id } = await context.params;
   const query = z.object({ runId: z.string().min(1).max(200).optional() }).strict().parse(Object.fromEntries(new URL(request.url).searchParams));
-  return getCampaignMatches(actor.userId, id, query.runId, { policyReader: reviewedMatchingPolicies });
+  return getCampaignMatches(actor.userId, id, query.runId, { policyReader: reviewedMatchingPolicies, serverAuth: actor });
 });
 export const POST = domainHandler(async (request: Request, context: Context) => {
   const actor = await requireRole("BRAND"), { id } = await context.params;
-  return runCampaignMatching(actor.userId, id, await parseBody(request, z.unknown()), { policyReader: reviewedMatchingPolicies });
+  return runCampaignMatching(actor.userId, id, await parseBody(request, z.unknown()), { policyReader: reviewedMatchingPolicies, serverAuth: actor });
 });

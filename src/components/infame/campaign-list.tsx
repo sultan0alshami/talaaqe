@@ -66,6 +66,10 @@ export function CampaignList({
             )}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" className="min-h-11 rounded-[10px]">
+          <Link href="/brand/campaigns/reviews">{copy("مراجعة الموجزات", "Review briefs")}</Link>
+        </Button>
         {!profileRequired && (
           <Button asChild className="h-auto min-h-11 rounded-[10px] px-[18px] py-[11px] text-[13.5px] font-bold">
             <Link href="/brand/campaigns/new">
@@ -74,6 +78,7 @@ export function CampaignList({
             </Link>
           </Button>
         )}
+        </div>
       </div>
       {profileRequired ? (
         <Card className="gap-3 rounded-[18px] border border-border px-6 py-[22px] ring-0">

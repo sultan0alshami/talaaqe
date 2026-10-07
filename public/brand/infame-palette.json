@@ -1,0 +1,13 @@
+{
+  "name": "Infame / إنفيم",
+  "primaryWebsite": "/",
+  "motif": "/brand/infame-pattern.svg",
+  "colors": {
+    "yellow": "#fffc00",
+    "coral": "#f58529",
+    "rose": "#dd2a7b",
+    "purple": "#8134af",
+    "ink": "#121214",
+    "paper": "#faf9f4"
+  }
+}

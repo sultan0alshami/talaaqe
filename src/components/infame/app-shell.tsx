@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Theme } from "@/lib/brand";
+import { NavigationGuardProvider } from "@/components/shells/navigation-guard";
 import {
   DashboardShell,
   type NavSpec,
@@ -56,6 +57,11 @@ export function AppShell({
             label: { ar: "قوائم صنّاع المحتوى", en: "Creator collections" },
             href: "/brand/collections",
           },
+          {
+            key: "context",
+            label: { ar: "سياق العلامة", en: "Brand context" },
+            href: "/brand/context",
+          },
         ]
       : []),
     ...(role !== "ADMIN"
@@ -84,6 +90,7 @@ export function AppShell({
       : []),
   ];
   return (
+    <NavigationGuardProvider>
     <DashboardShell
       role={dashboardRole}
       sidebarTitle={{ ar: name, en: name }}
@@ -94,5 +101,6 @@ export function AppShell({
     >
       {children}
     </DashboardShell>
+    </NavigationGuardProvider>
   );
 }

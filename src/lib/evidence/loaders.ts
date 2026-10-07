@@ -20,7 +20,7 @@ export async function getCreatorEvidence(actor: string, creatorId: string, optio
     const snapshots = await tx.metricsSnapshot.findMany({ where: { accountId: { in: ids } }, orderBy: [{ observedAt: "desc" }, { id: "asc" }], take: 100 });
     const corrections = await tx.factCorrection.findMany({ where: { accountId: { in: ids }, reportedBy: actor }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 100 });
     const licences = await tx.advertisingLicence.findMany({ where: { creatorId }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 100 });
-    const assets = await tx.privateAsset.findMany({ where: { ownerUserId: actor, deletedAt: null }, orderBy: { createdAt: "desc" }, take: 100 });
+    const assets = await tx.privateAsset.findMany({ where: { ownerUserId: actor, deletedAt: null, purpose: { not: "MARKETING_REFERENCE" } }, orderBy: { createdAt: "desc" }, take: 100 });
     const ownedSnapshots = [];
     for (const snapshot of snapshots) if (await ownerSnapshot(tx, snapshot, actor)) ownedSnapshots.push(snapshot);
     const ownedLicences = [];
@@ -38,7 +38,7 @@ export async function getBrandEvidence(actor: string, brandId: string, options: 
     await brandContext(tx, actor, brandId);
     await boundary.checkpoint();
     const verifications = await tx.businessVerification.findMany({ where: { brandId }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 100 });
-    const assets = await tx.privateAsset.findMany({ where: { ownerUserId: actor, deletedAt: null }, orderBy: { createdAt: "desc" }, take: 100 });
+    const assets = await tx.privateAsset.findMany({ where: { ownerUserId: actor, deletedAt: null, purpose: { not: "MARKETING_REFERENCE" } }, orderBy: { createdAt: "desc" }, take: 100 });
     const ownedVerifications = [];
     for (const verification of verifications) if (await ownerSubmittedResource(tx, actor, "BusinessVerification", verification.id, verification.evidenceAssetId,
       verification.kind, canonicalHash(businessScope(verification)), verification.createdAt)) ownedVerifications.push(verification);

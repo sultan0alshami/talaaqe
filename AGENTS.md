@@ -4,6 +4,8 @@ This isolated Talaqee-derived checkout implements the handoffs in docs/handoff/.
 
 Current founder direction (2026-10-04, D019a): reuse Talaqee's full platform interface and page composition with Infame name/colors, then add Infame features within that structure. Do not replace it with a new dashboard design. Keep the approved public site at `/` and a second Talaqee-derived Infame website at `/classic`.
 
+Latest identity direction (2026-10-06): `/` is the selected main website; `/classic` is retained as reference. Preserve the approved landing circles/overlap/dot/spark and yellow/coral/rose/purple/ink palette across public and platform surfaces through docs/BRAND_IDENTITY.md and shared tokens/components. Keep Talaqee page geometry. The guided campaign agent must support customer-selected text/media/voice-message/live-voice inputs and text/voice outputs, with confirmed facts, complete generated campaign profiles and genuine provider/usage/privacy readiness; OpenAI stays disabled.
+
 Keep inherited history/migrations. Reuse audited Next App Router, server pages/client screens, Prisma, auth/API/ownership, bilingual interface and Anthropic foundations. Developer-procurement contracts, demo fallbacks, paired business content, inline-style mandates and fresh-fork/no-migrations scripts are superseded. User content is stored once in its original language; UI translations are separate.
 
 The coordinator owns schema/migrations, auth, shared contracts/env/brand, dependencies, primitives/shells, dictionary composition, CI/deployment. Domain workers own explicitly assigned paths. You share the checkout: preserve other agents' work; ask the coordinator before editing a shared path. Independent reviews return findings to the owner.

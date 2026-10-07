@@ -10,6 +10,7 @@ import { canonicalHash, inputJson, record } from "@/lib/onboarding/drafts";
 import { loadEligibleCreator } from "@/lib/matching/persistence";
 import { acceptedOwnershipProof, lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
+import { assertFreshDirectCampaign, assertLegacyCampaignReadable } from "@/lib/campaign-planning/legacy";
 import { AgreementContentSchema, CreateDealSchema, DealCommandSchema, DealError,
   type DealCommand, type DealOptions, type DealPolicyContext, type DealPolicyEvidence } from "./contracts";
 
@@ -25,27 +26,41 @@ function clock(options: DealOptions): Date {
   const now = options.now ?? new Date(); if (!Number.isFinite(now.getTime())) throw new DealError("INVALID_CLOCK", 400); return now;
 }
 const past = (value: Date | null, now: Date) => value !== null && value <= now;
-async function context(tx: Tx, actor: string, campaignId: string, creatorId: string, write: boolean, originalCreatorUserId?: string): Promise<Context> {
+async function context(tx: Tx, actor: string, campaignId: string, creatorId: string, write: boolean, originalCreatorUserId?: string,
+  access: "HISTORY" | "FRESH_READ" | "CREATE_REPLAY" = "HISTORY"): Promise<Context> {
   parse(Id, actor); parse(Id, campaignId); parse(Id, creatorId);
   const reference = await tx.campaign.findUnique({ where: { id: campaignId }, select: { brand: { select: { id: true, userId: true } } } });
   const target = await tx.creator.findUnique({ where: { id: creatorId }, select: { userId: true } });
   if (!reference || !target) throw new DealError("NOT_FOUND", 404);
   // All current/historical owners, then evidence/policy reviewers, precede
   // domain locks. The captured identity sets are checked after waiting.
-  const evidenceActors = await lockEvidenceActors(tx, { creatorIds: [creatorId], brandIds: [reference.brand.id], otherOwnerIds: originalCreatorUserId ? [originalCreatorUserId] : [], includePolicies: true, updateOwners: write });
+  const evidenceActors = await lockEvidenceActors(tx, { creatorIds: [creatorId], brandIds: [reference.brand.id], otherOwnerIds: [actor, ...(originalCreatorUserId ? [originalCreatorUserId] : [])], includePolicies: true, updateOwners: write });
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${reference.brand.id} FOR SHARE`;
   await tx.$queryRaw`SELECT id FROM "Creator" WHERE id=${creatorId} FOR SHARE`;
   if (write) await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR SHARE`;
-  const [campaign, brand, creator, user] = await Promise.all([
-    tx.campaign.findUniqueOrThrow({ where: { id: campaignId } }), tx.brand.findUniqueOrThrow({ where: { id: reference.brand.id } }),
-    tx.creator.findUniqueOrThrow({ where: { id: creatorId } }), tx.user.findUnique({ where: { id: actor } }),
+  const [campaignIdentity, brandIdentity, creatorIdentity, user] = await Promise.all([
+    tx.campaign.findUnique({ where: { id: campaignId }, select: { brandId: true } }),
+    tx.brand.findUnique({ where: { id: reference.brand.id }, select: { userId: true } }),
+    tx.creator.findUnique({ where: { id: creatorId }, select: { userId: true } }),
+    tx.user.findUnique({ where: { id: actor }, select: { active: true, role: true } }),
   ]);
-  if (brand.userId !== reference.brand.userId || creator.userId !== target.userId || campaign.brandId !== brand.id) throw new DealError("STALE_PARTICIPANTS");
+  if (brandIdentity?.userId !== reference.brand.userId || creatorIdentity?.userId !== target.userId || campaignIdentity?.brandId !== reference.brand.id) throw new DealError("STALE_PARTICIPANTS");
   if (!user?.active || (user.role !== "BRAND" && user.role !== "CREATOR")) throw new DealError("FORBIDDEN", 403);
-  if (actor !== brand.userId && actor !== creator.userId && actor !== originalCreatorUserId) throw new DealError("NOT_FOUND", 404);
-  const role = actor === brand.userId ? "BRAND" : "CREATOR";
+  if (actor !== brandIdentity.userId && actor !== creatorIdentity.userId && actor !== originalCreatorUserId) throw new DealError("NOT_FOUND", 404);
+  const role = actor === brandIdentity.userId ? "BRAND" : "CREATOR";
   if (user.role !== role) throw new DealError("FORBIDDEN", 403);
+  if (access !== "HISTORY" && role === "CREATOR" && !await tx.deal.findFirst({
+    where: { campaignId, creatorId, offers: { some: { version: 1, recipientUserId: actor } } }, select: { id: true },
+  })) throw new DealError("NOT_FOUND", 404);
+  // Retained actual-party history uses HISTORY. Fresh checks follow current
+  // thin party authorization and precede all Campaign.input hydration.
+  if (access === "FRESH_READ") await assertFreshDirectCampaign(tx, campaignId);
+  else if (access === "CREATE_REPLAY") await assertLegacyCampaignReadable(tx, campaignId);
+  const [campaign, brand, creator] = await Promise.all([
+    tx.campaign.findUniqueOrThrow({ where: { id: campaignId } }), tx.brand.findUniqueOrThrow({ where: { id: reference.brand.id } }),
+    tx.creator.findUniqueOrThrow({ where: { id: creatorId } }),
+  ]);
   return { brand, creator, campaign, brandUserId: brand.userId, creatorUserId: creator.userId, originalCreatorUserId, role, evidenceActors };
 }
 // Domain-only helper for the private draft service. Server transports invoke the
@@ -200,11 +215,12 @@ export type DealDTO = Awaited<ReturnType<typeof dealDTO>>;
 export async function createDealOffer(actor: string, input: unknown, options: DealOptions = {}): Promise<{ deal: DealDTO; replayed: boolean }> {
   const command = parse(CreateDealSchema, input), hash = canonicalHash({ action: "CREATE", ...command }); clock(options);
   return (options.client ?? prisma).$transaction(async tx => {
-    const ctx = await context(tx, actor, command.campaignId, command.creatorId, true);
+    const ctx = await context(tx, actor, command.campaignId, command.creatorId, true, undefined, "CREATE_REPLAY");
     const now = clock(options);
     if (ctx.role !== "BRAND") throw new DealError("ROLE_ONLY", 403);
     const replayId = await replay(tx, actor, command.operationKey, hash);
     if (replayId) return { deal: await dealDTO(tx, await tx.deal.findUniqueOrThrow({ where: { id: replayId } }), actor, now), replayed: true };
+    await assertFreshDirectCampaign(tx, command.campaignId);
     if (ctx.campaign.revision !== command.expectedCampaignRevision) throw new DealError("STALE_VERSION");
     const r = await requirements(tx, ctx, command.expectedBriefVersion, true, now), terms = termsFor(command.terms, r);
     if (command.origin === "MATCH") {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { INFAME_COPY } from "@/lib/infame-copy";
 import { useI18n } from "@/lib/i18n";
+import { InfameBrandPattern } from "./brand-pattern";
 
 export function InfameLanding() {
   const { lang, isAr } = useI18n();
@@ -23,7 +24,7 @@ export function InfameLanding() {
         </div>
         <div className="infame-story-panel">
           <p className="infame-story-kicker">{copy.hero.visualLabel}</p>
-          <div className="infame-story-art" aria-hidden="true"><span /><span /><span /><span className="infame-story-spark">✳</span></div>
+          <InfameBrandPattern />
           <div className="infame-story-words"><h2>{copy.hero.visualTitle}</h2><p>{copy.hero.visualSubtitle}</p></div>
           <ol className="infame-story-steps">{copy.hero.visualSteps.map((step, index) => <li key={step}><span dir="ltr">0{index + 1}</span>{step}</li>)}</ol>
           <p className="infame-story-footer">{copy.hero.visualFooter}</p>

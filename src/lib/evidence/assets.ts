@@ -64,7 +64,7 @@ export async function getPrivateAsset(actor: string, id: string, options: Eviden
     const user = await active(tx, actor);
     now = await boundary.checkpoint();
     const asset = await tx.privateAsset.findUnique({ where: { id } });
-    if (!asset || asset.deletedAt || asset.ownerUserId !== actor && user.role !== "ADMIN") throw new EvidenceError("NOT_FOUND", 404);
+    if (!asset || asset.purpose === "MARKETING_REFERENCE" || asset.deletedAt || asset.ownerUserId !== actor && user.role !== "ADMIN") throw new EvidenceError("NOT_FOUND", 404);
     const usable = await usableAsset(tx, id, asset.ownerUserId, asset.purpose, options, boundary);
     now = await boundary.checkpoint();
     if (user.role === "ADMIN" && asset.ownerUserId !== actor) await tx.adminAudit.create({ data: { actorUserId: actor, action: "evidence.accessed", resourceType: "PrivateAsset", resourceId: id, snapshot: { assetId: id }, createdAt: now } });

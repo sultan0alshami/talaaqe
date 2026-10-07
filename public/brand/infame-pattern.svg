@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 176" fill="none">
+  <title>Infame collaboration pattern</title>
+  <defs><linearGradient id="infame-gradient" x1="166" y1="33" x2="234" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#f58529"/><stop offset=".55" stop-color="#dd2a7b"/><stop offset="1" stop-color="#8134af"/></linearGradient></defs>
+  <g style="isolation:isolate"><circle cx="200" cy="92" r="68" fill="url(#infame-gradient)"/><circle cx="134" cy="92" r="68" fill="#fffc00" style="mix-blend-mode:multiply"/></g>
+  <circle cx="53" cy="26" r="12" fill="#121214"/>
+  <path d="M270 111v46m-23-23h46m-39-16 32 32m-32 0 32-32" stroke="#121214" stroke-width="2.5"/>
+</svg>

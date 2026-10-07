@@ -6,5 +6,5 @@ import { reviewedMatchingPolicies } from "@/lib/policies";
 
 export const POST = domainHandler(async (request: Request, context: { params: Promise<{ id: string }> }) => {
   const actor = await requireRole("BRAND"), { id } = await context.params;
-  return decideCampaignMatch(actor.userId, id, await parseBody(request, z.unknown()), { policyReader: reviewedMatchingPolicies });
+  return decideCampaignMatch(actor.userId, id, await parseBody(request, z.unknown()), { policyReader: reviewedMatchingPolicies, serverAuth: actor });
 });

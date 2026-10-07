@@ -8,6 +8,10 @@ import { ArabicDialectSchema, AudienceAgeBucketSchema, AudienceGenderSchema, Ava
 import { NICHE_BY_SLUG, NICHE_SOURCE } from "@/lib/contracts/taxonomy";
 import { acceptedLicenceProof, acceptedOwnershipProof, currentCreatorOwner, lockEvidenceActors, type EvidenceActorLocks } from "@/lib/evidence/readiness";
 import { acceptedScreenshotProof } from "@/lib/evidence/metrics-readiness";
+import { assertLegacyCampaignReadable } from "@/lib/campaign-planning/legacy";
+import { assertLockedOrganizationActor, captureOrganizationActor, checkOrganizationActor,
+  type OrganizationActor } from "@/lib/organizations/context";
+import { OrganizationError } from "@/lib/organizations/contracts";
 import { FRESHNESS_MS, STRATEGY_ID } from "./benchmarks";
 import { prepareEligibility, shortlist } from "./strategy";
 import { MatchingIdSchema as IdSchema, RunCommandSchema, DecisionCommandSchema,
@@ -22,7 +26,25 @@ type Transaction = Prisma.TransactionClient;
 // Trusted server adapter: reads reviewed records in this transaction only. Never
 // request/model input; no provider/model calls or writes, including on GET.
 export type MatchingPolicyReader = (tx: Transaction, requirements: CampaignRequirementsDTO, creatorIds: readonly string[], context?: { evidenceActors: EvidenceActorLocks; now: Date }) => Promise<{ version:string; outcomes:Record<string,PolicyOutcome[]>; safetyExclusions:Record<string,SafetyExclusion[]> }>;
-export type MatchingPersistenceOptions = { client?:PrismaClient; now?:Date; policyReader?:MatchingPolicyReader; evidenceActors?:EvidenceActorLocks };
+export type MatchingPersistenceOptions = { client?:PrismaClient; now?:Date; policyReader?:MatchingPolicyReader; evidenceActors?:EvidenceActorLocks;
+  serverAuth?:OrganizationActor };
+function captureMatchingOptions(actorUserId:string,options:MatchingPersistenceOptions):MatchingPersistenceOptions {
+  const auth=options.serverAuth===undefined?undefined:captureOrganizationActor(options.serverAuth);
+  if(auth && auth.userId!==actorUserId)throw new OrganizationError("UNAUTHENTICATED",401);
+  const now=options.now;
+  if(now!==undefined && (!(now instanceof Date) || !Number.isFinite(now.getTime())))throw new MatchingError("VALIDATION",400);
+  return {...options,serverAuth:auth,now:now===undefined?undefined:new Date(now.getTime())};
+}
+async function withMatchingTransaction<T>(options:MatchingPersistenceOptions,action:(tx:Transaction)=>Promise<T>):Promise<T> {
+  const client=options.client??prisma,auth=options.serverAuth;
+  if(auth)await checkOrganizationActor(auth,{client});
+  return client.$transaction(async tx=>{
+    const result=await action(tx);
+    // This encloses every return, including replay and null read absence.
+    if(auth)await assertLockedOrganizationActor(tx,auth);
+    return result;
+  },{maxWait:10_000,timeout:20_000});
+}
 const visible=(brand:boolean,publicField:boolean):Evidence["visibility"]=>publicField?"PUBLIC":brand?"BRAND_ONLY":"PRIVATE";
 const record=(value:unknown):Record<string,unknown>=>value && typeof value==="object" && !Array.isArray(value)?value as Record<string,unknown>:{};
 function fieldPermission(value:unknown,key:string,original:Evidence["visibility"]):Evidence["visibility"] {
@@ -44,12 +66,13 @@ function clock(options:MatchingPersistenceOptions):Date {const now=options.now??
 function campaignInput(r:CampaignRequirementsDTO):CampaignInput {
   return {id:r.campaignId,briefVersion:r.version,approved:true,budget:r.budget,desiredCreatorCount:r.desiredCreatorCount,allocationOrdinal:0,impressionsTarget:r.impressionsTarget,period:r.period,deliverables:r.deliverables,targetAgeBuckets:r.targetAgeBuckets,targetGenders:r.targetGenders,targetCountryCodes:r.targetCountryCodes,targetCityKeys:r.targetCityKeys,contentLanguages:r.contentLanguages,dialects:r.dialects,nicheSlugs:r.nicheSlugs,marketCountryCodes:r.marketCountryCodes,physicalPresenceRequired:r.physicalPresenceRequired,presenceCountryCodes:r.presenceCountryCodes,travelAllowed:r.travelAllowed,preferredTiers:r.preferredTiers,dataVerificationRequired:r.dataVerificationRequired,preferredLicencePolicyIds:r.preferredLicencePolicyIds,mandatoryPolicyVersionIds:r.mandatoryPolicyVersionIds,noGoTopics:r.noGoTopics};
 }
-async function owned(tx:Transaction,actorUserId:string,campaignId:string,write:boolean):Promise<Campaign> {
+async function owned(tx:Transaction,actorUserId:string,campaignId:string,write:boolean,auth?:OrganizationActor):Promise<Campaign> {
   parse(IdSchema,actorUserId);parse(IdSchema,campaignId);
   if(write)await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR SHARE`;
   const user=await tx.user.findUnique({where:{id:actorUserId},select:{active:true,role:true,emailVerifiedAt:true}});
   if(!user?.active || user.role!=="BRAND" || !user.emailVerifiedAt)throw new MatchingError("FORBIDDEN",403);
+  if(auth){await tx.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${auth.sessionId} FOR SHARE`;await assertLockedOrganizationActor(tx,auth);}
   const brand=await tx.brand.findUnique({where:{userId:actorUserId},select:{id:true}});
   if(!brand)throw new MatchingError("NOT_FOUND",404);
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${brand.id} FOR SHARE`;
@@ -58,6 +81,7 @@ async function owned(tx:Transaction,actorUserId:string,campaignId:string,write:b
   if(!await tx.campaign.findFirst({where:{id:campaignId,brandId:brand.id},select:{id:true}}))throw new MatchingError("NOT_FOUND",404);
   if(write)await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR SHARE`;
+  await assertLegacyCampaignReadable(tx,campaignId);
   const campaign=await tx.campaign.findUnique({where:{id:campaignId}});
   if(!campaign || campaign.brandId!==brand.id)throw new MatchingError("NOT_FOUND",404);
   return campaign;
@@ -238,10 +262,11 @@ async function storeCommand(tx:Transaction,campaignId:string,actorUserId:string,
   await tx.matchCommand.create({data:{campaignId,actorUserId,operationKey:key,payloadHash,result:json(result)}});
 }
 export async function runCampaignMatching(actorUserId:string,campaignId:string,rawCommand:unknown,options:MatchingPersistenceOptions={}):Promise<MatchingRunDTO> {
+  options=captureMatchingOptions(actorUserId,options);
   const command=parse(RunCommandSchema,rawCommand),payloadHash=hash({action:"RUN",...command,campaignId});clock(options);
-  return (options.client??prisma).$transaction(async(tx)=>{
+  return withMatchingTransaction(options,async(tx)=>{
     options={...options,evidenceActors:await matchingActors(tx,actorUserId,true)};
-    const campaign=await owned(tx,actorUserId,campaignId,true),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
+    const campaign=await owned(tx,actorUserId,campaignId,true,options.serverAuth),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
     if(previous) {const run=await tx.matchRun.findFirst({where:{id:previous.runId as string,campaignId}});if(!run)throw new MatchingError("NOT_FOUND",404);return project(tx,campaign,run,now,options,true);}
     const brief=await approved(tx,campaign,actorUserId,command,now),loaded=await candidates(tx,brief.requirements,now,options),matches:MatchResult[]=[];
     // One malformed profile cannot promote a synthetic fallback or break all
@@ -252,22 +277,24 @@ export async function runCampaignMatching(actorUserId:string,campaignId:string,r
     await tx.creatorMatch.createMany({data:matches.slice(0,12).map(result=>({runId:run.id,creatorId:result.creatorId,score:result.score,snapshot:json({schemaVersion:1,inputFingerprint:hash(loaded.inputs.find(input=>input.id===result.creatorId)),result} satisfies MatchSnapshot)}))});
     await storeCommand(tx,campaignId,actorUserId,command.operationKey,payloadHash,{runId:run.id});
     return project(tx,campaign,run,now,options,false);
-  },{maxWait:10_000,timeout:20_000});
+  });
 }
 export async function getCampaignMatches(actorUserId:string,campaignId:string,runId?:string,options:MatchingPersistenceOptions={}):Promise<MatchingRunDTO|null> {
+  options=captureMatchingOptions(actorUserId,options);
   if(runId)parse(IdSchema,runId);clock(options);
-  return (options.client??prisma).$transaction(async(tx)=>{
+  return withMatchingTransaction(options,async(tx)=>{
     options={...options,evidenceActors:await matchingActors(tx,actorUserId,false)};
-    const campaign=await owned(tx,actorUserId,campaignId,false),now=clock(options),run=runId?await tx.matchRun.findFirst({where:{id:runId,campaignId}}):await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});
+    const campaign=await owned(tx,actorUserId,campaignId,false,options.serverAuth),now=clock(options),run=runId?await tx.matchRun.findFirst({where:{id:runId,campaignId}}):await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});
     if(!run){if(runId)throw new MatchingError("NOT_FOUND",404);return null;}
     return project(tx,campaign,run,now,options,false);
-  },{maxWait:10_000,timeout:20_000});
+  });
 }
 export async function decideCampaignMatch(actorUserId:string,campaignId:string,rawCommand:unknown,options:MatchingPersistenceOptions={}):Promise<MatchingDecisionDTO & {replayed:boolean}> {
+  options=captureMatchingOptions(actorUserId,options);
   const command=parse(DecisionCommandSchema,rawCommand),payloadHash=hash({action:"DECISION",...command,campaignId});clock(options);
-  return (options.client??prisma).$transaction(async(tx)=>{
+  return withMatchingTransaction(options,async(tx)=>{
     options={...options,evidenceActors:await matchingActors(tx,actorUserId,true)};
-    const campaign=await owned(tx,actorUserId,campaignId,true),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
+    const campaign=await owned(tx,actorUserId,campaignId,true,options.serverAuth),now=clock(options),previous=await replay(tx,campaignId,actorUserId,command.operationKey,payloadHash);
     if(previous)return {...previous,replayed:true} as MatchingDecisionDTO & {replayed:boolean};
     if(campaign.currentBriefVersion!==command.expectedBriefVersion || !["BRIEF_APPROVED","SHORTLISTED","IN_DEALS"].includes(campaign.status))throw new MatchingError("STALE_VERSION");
     const latest=await tx.matchRun.findFirst({where:{campaignId},orderBy:[{createdAt:"desc"},{id:"desc"}]});
@@ -281,5 +308,5 @@ export async function decideCampaignMatch(actorUserId:string,campaignId:string,r
     const result:MatchingDecisionDTO={creatorId:saved.creatorId,decision:saved.decision,revision:saved.revision,runId:saved.runId,updatedAt:saved.updatedAt.toISOString()};
     await storeCommand(tx,campaignId,actorUserId,command.operationKey,payloadHash,result);
     return {...result,replayed:false};
-  },{maxWait:10_000,timeout:20_000});
+  });
 }

@@ -78,7 +78,7 @@ export function DashboardCampaignRows({
         const title = campaign.title || copy("حملة بدون اسم بعد", "Campaign not named yet");
         const href = `/brand/campaigns/${encodeURIComponent(campaign.id)}`;
         return (
-          <div key={campaign.id} role="row" className={`grid items-center gap-3 border-b border-border px-6 last:border-b-0 ${compact ? "py-[15px]" : "py-4"} ${columns}`}>
+          <div key={campaign.id} role="row" data-campaign-id={campaign.id} className={`grid items-center gap-3 border-b border-border px-6 last:border-b-0 ${compact ? "py-[15px]" : "py-4"} ${columns}`}>
             <div role="cell" className="min-w-0">
               <Link href={href} dir="auto" className="block min-h-11 max-w-full break-words py-2 text-[14.5px] font-semibold underline-offset-4 hover:underline">{title}</Link>
             </div>

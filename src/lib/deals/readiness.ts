@@ -22,7 +22,8 @@ export async function getDealComposeContext(actorUserId: string, input: unknown,
   if (ownDeal && (ownDeal.campaignId !== query.campaignId || ownDeal.creatorId !== query.creatorId)) throw new DealError("NOT_FOUND", 404);
   return client.$transaction(async (tx) => {
     const originalCreatorUserId = ownDeal?.offers.find((offer) => offer.version === 1)?.recipientUserId;
-    const ctx = await dealParticipantContext(tx, actorUserId, query.campaignId, query.creatorId, false, originalCreatorUserId);
+    const ctx = await dealParticipantContext(tx, actorUserId, query.campaignId, query.creatorId, false, originalCreatorUserId,
+      ownDeal ? "HISTORY" : "FRESH_READ");
     const now = resourceNow ?? new Date();
     if (ctx.role === "CREATOR" && !ownDeal) throw new DealError("NOT_FOUND", 404);
     const visible = !ctx.creator.isTest && ctx.creator.state === "PUBLISHED" && ctx.creator.brandVisible && (!ctx.creator.userId || !!await publicCreator(ctx.creator.handle, tx, ctx.evidenceActors));

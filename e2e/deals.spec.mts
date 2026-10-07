@@ -19,6 +19,7 @@ import { resolveCampaignPolicyReview } from "../src/lib/policies";
 import { authenticate, openSession } from "../src/lib/identity";
 import { SESSION_COOKIE } from "../src/lib/jwt";
 import { cleanup, fixture } from "../tests/deals/fixtures";
+import { AgreementContentSchema } from "../src/lib/deals/contracts";
 
 const state = taskState(),
   origin = "http://localhost:3100";
@@ -565,6 +566,67 @@ test("current approved proof, portfolio, contact and reviewed policies enable th
   // Exercise execution through the real controls and commands, not service
   // transitions. The prerequisite policies above remain synthetic fixtures.
   const frozen = await db.agreementSnapshot.findFirstOrThrow({ where: { dealId: deal.id } });
+  // Native offer, acceptance and both confirmations above establish genuine
+  // actual-party history before this page-boundary witness. This fixture stays
+  // unbound; synthetic reviewed registry rows do not prove live legal readiness.
+  const frozenBefore = AgreementContentSchema.parse(frozen.content);
+  expect(frozenBefore.partiesSnapshot).toMatchObject({
+    brandUserId: f.brandUserId,
+    creatorUserId: f.target.userId,
+    brandId: f.brandId,
+    creatorId: f.target.id,
+  });
+  const historyBeforeResponse = await page.request.get(`/api/deals/${deal.id}`);
+  expect(historyBeforeResponse.status()).toBe(200);
+  expect(historyBeforeResponse.headers()["cache-control"]).toBe("private, no-store");
+  const historyBefore = (await historyBeforeResponse.json()).data;
+  expect(historyBefore).toMatchObject({
+    id: deal.id,
+    campaignId: f.campaign.id,
+    creatorId: f.target.id,
+    status: "AGREED",
+    agreement: { id: frozen.id, version: frozen.version, ...frozenBefore },
+  });
+  const historyComposeURL = `/api/deals/compose?${query}&dealId=${deal.id}`;
+  const composeBeforeResponse = await page.request.get(historyComposeURL);
+  expect(composeBeforeResponse.status()).toBe(200);
+  expect(composeBeforeResponse.headers()["cache-control"]).toBe("private, no-store");
+  const composeBefore = (await composeBeforeResponse.json()).data;
+  expect(composeBefore).toMatchObject({
+    campaign: { id: f.campaign.id },
+    creator: {
+      id: f.target.id,
+      displayName: frozenBefore.partiesSnapshot.creatorName,
+      handle: frozenBefore.partiesSnapshot.creatorHandle,
+    },
+    requirements: { campaignId: f.campaign.id, version: frozen.briefVersion },
+  });
+  // dealId belongs to existing-deal history, not fresh composition. In
+  // particular, one genuine ID must not let the new page mount a fresh form.
+  for (const invalidQuery of [
+    `${query}&dealId=${deal.id}`,
+    `${query}&dealId=${deal.id}&dealId=${deal.id}`,
+    `${query}&unexpectedHistoryField=${deal.id}`,
+  ]) {
+    const invalid = await page.goto(`/brand/deals/new?${invalidQuery}`);
+    expect(invalid?.status()).toBe(404);
+    await expect(page.getByLabel(label("عملة العرض", "Offer currency"), { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: label("راجع العرض قبل الإرسال", "Review offer before sending"), exact: true })).toHaveCount(0);
+  }
+  const retainedPage = await page.goto(`/brand/deals/${deal.id}`);
+  expect(retainedPage?.status()).toBe(200);
+  const frozenTerms = page.getByRole("region", {
+    name: `${label("نص الشروط كما تمت مراجعته", "Terms exactly as reviewed")} · ${frozenBefore.language === "ar" ? "العربية" : "English"}`,
+    exact: true,
+  });
+  await expect(frozenTerms.getByText(frozenBefore.content, { exact: true })).toBeVisible();
+  const historyAfterResponse = await page.request.get(`/api/deals/${deal.id}`);
+  expect(historyAfterResponse.status()).toBe(200);
+  expect((await historyAfterResponse.json()).data).toEqual(historyBefore);
+  const composeAfterResponse = await page.request.get(historyComposeURL);
+  expect(composeAfterResponse.status()).toBe(200);
+  expect((await composeAfterResponse.json()).data).toEqual(composeBefore);
+  expect(AgreementContentSchema.parse((await db.agreementSnapshot.findUniqueOrThrow({ where: { id: frozen.id } })).content)).toEqual(frozenBefore);
   await login(f.creatorEmail);
   await page.goto(`/creator/deals/${deal.id}`);
   await page.getByLabel(label("تفاصيل إثبات التسليم", "Delivery evidence details"), { exact: true }).fill("تفاصيل تسليم أصلية من الصانع <script>test</script>");

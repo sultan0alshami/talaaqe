@@ -5,13 +5,17 @@ import { campaignFields } from "../campaigns/fixtures";
 import { resolveCampaignPolicyReview } from "@/lib/policies";
 import { CampaignRequirementsSchema } from "@/lib/campaigns/contracts";
 import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
-const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ getSession }));
+import { openSession } from "@/lib/identity";
+import { SESSION_COOKIE } from "@/lib/jwt";
+let token: string | null = null;
+const tokens = new Map<string, string>();
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => name === SESSION_COOKIE && token ? { name, value: token } : undefined }) }));
 import { GET as read, POST as run } from "@/app/api/campaigns/[id]/matches/route";
 import { POST as decide } from "@/app/api/campaigns/[id]/matches/decisions/route";
 
-// Mock only the session issuer; domain ownership, privacy, journal and decisions
-// execute on guarded PostgreSQL. Synthetic reviewed context is not legal evidence.
+// Only Next's cookie context is a seam. Signed native sessions, domain
+// ownership, privacy, journals and decisions execute on guarded PostgreSQL.
+// Synthetic reviewed context is not legal evidence.
 const users: string[] = [], campaigns: string[] = [], creators: string[] = [], policies: string[] = [], assets: string[] = [];
 const origin = "http://localhost:3100", now = new Date();
 const context = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -20,8 +24,8 @@ function request(id: string, body?: unknown, subpath = "", requestOrigin = origi
 }
 async function actor(role: "BRAND" | "CREATOR" | "ADMIN" = "BRAND") {
   const id = randomUUID(); users.push(id);
-  await prisma.user.create({ data: { id, role, name: "Synthetic matching transport", email: `${id}@example.invalid`, passwordHash: "not-a-login", emailVerifiedAt: now, isTest: false } });
-  getSession.mockResolvedValue({ userId: id, role });
+  const user = await prisma.user.create({ data: { id, role, name: "Synthetic matching transport", email: `${id}@example.invalid`, passwordHash: "not-a-login", emailVerifiedAt: now, isTest: false } });
+  token = await openSession(id, user.sessionVersion, user.passwordHash); tokens.set(id, token);
   return id;
 }
 async function fixture(reviewed = true) {
@@ -40,7 +44,7 @@ async function fixture(reviewed = true) {
   }
   await prisma.campaign.create({ data: { id, brandId: brand.id, title: requirements.title, status: "BRIEF_APPROVED", currentBriefVersion: 1, input: { schemaVersion: 1, fieldsRevision: 1, fields: campaignFields, proposals: [], clarificationCount: 0 } } });
   await prisma.campaignBrief.create({ data: { campaignId: id, version: 1, inputRevision: 1, approvedAt: now, approvedByUserId: owner, content: { schemaVersion: 1, requirements, inputRevision: 1, approvedByUserId: owner, policyReview } } });
-  getSession.mockResolvedValue({ userId: owner, role: "BRAND" });
+  token = tokens.get(owner)!;
   return { id, owner, evidenceAssetId, command: { operationKey: randomUUID(), expectedBriefVersion: 1, expectedCampaignRevision: 1 } };
 }
 async function candidate() {
@@ -59,6 +63,7 @@ async function candidate() {
   return { id, accountId: account.id };
 }
 afterEach(async () => {
+  token = null; tokens.clear();
   await prisma.campaign.deleteMany({ where: { id: { in: campaigns.splice(0) } } });
   await prisma.creator.deleteMany({ where: { id: { in: creators.splice(0) } } });
   await prisma.policyVersion.deleteMany({ where: { id: { in: policies.splice(0) } } });
@@ -67,7 +72,7 @@ afterEach(async () => {
   await prisma.user.deleteMany({ where: { id: { in: users.splice(0) } } });
 });
 
-describe("matching transport with mocked session issuer and real PostgreSQL", () => {
+describe("matching transport with native signed sessions and real PostgreSQL", () => {
   it("has private envelopes, read-only empty GET and active brand ownership enforcement", async () => {
     const f = await fixture();
     const empty = await read(request(f.id), context(f.id));
@@ -76,10 +81,10 @@ describe("matching transport with mocked session issuer and real PostgreSQL", ()
     expect(await prisma.matchRun.count({ where: { campaignId: f.id } })).toBe(0);
     await actor(); expect((await read(request(f.id), context(f.id))).status).toBe(404);
     await actor("CREATOR"); expect((await read(request(f.id), context(f.id))).status).toBe(403);
-    getSession.mockResolvedValue(null); expect((await read(request(f.id), context(f.id))).status).toBe(401);
-    getSession.mockResolvedValue({ userId: f.owner, role: "BRAND" });
+    token = null; expect((await read(request(f.id), context(f.id))).status).toBe(401);
+    token = tokens.get(f.owner)!;
     await prisma.user.update({ where: { id: f.owner }, data: { active: false } });
-    expect((await run(request(f.id, f.command), context(f.id))).status).toBe(403);
+    expect((await run(request(f.id, f.command), context(f.id))).status).toBe(401);
   });
   it("requires same Origin, bounded strict commands and trusted server policy", async () => {
     const f = await fixture(false);
@@ -102,7 +107,7 @@ describe("matching transport with mocked session issuer and real PostgreSQL", ()
     expect(invalid.status).toBe(409); expect((await invalid.json()).error.code).toBe("STALE_VERSION");
   });
   it("saves explicit decisions, rejects stale or forged decisions and immediately removes revoked identity/evidence", async () => {
-    const f = await fixture(), c = await candidate(); getSession.mockResolvedValue({ userId: f.owner, role: "BRAND" });
+    const f = await fixture(), c = await candidate(); token = tokens.get(f.owner)!;
     const response = await run(request(f.id, f.command), context(f.id)); expect(response.status).toBe(200);
     const result = (await response.json()).data; expect(result.results.map((row: { creatorId: string }) => row.creatorId)).toEqual([c.id]);
     expect(result.results[0].creator.displayName).toBe("Synthetic permitted API creator");
