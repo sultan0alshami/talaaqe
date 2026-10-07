@@ -1677,3 +1677,81 @@ model ContextReferenceCommand {
   @@index([contextId, workspaceId])
   @@index([manifestId])
 }
+
+// Additive M04A customer disclosure. Composite retention and snapshot/sequence
+// guards are SQL-owned, matching the existing reference sidecar convention.
+model ManagedOrder {
+  id          String   @id
+  workspaceId String
+  campaignId  String   @unique
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, workspaceId, campaignId])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, id], map: "ManagedOrder_workspace_id")
+}
+
+model ManagedOrderSubmission {
+  id                           String   @id
+  orderId                      String
+  workspaceId                  String
+  campaignId                   String
+  version                      Int
+  briefId                      String
+  briefVersion                 Int
+  inputRevision                Int
+  campaignRevision             Int
+  planningRevision             Int
+  selectionId                  String
+  selectionRevision            Int
+  approvedByUserId             String
+  approvedAt                   DateTime @db.Timestamp(3)
+  contextReferenceSubmissionId String?
+  snapshot                     Json     @db.JsonB
+  snapshotHash                 String
+  submittedByUserId            String
+  disclosureVersion            String
+  createdAt                    DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([orderId, version])
+  @@unique([id, orderId, workspaceId, campaignId, version])
+  @@unique([id, orderId, workspaceId, version])
+  @@index([workspaceId, orderId], map: "ManagedOrderSubmission_workspace_order")
+  @@index([briefId, campaignId, workspaceId, selectionId, selectionRevision], map: "ManagedOrderSubmission_provenance")
+  @@index([contextReferenceSubmissionId], map: "ManagedOrderSubmission_reference")
+  @@index([approvedByUserId], map: "ManagedOrderSubmission_approver")
+  @@index([submittedByUserId], map: "ManagedOrderSubmission_submitter")
+}
+
+model ManagedOrderState {
+  orderId           String   @id
+  workspaceId       String
+  revision          Int
+  submissionId      String
+  submissionVersion Int
+  status            String
+  createdAt         DateTime @default(now()) @db.Timestamp(3)
+  updatedAt         DateTime @db.Timestamp(3)
+
+  @@index([workspaceId, orderId], map: "ManagedOrderState_workspace_order")
+  @@index([submissionId, orderId, workspaceId, submissionVersion], map: "ManagedOrderState_submission")
+}
+
+model ManagedOrderCommand {
+  id                String   @id
+  actorUserId       String
+  operationKey      String
+  payloadHash       String
+  orderId           String
+  workspaceId       String
+  campaignId        String
+  submissionId      String
+  submissionVersion Int
+  action            String
+  result            Json     @db.JsonB
+  createdAt         DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([actorUserId, operationKey])
+  @@index([workspaceId, orderId], map: "ManagedOrderCommand_workspace_order")
+  @@index([submissionId, orderId, workspaceId, campaignId, submissionVersion], map: "ManagedOrderCommand_submission")
+}
