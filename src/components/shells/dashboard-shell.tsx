@@ -93,6 +93,10 @@ export function DashboardShell({
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       if (!response.ok) throw new Error("Logout failed");
+      try {
+        const recoveryKeys = Object.keys(sessionStorage).filter(key => key.startsWith("infame-managed-request:"));
+        for (const key of recoveryKeys) sessionStorage.removeItem(key);
+      } catch { /* Successful logout still invalidates the native session. */ }
       router.push("/login");
       router.refresh();
     } catch {

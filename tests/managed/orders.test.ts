@@ -1,3 +1,4 @@
+import { ManagedOrderListQuerySchema } from "@/lib/managed/contracts";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { Prisma, PrismaClient } from "@prisma/client";
@@ -386,6 +387,40 @@ it("M04 native service group 2: exact lost-reply replay/key conflicts, changed s
   expect(list.orders).toHaveLength(1); expect(list.nextCursor).toBe(list.orders[0]!.id);
   const next = await listManagedOrders(owner.actor, { scope: owner.scope, after: list.nextCursor!, limit: 1 });
   expect(next.orders).toHaveLength(1); expect(next.orders[0]!.id > list.orders[0]!.id).toBe(true); expect(next.nextCursor).toBeNull();
+  // Exact indexed campaign lookup must select the real second list row, rather
+  // than scanning a first page and pretending a missing result means no request.
+  expect(ManagedOrderListQuerySchema.parse({ scope: owner.scope }).limit).toBe(20);
+  const lookupPacket = ManagedOrderListQuerySchema.safeParse({ scope: owner.scope, campaignId: next.orders[0]!.campaignId });
+  expect(lookupPacket.success).toBe(true);
+  if (!lookupPacket.success) throw new Error("Exact campaign lookup query was rejected");
+  expect(lookupPacket.data.limit).toBe(1);
+  expect(ManagedOrderListQuerySchema.safeParse({ scope: owner.scope, campaignId: next.orders[0]!.campaignId, limit: 1 }).success).toBe(true);
+  for (const malformed of [
+    { scope: owner.scope, campaignId: next.orders[0]!.campaignId, after: list.nextCursor!, limit: 1 },
+    { scope: owner.scope, campaignId: next.orders[0]!.campaignId, limit: 2 },
+  ]) expect(ManagedOrderListQuerySchema.safeParse(malformed).success).toBe(false);
+
+  const lookedUp = await listManagedOrders(owner.actor, { scope: owner.scope, campaignId: next.orders[0]!.campaignId });
+  expect(lookedUp.orders).toEqual([next.orders[0]!]); expect(lookedUp.nextCursor).toBeNull();
+  expect(lookedUp.currentAuthority).toBeNull(); expect(lookedUp.scope).toEqual(owner.scope); privateSafe(lookedUp);
+  const explicitlyOne = await listManagedOrders(owner.actor, { scope: owner.scope, campaignId: next.orders[0]!.campaignId, limit: 1 });
+  expect(explicitlyOne.orders).toEqual(lookedUp.orders); expect(explicitlyOne.nextCursor).toBeNull();
+  // staleSource still has the exact authorized binding but no ManagedOrder.
+  const emptyLookup = await listManagedOrders(owner.actor, { scope: owner.scope, campaignId: staleSource.campaignId });
+  expect(emptyLookup.orders).toEqual([]); expect(emptyLookup.nextCursor).toBeNull();
+  const lookupBeforeDenied = await effects();
+  await failure(listManagedOrders(owner.actor, { scope: owner.scope, campaignId: foreignSource.campaignId }), "NOT_FOUND", 404);
+  await failure(listManagedOrders(owner.actor, { scope: owner.scope, campaignId: next.orders[0]!.campaignId, after: list.nextCursor! }), "VALIDATION", 422);
+  await failure(listManagedOrders(owner.actor, { scope: owner.scope, campaignId: next.orders[0]!.campaignId, limit: 2 }), "VALIDATION", 422);
+  expect(await effects()).toBe(lookupBeforeDenied);
+  const lookupAdmin = await person("ADMIN");
+  const beforeRoleDenial = await effects();
+  await failure(listManagedOrders(lookupAdmin.actor, { scope: owner.scope, campaignId: foreignSource.campaignId, limit: 2 }), "FORBIDDEN", 403);
+  expect(await effects()).toBe(beforeRoleDenial);
+  // Lookup is read-only: the two existing orders/journals/submissions/states are
+  // preserved, including the actual campaign binding used by state-row checks.
+  for (const table of managedTables) expect((await readRows(table, source.workspaceId)).length).toBe(2);
+
 }, 60000);
 
 it("M04 native service group 3: proven grant/User waits deny fresh work and replay; real final expiry rolls back every native side effect", async () => {

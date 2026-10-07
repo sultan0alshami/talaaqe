@@ -17,7 +17,7 @@ export default async function BrandBriefPage({ searchParams }: { searchParams: P
   }
   if (page.kind === "EMPTY") return <BriefScreen key="empty" brief={null} projectId={null} />;
   if (page.kind === "LEGACY") return <CampaignScreen key={page.initialCampaign.id} initialCampaign={page.initialCampaign} />;
-  if (page.kind === "PLANNING") return <CampaignPlanningScreen key={`${actor.userId}:${page.props.scope?.kind === "CLIENT" ? page.props.scope.clientId : "own"}:${page.props.campaignId}`} {...page.props} />;
+  if (page.kind === "PLANNING") return <CampaignPlanningScreen key={`${actor.userId}:${page.props.scope?.kind === "CLIENT" ? page.props.scope.clientId : "own"}:${page.props.campaignId}`} {...page.props} actorReference={actor.userId} />;
   if (page.kind === "PLANNING_LIST") return <PlanningCampaignListScreen key={`${actor.userId}:${page.props.scope?.kind === "CLIENT" ? page.props.scope.clientId : "own"}`} {...page.props} />;
   return <BriefScreen key="empty" brief={null} projectId={null} />;
 }

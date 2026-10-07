@@ -23,5 +23,5 @@ export default async function CampaignPage({
     throw error;
   }
   return page.kind === "LEGACY" ? <CampaignScreen key={page.initialCampaign.id} initialCampaign={page.initialCampaign} />
-    : <CampaignPlanningScreen key={`${actor.userId}:${page.props.scope?.kind === "CLIENT" ? page.props.scope.clientId : "own"}:${page.props.campaignId}`} {...page.props} />;
+    : <CampaignPlanningScreen key={`${actor.userId}:${page.props.scope?.kind === "CLIENT" ? page.props.scope.clientId : "own"}:${page.props.campaignId}`} {...page.props} actorReference={actor.userId} />;
 }

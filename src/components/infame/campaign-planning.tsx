@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useNavigationGuardRegistrar } from "@/components/shells/navigation-guard";
 import { CampaignBrief } from "@/components/infame/campaign-brief";
 import { ContextReferenceVersionFiles, OwnerReviewReferenceFiles } from "@/components/infame/context-reference-files";
+import { ManagedRequestAction, type ManagedRequestRecoveryState } from "@/components/infame/managed-order";
+import { managedRequestRecoveryKey } from "@/lib/managed/recovery-key";
 import workflow from "@/components/infame/workflow-layout.module.css";
 import briefStyles from "@/components/infame/campaign-brief.module.css";
 import { campaignFieldLabels, campaignValueLabels, campaignWallTime, campaignFieldValue } from "@/components/infame/campaign-field-display";
@@ -373,7 +375,8 @@ function usePlanningTransport(clearPrivate: () => void) {
       : failure instanceof PlanningUiError ? failure.code : "NETWORK"); }
     finally { clearTimeout(timeout); if (same(flight)) { active.current = null; setBusy(false); } }
   }
-  return { busy, error, setError, run, request, ensure, same, cancel: () => active.current?.abort.abort() };
+  return { busy, error, setError, run, request, ensure, same, cancel: () => active.current?.abort.abort(),
+    deny: () => { if (active.current) { active.current.denied = true; active.current.abort.abort(); } setError("NOT_FOUND"); } };
 }
 function validPlanningReceipt(captured: PlanningPending, value: unknown) {
   const command = captured.command;
@@ -387,7 +390,7 @@ function validPlanningReceipt(captured: PlanningPending, value: unknown) {
     || command.action === "SUBMIT_BRIEF" && (receipt.briefId !== command.payload.briefId || receipt.version !== command.payload.expectedBriefVersion)) throw new PlanningUiError("INVALID_RESPONSE");
   return receipt;
 }
-export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, initialList = null, planAuthority, initialError = null }: CampaignPlanningScreenProps) {
+export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, initialList = null, planAuthority, initialError = null, actorReference }: CampaignPlanningScreenProps) {
   const { isAr } = useI18n(), copy: Copy = (ar, en) => isAr ? ar : en;
   const navigationRegistrar = useNavigationGuardRegistrar();
   const fieldIds = useId();
@@ -415,6 +418,8 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
   const [versionPosition, setVersionPosition] = useState<VersionPosition>(emptyVersionPosition);
   const [briefPosition, setBriefPosition] = useState<VersionPosition>(emptyVersionPosition);
   const [authority, setAuthority] = useState(initial.plan), [pending, setPending] = useState<PlanningPending | null>(null), pendingRef = useRef<PlanningPending | null>(null);
+  const [requestRecovery, setRequestRecovery] = useState<ManagedRequestRecoveryState>({ pending: false, busy: false, dirty: false, denied: false });
+  const requestRecoveryRef = useRef(requestRecovery);
   const [viewAvailable, setViewAvailable] = useState(initial.viewAvailable), [readRetry, setReadRetry] = useState<EditorRead | null>(null);
   const [denied, setDenied] = useState(["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"].includes(initialError ?? "")), [historical, setHistorical] = useState(false);
   const [fieldError, setFieldError] = useState<string | undefined>(), [confirmNavigation, setConfirmNavigation] = useState(false);
@@ -424,6 +429,13 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
   const scopeDrift = !samePlanningScope(fixed.scope, scope) && (fixed.scope !== null || scope !== null) || fixed.routeId !== campaignId;
   function setCapture(value: PlanningPending | null) { pendingRef.current = value; setPending(value); }
   function clearPrivate() {
+    const deniedCampaignId = currentRef.current?.campaign.id ?? fixed.routeId;
+    if (actorReference && fixed.scope && deniedCampaignId) {
+      try { sessionStorage.removeItem(managedRequestRecoveryKey(actorReference, fixed.scope, deniedCampaignId)); }
+      catch { /* Native denial still clears protected in-memory state. */ }
+    }
+    requestRecoveryRef.current = { pending: false, busy: false, dirty: false, denied: true };
+    setRequestRecovery(requestRecoveryRef.current);
     setCurrent(null); currentRef.current = null; setBase(null); setLatest(null); setForm(planningToForm({})); setFormDirty(false);
     setLiteral({ mode: "CHAT", text: "", language: "" }); setLiteralDirty(false); setChoice(null); setChoiceDirty(false); setVersions([]); setPreview(null);
     setContexts(null); setContextId(null); setContextDetail(null); setContextPosition({ after: null, history: [] }); setVersionPosition(emptyVersionPosition());
@@ -431,22 +443,30 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
     setAuthority(null); setViewAvailable(false); setReadRetry(null); setCapture(null); setFieldError(undefined); setConfirmNavigation(false); setLeaveHref(null); setLeaveContinuation(null); setBootError(null); setHistorical(false); setDenied(true); setFocusSequence(value => value + 1);
   }
   const net = usePlanningTransport(clearPrivate), protectedDenied = denied || scopeDrift;
+  function denyChild() { net.deny(); clearPrivate(); }
+  function receiveRequestRecovery(next: ManagedRequestRecoveryState) {
+    const previous = requestRecoveryRef.current; requestRecoveryRef.current = next;
+    if (next.denied) { denyChild(); return; }
+    if (previous.pending !== next.pending || previous.busy !== next.busy || previous.dirty !== next.dirty || previous.denied !== next.denied)
+      setRequestRecovery(next);
+  }
   const canWrite = !protectedDenied && viewAvailable && (fixed.routeId === null || current !== null)
     && (fixed.scope?.kind === "OWN_BRAND" || authority?.capability === "plan"), terminal = current?.campaign.status === "CANCELLED" || current?.campaign.status === "COMPLETED";
-  const disabled = net.busy || pending !== null || protectedDenied || !canWrite || terminal;
+  const disabled = net.busy || pending !== null || requestRecovery.pending || protectedDenied || !canWrite || terminal;
   function requestNavigation(continueNavigation: () => void, opener: HTMLElement | null) {
-    if (pendingRef.current || net.busy) { net.setError("UNRESOLVED_REQUEST"); return; }
-    if (!protectedDenied && (formDirty || literalDirty || choiceDirty)) {
+    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy) { net.setError("UNRESOLVED_REQUEST"); return; }
+    if (!protectedDenied && (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty)) {
       navigationOpener.current = opener; setLeaveHref(null); setLeaveContinuation(() => continueNavigation); setConfirmNavigation(true);
     } else continueNavigation();
   }
-  useCampaignPlanningNavigationRegistration(navigationRegistrar, { isBlocked: () => !protectedDenied && (formDirty || literalDirty || choiceDirty || pendingRef.current !== null || net.busy), requestLeave: requestNavigation });
+  useCampaignPlanningNavigationRegistration(navigationRegistrar, { isBlocked: () => !protectedDenied && (formDirty || literalDirty || choiceDirty || pendingRef.current !== null || net.busy
+    || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy || requestRecoveryRef.current.dirty), requestLeave: requestNavigation });
   useEffect(() => { if (focusSequence) heading.current?.focus(); }, [focusSequence]);
   useEffect(() => {
-    if (!formDirty && !literalDirty && !choiceDirty && !pending) return;
+    if (!formDirty && !literalDirty && !choiceDirty && !pending && !requestRecovery.pending && !requestRecovery.dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", beforeUnload); return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [formDirty, literalDirty, choiceDirty, pending]);
+  }, [formDirty, literalDirty, choiceDirty, pending, requestRecovery.pending, requestRecovery.dirty]);
   function detailPath(id: string, briefsAfter?: string | null) {
     if (!fixed.scope) throw new PlanningUiError("VALIDATION");
     const query = scopeQuery(fixed.scope); query.set("campaignId", id);
@@ -618,8 +638,8 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
     startRead({ kind: "CONTEXT_VERSIONS", path: "/api/brand-contexts/detail?" + query, contextId: id, position: capturedVersionPosition(next) });
   }
   function guardNavigation(event: MouseEvent<HTMLAnchorElement>, href: string) {
-    if (pendingRef.current || net.busy) { event.preventDefault(); net.setError("UNRESOLVED_REQUEST"); return; }
-    if (formDirty || literalDirty || choiceDirty) { event.preventDefault(); navigationOpener.current = event.currentTarget; setLeaveHref(href); setLeaveContinuation(null); setConfirmNavigation(true); }
+    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy) { event.preventDefault(); net.setError("UNRESOLVED_REQUEST"); return; }
+    if (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty) { event.preventDefault(); navigationOpener.current = event.currentTarget; setLeaveHref(href); setLeaveContinuation(null); setConfirmNavigation(true); }
   }
   const contextHref = fixed.scope?.kind === "CLIENT" ? "/brand/context?clientId=" + encodeURIComponent(fixed.scope.clientId) : "/brand/context";
   const allCampaignsHref = fixed.scope?.kind === "CLIENT" ? "/brand/campaigns?clientId=" + encodeURIComponent(fixed.scope.clientId) : "/brand/campaigns";
@@ -659,14 +679,14 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
           {versions.map(version => <option key={version.id} value={version.id}>{version.nameOriginal.text} · {copy("نسخة", "Version")} {version.version}</option>)}</select></label>
           {contextDetail && contextId && <div className="flex flex-wrap gap-3"><Button variant="outline" disabled={net.busy || !versionPosition.history.length} onClick={() => { const next = previousVersionPosition(versionPosition); if (next) loadContextVersions(contextId, next); }}>{copy("نسخ أحدث", "Newer versions")}</Button>
             <Button variant="outline" disabled={net.busy || !contextDetail.context.versionsAfter} onClick={() => { const next = nextVersionPosition(versionPosition, contextDetail.context.versionsAfter, contextDetail.context.versions.at(-1)); if (next) loadContextVersions(contextId, next); }}>{copy("نسخ أقدم", "Older versions")}</Button></div>}
-          {preview && <PlanningContextPreview version={preview} fileScope={fixed.scope ?? undefined} onFileDeny={clearPrivate} />}
+          {preview && <PlanningContextPreview version={preview} fileScope={fixed.scope ?? undefined} onFileDeny={denyChild} />}
           {choiceDirty && <p className="text-sm text-muted-foreground">{copy("هذا الاختيار لم يُحفظ بعد؛ لا يغيّر السياق المثبت في النسخ المحفوظة.", "This choice has not been saved yet; stored versions retain their pinned context.")}</p>}
           {displayed && <Button disabled={disabled || !choice || !choiceDirty} onClick={() => choice && command("SET_SELECTION", { selection: choice })}>{copy("احفظ اختيار السياق", "Save context choice")}</Button>}
         </CardContent></Card>
       {latest && <Card><CardHeader><CardTitle>{copy("قارن النسخة الحالية", "Compare current version")}</CardTitle></CardHeader><CardContent className="space-y-4">
         <dl className="space-y-3">{Object.entries(latest.campaign.fields).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd>{campaignFieldValue(key, value, isAr)}</dd></div>)}</dl>
         <div className="space-y-3"><h3 className="font-medium">{copy("اختيار السياق المحفوظ حاليًا", "Currently saved context choice")}</h3>
-          {latest.planning.selectedContext ? <PlanningContextPreview version={latest.planning.selectedContext} fileScope={fixed.scope ?? undefined} onFileDeny={clearPrivate} /> : <p>{copy("بلا سياق", "No context")}</p>}</div>
+          {latest.planning.selectedContext ? <PlanningContextPreview version={latest.planning.selectedContext} fileScope={fixed.scope ?? undefined} onFileDeny={denyChild} /> : <p>{copy("بلا سياق", "No context")}</p>}</div>
         <div className="space-y-3"><h3 className="font-medium">{copy("الكلمات اليدوية المحفوظة حاليًا", "Currently saved manual words")}</h3>
           {latest.planning.narrative ? <><p>{latest.planning.narrative.mode === "CHAT" ? copy("محادثة يدوية غير معالجة", "Unprocessed manual chat") : copy("فقرة غير معالجة", "Unprocessed paragraph")}</p>
             <p dir="auto" lang={latest.planning.narrative.originalText.language ?? undefined} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{latest.planning.narrative.originalText.text === "" ? copy("نص فارغ محفوظ", "Saved empty text") : latest.planning.narrative.originalText.text}</p>
@@ -706,6 +726,9 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
           <Button disabled={disabled || formDirty || literalDirty || choiceDirty || briefPosition.after !== null || !!topBrief.approvedAt || !topBrief.provenance || topBrief.inputRevision !== displayed.campaign.fieldsRevision
             || topBrief.provenance.selectionId !== displayed.planning.selection.id || topBrief.provenance.selectionRevision !== displayed.planning.selection.revision}
             onClick={() => command("SUBMIT_BRIEF", { briefId: topBrief.id, expectedBriefVersion: topBrief.version })}>{copy("أرسل النسخة لمراجعة المالك", "Submit version for owner review")}</Button>
+          {actorReference && <ManagedRequestAction source={displayed} actorReference={actorReference}
+            blocked={protectedDenied || net.busy || pending !== null || terminal || formDirty || literalDirty || choiceDirty || historical || briefPosition.after !== null}
+            onRecoveryState={receiveRequestRecovery} />}
         </CampaignBrief>}
         {displayed.briefs.length > 1 && <details className={briefStyles.history}><summary className="min-h-12 cursor-pointer py-3 text-base font-medium">{copy("سجل النسخ السابقة", "Previous version history")}</summary>
           <ol className="space-y-4 pt-3">{displayed.briefs.slice(1).map(brief => <li key={brief.id} className="rounded-lg border p-4"><p className="text-base">{copy("نسخة", "Version")} {brief.version} · {brief.approvedAt ? copy("اعتماد سابق محفوظ", "Previous approval retained") : copy("غير معتمدة", "Unapproved")}</p>

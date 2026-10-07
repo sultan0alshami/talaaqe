@@ -53,6 +53,11 @@ export function AppShell({
             href: "/brand/campaigns",
           },
           {
+            key: "requests",
+            label: { ar: "طلبات الحملات", en: "Campaign requests" },
+            href: "/brand/requests",
+          },
+          {
             key: "collections",
             label: { ar: "قوائم صنّاع المحتوى", en: "Creator collections" },
             href: "/brand/collections",

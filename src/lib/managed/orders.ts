@@ -201,9 +201,11 @@ export async function listManagedOrders(actor: OrganizationActor, input: unknown
   const query = inputOf(packet, call.checkpoint);
   return withManagedCustomerScope(call.actor, query.scope, "view", { write: false, checkpoint: call.checkpoint,
     execute: async (tx, frame) => {
+      if (query.campaignId !== undefined) await boundCampaign(tx, frame, query.campaignId, call.checkpoint);
       if (query.after !== undefined && !await organizationAwait(call.checkpoint, () => tx.managedOrder.findFirst({
         where: { id: query.after, workspaceId: frame.workspaceId }, select: { id: true } }))) return missing();
       const after = query.after === undefined ? Prisma.empty : Prisma.sql`AND o.id COLLATE "C" > ${query.after}::text COLLATE "C"`;
+      const campaign = query.campaignId === undefined ? Prisma.empty : Prisma.sql`AND o."campaignId"=${query.campaignId}`;
       // Project only scalar headers. No whole request snapshot, current context,
       // private file bytes or unsubmitted planning content is hydrated for lists.
       const rows = await organizationAwait(call.checkpoint, () => tx.$queryRaw<HeaderRow[]>(Prisma.sql`
@@ -217,7 +219,7 @@ export async function listManagedOrders(actor: OrganizationActor, input: unknown
         LEFT JOIN "ManagedOrderState" st ON st."orderId"=o.id AND st."workspaceId"=o."workspaceId"
         LEFT JOIN "ManagedOrderSubmission" s ON s.id=st."submissionId" AND s."orderId"=o.id
           AND s."workspaceId"=o."workspaceId" AND s."campaignId"=o."campaignId" AND s.version=st."submissionVersion"
-        WHERE o."workspaceId"=${frame.workspaceId} AND b."brandId"=${frame.brandId} ${after}
+        WHERE o."workspaceId"=${frame.workspaceId} AND b."brandId"=${frame.brandId} ${after} ${campaign}
         ORDER BY o.id COLLATE "C" ASC LIMIT ${query.limit + 1}`));
       const more = rows.length > query.limit;
       const orders = rows.slice(0, query.limit).map(row => {

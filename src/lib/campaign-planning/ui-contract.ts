@@ -4,6 +4,7 @@ import type { CampaignDTO, listCampaigns } from "@/lib/campaigns/service";
 import type { PlanningCampaign, PlanningCampaignList, CampaignOwnerReviews } from "./contracts";
 
 export type CampaignPlanningScreenProps = { scope: PlanningScope | null; campaignId: string | null;
+  actorReference?: string;
   initialCampaign: PlanningCampaign | null; initialList?: PlanningCampaignList | null;
   planAuthority: ClientAuthorityDTO | null; initialError?: string | null };
 export type PlanningCampaignListScreenProps = { scope: PlanningScope | null; initialPage: PlanningCampaignList | null;

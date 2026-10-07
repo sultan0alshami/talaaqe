@@ -12,7 +12,7 @@ import { acceptMembership, authorizeClientAssociation, createOrganization, propo
 import type { PlanningScope } from "@/lib/brand-context/contracts";
 import { executeCampaignPlanningCommand, getPlanningCampaign, decideCampaignOwnerReview } from "@/lib/campaign-planning/service";
 import { campaignBriefDTO } from "@/lib/campaigns/core";
-import { ManagedOrderCommandSchema, ManagedOrderDetailSchema, ManagedOrderListSchema,
+import { ManagedOrderListQuerySchema, ManagedOrderCommandSchema, ManagedOrderDetailSchema, ManagedOrderListSchema,
   ManagedOrderReceiptSchema, ManagedOrderResultSchema, ManagedOrderSnapshotSchema } from "@/lib/managed/contracts";
 import { submitManagedOrder } from "@/lib/managed/orders";
 import { loadManagedOrders, loadManagedOrder, commandManagedOrder } from "@/lib/managed/transport";
@@ -326,5 +326,70 @@ describe("managed-order native adapters: current actors, exact scope and strict 
     const beforeMissing = await effects();
     await failure(await loadManagedOrder(get("/detail", scopeQuery(f.scope) + `&orderId=${key()}`)), 404, "NOT_FOUND");
     await failure(await loadManagedOrders(get("", scopeQuery(f.scope) + `&after=${key()}`)), 404, "NOT_FOUND"); expect(await effects()).toBe(beforeMissing);
+    expect(ManagedOrderListQuerySchema.parse({ scope: f.scope }).limit).toBe(20);
+    const lookupOrderId = orderedIds[1]!, lookupCampaignId = lookupOrderId === result.orderId ? source.campaignId : second.campaignId;
+    const lookupPacket = ManagedOrderListQuerySchema.safeParse({ scope: f.scope, campaignId: lookupCampaignId });
+    expect(lookupPacket.success).toBe(true);
+    if (!lookupPacket.success) throw new Error("HTTP campaign lookup schema was not activated");
+    expect(lookupPacket.data.limit).toBe(1);
+    token = f.token;
+    const lookupWire = await success(await loadManagedOrders(get("", scopeQuery(f.scope) + `&campaignId=${encodeURIComponent(lookupCampaignId)}`)));
+    const lookup = ManagedOrderListSchema.parse(lookupWire);
+    expect(lookup.orders.map(row => row.id)).toEqual([lookupOrderId]); expect(lookup.nextCursor).toBeNull();
+    expect(lookup.currentAuthority).toBeNull(); expect(lookup.scope).toEqual(f.scope);
+    keys(lookupWire, ["scope", "currentAuthority", "asOf", "orders", "nextCursor"]);
+    keys(lookup.orders[0]!, ["id", "campaignId", "revision", "status", "titleOriginal", "submittedAt"]);
+    privateSafe(lookupWire, [f, a.seat]);
+    const explicitLookup = ManagedOrderListSchema.parse(await success(await loadManagedOrders(get("", scopeQuery(f.scope)
+      + `&campaignId=${encodeURIComponent(lookupCampaignId)}&limit=1`))));
+    expect(explicitLookup.orders).toEqual(lookup.orders); expect(explicitLookup.nextCursor).toBeNull();
+
+    const lookupUnrequested = await approvedSource(f, f, f.scope, "OWN unrequested lookup");
+    token = f.token;
+    const emptyOwn = ManagedOrderListSchema.parse(await success(await loadManagedOrders(get("", scopeQuery(f.scope)
+      + `&campaignId=${encodeURIComponent(lookupUnrequested.campaignId)}`))));
+    expect(emptyOwn.orders).toEqual([]); expect(emptyOwn.nextCursor).toBeNull();
+    token = a.seat.token;
+    const emptyClient = ManagedOrderListSchema.parse(await success(await loadManagedOrders(get("", scopeQuery(a.scope)
+      + `&campaignId=${encodeURIComponent(client.campaignId)}`))));
+    expect(emptyClient.orders).toEqual([]); expect(emptyClient.nextCursor).toBeNull();
+    expect(emptyClient.currentAuthority).toMatchObject({ clientId: a.client.id, capability: "view" });
+    expect(emptyClient.scope).toEqual(a.scope);
+
+    const lookupForeignOwner = await company(), lookupForeign = await approvedSource(lookupForeignOwner);
+    token = f.token;
+    const beforeFilteredDenial = await effects();
+    // Current ownership of the same Brand does not reveal its separate CLIENT.
+    await failure(await loadManagedOrders(get("", scopeQuery(f.scope) + `&campaignId=${encodeURIComponent(client.campaignId)}`)), 404, "NOT_FOUND");
+    await failure(await loadManagedOrders(get("", scopeQuery(f.scope) + `&campaignId=${encodeURIComponent(lookupForeign.campaignId)}`)), 404, "NOT_FOUND");
+    for (const suffix of [
+      `&campaignId=${encodeURIComponent(lookupCampaignId)}&after=${encodeURIComponent(orderedIds[0]!)}`,
+      `&campaignId=${encodeURIComponent(lookupCampaignId)}&limit=2`,
+      `&campaignId=${encodeURIComponent(lookupCampaignId)}&campaignId=${encodeURIComponent(lookupCampaignId)}`,
+      "&campaignId=",
+    ]) await failure(await loadManagedOrders(get("", scopeQuery(f.scope) + suffix)), 422, "VALIDATION");
+    expect(await effects()).toBe(beforeFilteredDenial);
+
+    token = a.seat.token;
+    const beforeClientDenial = await effects();
+    await failure(await loadManagedOrders(get("", scopeQuery(a.scope) + `&campaignId=${encodeURIComponent(source.campaignId)}`)), 404, "NOT_FOUND");
+    expect(await effects()).toBe(beforeClientDenial);
+    await rights(a, { ...all, view: false });
+    const beforeGrantDenial = await effects();
+    await failure(await loadManagedOrders(get("", scopeQuery(a.scope) + `&campaignId=${encodeURIComponent(client.campaignId)}`)), 404, "NOT_FOUND");
+    expect(await effects()).toBe(beforeGrantDenial);
+    await rights(a, all);
+    const lookupAdmin = await person("ADMIN"); token = lookupAdmin.token;
+    const beforeLookupRole = await effects();
+    await failure(await loadManagedOrders(get("", scopeQuery(f.scope) + `&campaignId=${encodeURIComponent(lookupForeign.campaignId)}&limit=2`)), 403, "FORBIDDEN");
+    expect(await effects()).toBe(beforeLookupRole);
+    token = a.seat.token;
+    await prisma.authSession.update({ where: { id: a.seat.actor.sessionId }, data: { revokedAt: new Date() } });
+    const beforeLookupSession = await effects();
+    await failure(await loadManagedOrders(get("", scopeQuery(a.scope)
+      + `&campaignId=${encodeURIComponent(client.campaignId)}&campaignId=${encodeURIComponent(client.campaignId)}`)), 401, "UNAUTHENTICATED");
+    expect(await effects()).toBe(beforeLookupSession);
+    token = f.token;
+
   }, 30000);
 });

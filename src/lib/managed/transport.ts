@@ -27,7 +27,7 @@ async function actor() {
 }
 export const loadManagedOrders = domainHandler(async (request: Request) => {
   const current = await actor();
-  return listManagedOrders(current, query(request, ["after", "limit"]));
+  return listManagedOrders(current, query(request, ["after", "limit", "campaignId"]));
 });
 export const loadManagedOrder = domainHandler(async (request: Request) => {
   const current = await actor();

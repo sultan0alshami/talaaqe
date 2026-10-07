@@ -64,4 +64,7 @@ export const ManagedOrderHeaderSchema = z.object({ id, campaignId: id, revision,
 export const ManagedOrderListSchema = scoped({ asOf: UtcDateTimeSchema, orders: z.array(ManagedOrderHeaderSchema).max(20), nextCursor: id.nullable() });
 export type ManagedOrderList = z.infer<typeof ManagedOrderListSchema>;
 export const ManagedOrderQuerySchema = z.object({ scope: PlanningScopeSchema, orderId: id }).strict();
-export const ManagedOrderListQuerySchema = z.object({ scope: PlanningScopeSchema, after: id.optional(), limit: z.number().int().min(1).max(20).default(20) }).strict();
+export const ManagedOrderListQuerySchema = z.object({ scope: PlanningScopeSchema, after: id.optional(), campaignId: id.optional(),
+  limit: z.number().int().min(1).max(20).optional() }).strict()
+  .transform(value => ({ ...value, limit: value.limit ?? (value.campaignId === undefined ? 20 : 1) }))
+  .refine(value => value.campaignId === undefined || value.after === undefined && value.limit === 1);

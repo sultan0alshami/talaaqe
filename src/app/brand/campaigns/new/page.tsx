@@ -13,5 +13,5 @@ export default async function NewCampaignPage({ searchParams }: { searchParams: 
     if (code === "NOT_FOUND" || code === "VALIDATION") notFound();
     throw error;
   }
-  return <CampaignPlanningScreen key={`${actor.userId}:${props.scope?.kind}:${props.scope?.kind === "CLIENT" ? props.scope.clientId : props.scope?.brandId ?? "none"}:new`} {...props} />;
+  return <CampaignPlanningScreen key={`${actor.userId}:${props.scope?.kind}:${props.scope?.kind === "CLIENT" ? props.scope.clientId : props.scope?.brandId ?? "none"}:new`} {...props} actorReference={actor.userId} />;
 }
