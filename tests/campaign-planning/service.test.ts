@@ -326,10 +326,32 @@ describe("full M03 campaign planning: native synthetic scoped/manual/legacy inte
       usageRights: "Original fixture terms", note: { text: "Original direct fixture", language: "en" }, governingTermsVersionId: "synthetic-historical-terms", licencePolicyVersionIds: [] };
     await reject(createDealOffer(f.user.id, { operationKey: key(), campaignId: first.result.campaignId, creatorId: target.id, expectedCampaignRevision: ownerApproved.campaignRevision,
       expectedBriefVersion: generated.result.version, terms }), "NOT_FOUND", 404);
-    const admin = await person("ADMIN"), adminPage = await getAdminCampaigns(admin.actor); expect(adminPage.scope).toBe("ALL_STORED_RECORDS");
-    let visible = adminPage.campaigns; let after = adminPage.nextCursor;
-    while (!visible.some(row => row.id === first.result.campaignId) && after) { const next = await getAdminCampaigns(admin.actor, { after }); visible = next.campaigns; after = next.nextCursor; }
-    expect(visible.some(row => row.id === first.result.campaignId)).toBe(true);
+    // Ordinary account administration excludes every native planning binding.
+    // Create OWN only here, after the earlier legacy count/selector checks.
+    const ownForAdmin = await createPlanning(f.actor, f.scope, { kind: "NONE" }, { ...campaignFields, title: "OWN unsubmitted ADMIN exclusion canary" });
+    const protectedIds = [ownForAdmin.result.campaignId, first.result.campaignId, second.result.campaignId];
+    const admin = await person("ADMIN"), adminPage = await getAdminCampaigns(admin.actor), adminPages = [adminPage];
+    const visible = [...adminPage.campaigns]; let after = adminPage.nextCursor;
+    while (after) {
+      const next = await getAdminCampaigns(admin.actor, { after });
+      expect(next.nextCursor === null || next.nextCursor > after).toBe(true);
+      adminPages.push(next); visible.push(...next.campaigns); after = next.nextCursor;
+    }
+    for (const page of adminPages) {
+      expect(page.scope).toBe("ALL_STORED_RECORDS");
+      expect(Object.keys(page).sort()).toEqual(["asOf", "campaigns", "nextCursor", "scope"]);
+      for (const row of page.campaigns) expect(Object.keys(row).sort()).toEqual(["brandName", "budget", "budgetSource", "createdAt", "id", "revision", "status", "title"]);
+    }
+    for (const id of protectedIds) expect(visible.some(row => row.id === id)).toBe(false);
+    privateSafe(adminPages, [...protectedIds, "OWN unsubmitted ADMIN exclusion canary", "A private scoped campaign", "B unsubmitted campaign canary",
+      narrativeText, "Unapplied human proposal canary", "Original unsubmitted proposal canary", approved.version.content.positioning.text!,
+      JSON.stringify(approved.version.content.positioning.text!).slice(1, -1),
+      '"input":', '"fields":', '"content":', '"conversation":', '"proposals":', '"briefs":',
+      f.token, a.seat.token, b.seat.token, admin.token, a.seat.user.email]);
+    expect(await prisma.campaignPlanningBinding.count({ where: { campaignId: old.campaign.id } })).toBe(0);
+    const unbound = await prisma.campaign.findUniqueOrThrow({ where: { id: old.campaign.id }, select: { id: true, title: true, status: true, revision: true, createdAt: true } });
+    expect(visible.find(row => row.id === old.campaign.id)).toEqual({ id: unbound.id, title: unbound.title, brandName: f.brand.name,
+      status: unbound.status, revision: unbound.revision, createdAt: unbound.createdAt.toISOString(), budget: null, budgetSource: "UNAVAILABLE" });
     expect(CampaignPlanningCommandSchema.safeParse({ ...first.command, action: "BIND_OWN", campaignId: old.campaign.id }).success).toBe(false);
   }, 30000);
 
