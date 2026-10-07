@@ -153,3 +153,52 @@ deletes state then versions then principal; later commercial/evidence references
 retain their own restrictive FKs and prohibit deleting referenced history.
 
 All four repository gates and independent review are required before commit.
+
+## M04B3 qualified evidence declarations
+
+Prerequisite: reviewed5054335 principal storage, no changed historical request or
+legacy parties. This checkpoint is pure validation only. Root owns
+managed/qualified-evidence-contracts.ts, adopted tests/managed/qualified-evidence-
+contracts.test.ts and shared docs. commercial_principal_scout owns its ignored
+three-group test draft; managed_ui_review independently reviews source. Native
+controlled provisioning/qualifications/evidence/policy storage follows separately.
+
+Qualification content is schemaVersion1/userId/provenance/version/discipline/
+jurisdictionCountryCodes/authoritySource/validity. The source is an explicit
+DEPLOYMENT_ATTESTATION manifest ID/hash, safe original reference max2000 and
+observation UTC. Jurisdictions are unique assignedISO1..50, separate from campaign
+market/residence/UI language. Disciplines are ENTITY_REGISTRATION,PERSON_IDENTITY,
+ACTIVITY_PERMISSION,REPRESENTATION,CONTRACT_TERMS,TAX,PRIVATE_STORAGE. Customer and
+supplier terms map to CONTRACT_TERMS; other checks map to their named discipline.
+Stored version adds id/sourceHash/createdAt; hash only content, creation>=source
+observation. A declared source is not a trusted deployment attestation.
+
+Evidence content is schemaVersion1/evidenceId/reviewRevision/provenance/subject/
+checkKind/source/reviewer/observedAt/reviewedAt/decision/validity/coverage/
+independence. ENTITY_VERSION pins exact principal/version/hash and supports entity
+checks; NATURAL_USER additionally pins user and personIdentityEvidence. Identity
+check requires null identity pin to avoid recursion; REPRESENTATION requires its
+full id/revision/hash pin. Those two checks require natural subjects exclusively.
+Source is EXTERNAL_RECORD original reference/observationHash or PRIVATE_ASSET
+assetId/ownerUserId/checksum/purpose MANAGED_PRINCIPAL_EVIDENCE. This adds no asset
+upload/storage capability or permission. Reviewer pins actual user plus immutable
+qualification ID/version/hash; shape cannot prove actual current qualification.
+
+Coverage retains unique activities0..50, markets0..50 and up to six unique-kind
+managed document pins: submission access, quote policy, customer terms, supplier
+terms, tax treatment and privacy retention. Empty coverage claims nothing. A
+reviewer differs from natural subject and declared nonnull controller/operator.
+Null means not-applicable declaration only; trusted runtime must reject null when
+an actual controller/operator exists and validate exact actual independence.
+Asset custody is separate. APPROVED requires review before recheck/any expiry;
+all decisions require review>=observation. Retained version creation>=review and
+hashes content only. Historical rejected/recheck decisions may be out of validity.
+UTC/year/original safety/bounds use the existing codecs; malformed oversize
+safeParse returns failure without reaching the canonical hash exception.
+
+Three independent pure groups cover originals/source variants/hashes, strict
+subject/discipline/independence/bounds and chronology/expiry/oversize failures.
+These declarations grant no qualified/legal/native authority. Future runtime
+binds actual qualifications/controlled anchors/subjects/assets/policies, checks
+real bytes at review outside retried writes, enforces current/final native scope
+and rejects fixtures in production. OpenAI stays disabled.
