@@ -111,3 +111,45 @@ implemented. All objects reject unknown actor/session/asset-byte/storage/supplie
 source-content fields. IDs/revisions/hash use central ASCII/bounds/lowerSHA256.
 Qualified evidence/current-state/native controlled bootstrap remain the following
 separately frozen mission; no fake principal or broadened ADMIN helper is seeded.
+
+## M04B2 principal aggregate storage
+
+Prerequisites: a19ce63 strict party/validity/grant declarations and the accepted
+managed request flow. This bounded checkpoint implements only principal identity,
+immutable declared versions and revisioned current state. ACTIVE is storage
+availability, not qualified legal/service authority. No app route, legal entity,
+operator seat, evidence, policy, quote, bootstrap or signing is activated.
+
+Root owns principal-registry-contracts.ts, Prisma/additive migration21 and shared
+docs. commercial_principal_scout independently authors three pure groups in an
+ignored draft; managed_route_witnesses authors bounded native SQL groups after
+the exact aggregate is frozen. managed_ui_review independently reviews source.
+Only root runs databases/checks/adopts tests. Other work remains preserved.
+
+Version content is strict schemaVersion1/principalId/provenance/version/party/
+declaredActivityKeys/marketCountryCodes. Activities are unique lowercase ASCII
+kebab keys1..50, each1..100 starting with a letter; markets are unique assigned
+ISO codes1..50. The retained version adds id/sourceHash/createdAt; sourceHash is
+the canonical hash of content only, with no normalization or mutable state.
+State is strict principalId/revision/state/currentVersion/createdAt/updatedAt;
+the pointer is id/version/sourceHash or null. DRAFT requires null, ACTIVE/PAUSED
+require a full pointer; REVOKED retains either initial absence or its old pointer.
+UTC instants use supported years1..9999 and updatedAt cannot precede creation.
+
+Three additive SQL-owned scalar sidecars retain stable provenance, immutable
+versions, exact composite current identity/hash/ordinal and RESTRICT history.
+Initial state is DRAFT/revision1; versions advance exactly one under their stable
+parent lock. State revisions advance exactly one; provenance/identity/creation
+are immutable, pointers never regress, and REVOKED is terminal. Current pointer
+availability never substitutes for later subject-bound qualified evidence.
+Native failures cover cross-principal/hash/version pointers, skipped/reused
+versions/state revisions, immutable edits, terminal revival and restrictive
+deletion. Test subjects are explicitly synthetic and not provisioned authority.
+The compact declaration cap is131072 UTF8 bytes. SQL validates bounded exact
+binding/shape; strict original/country vocabulary and canonical hash validation
+remain in the runtime schema. Versions cannot be deleted while their state
+exists. A state cannot be recreated over retained versions. Task-only cleanup
+deletes state then versions then principal; later commercial/evidence references
+retain their own restrictive FKs and prohibit deleting referenced history.
+
+All four repository gates and independent review are required before commit.

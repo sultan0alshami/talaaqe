@@ -1755,3 +1755,41 @@ model ManagedOrderCommand {
   @@index([workspaceId, orderId], map: "ManagedOrderCommand_workspace_order")
   @@index([submissionId, orderId, workspaceId, campaignId, submissionVersion], map: "ManagedOrderCommand_submission")
 }
+
+// Additive M04B2 declarations. SQL owns restrictive composite pointers and
+// lifecycle/sequence guards. These records alone confer no managed authority.
+model InfamePrincipal {
+  id         String   @id
+  provenance String
+  createdAt  DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, provenance])
+}
+
+model InfamePrincipalVersion {
+  id          String   @id
+  principalId String
+  provenance  String
+  version     Int
+  content     Json     @db.JsonB
+  sourceHash  String
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([principalId, version])
+  @@unique([id, principalId, version, sourceHash])
+  @@unique([id, principalId, provenance, version, sourceHash])
+}
+
+model InfamePrincipalState {
+  principalId          String   @id
+  revision             Int
+  state                String
+  currentVersionId     String?
+  currentVersionNumber Int?
+  currentSourceHash    String?
+  createdAt            DateTime @default(now()) @db.Timestamp(3)
+  updatedAt            DateTime @db.Timestamp(3)
+
+  @@index([currentVersionId, principalId, currentVersionNumber, currentSourceHash], map: "InfamePrincipalState_current_version")
+  @@index([state, principalId], map: "InfamePrincipalState_available")
+}
