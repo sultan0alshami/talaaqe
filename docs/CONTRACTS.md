@@ -676,3 +676,24 @@ Version insertion captures thin immutable parent scope, locks sorted Users/domai
 Version deletion fails while State exists. Deferred State deletion fails at COMMIT whenever its stable parent survives, including delete/purge/recreate attempts; complete owned State→Versions→Parent teardown is atomic and commits before native fixture deletion. No global trigger bypass or production delete route is provided. Native tests prove actual parent tuple queue contention and source-before-parent locking, one ordinal winner, rollback without orphan rows, restrictive source retention and direct PostgreSQL23514 commit-time rejection.
 
 Manifest IDs in these records remain unresolved and inert. ACTIVE/LIVE storage labels grant no application, legal, ADMIN or operational admission. Subsequent controlled manifest/entry/final import receipt/permanent consumption-link storage, exact original producer material, trusted digest allowlist, current native scope/real-clock validity and source revalidation are required before any commercial fence activates. The importer must prohibit privileged identity/source reissuance; raw aggregate teardown does not prove lifetime consumption. Existing accepted parties/receipts and free private prospect planning remain separate. No billing/provider/quote/principal authority or direct agreement conversion follows from this migration.
+
+### Guided campaign interview declarations (D067)
+
+campaign-agent/contracts derives its30 literal field/value relationships from the
+central CampaignFieldObjectSchema. Original customer text, source metadata and
+explicit customer confirmations are separate records; valid hashes never establish
+actual authorship, source entailment or authorization. Snapshots pin current
+campaign/fields/planning and selection revisions/hashes. Full reviewed coverage
+requires complete valid fields and30 ordered distinct confirmation references
+whose value hashes match displayed current fields; revision/context ABA cannot
+resurrect an old reviewed set. Native source/batch resolution remains required.
+
+Input and output preferences are independent and do not grant provider/microphone
+readiness. Current pure assistance is manual guidance with agent unavailable.
+Raw text preserves language/whitespace, while value hashing uses existing central
+parsed output, including deliverable merging and exact minor-unit money. Strict
+plain JSON precedes parsing; malformed/oversized safeParse fails without throwing.
+Sources/confirmations/fields cap64KiB and state128KiB compactUTF8. The Node-backed
+hashed schemas are server-side and currently have no product callers.
+See09-campaign-agent for the next native/provider/media/voice obligations; OpenAI
+stays disabled and no approval or commercial authority follows from these shapes.

@@ -169,3 +169,11 @@ and native witnesses. Root restored files24/25 to their exact applied bytes and
 verified all target checksums; later fixes are additive, never edited history.
 Only root runs migrations/client/gates/commits. Generic Infame agents replace
 Najdi-bound adapters; no unrelated project startup grants Infame authority.
+
+Guided campaign interview contract prerequisite: root owns campaign-agent/contracts.ts,
+shared declarations and next native orchestration/schema/UI seams. schema_tests
+owns only its six independently authored pure witness groups and explicit valid
+fixture/type corrections; schema_review independently reviews source and frozen
+semantics. Root observed6/6 genuine validation RED before implementation. No new
+provider, private-media purpose, native customer confirmation or application route
+is activated by the pure module. Only root runs guarded/gate/commit operations.

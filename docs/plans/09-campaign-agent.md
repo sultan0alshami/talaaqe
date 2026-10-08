@@ -81,3 +81,47 @@ Synthetic adapters prove orchestration only. Genuine dated provider usage,
 Arabic/voice review and actual media/private-storage readiness prove the promised
 capability. Current mock/enumerated voice states or a budget ledger alone are not
 working voice or a functioning guided agent.
+
+## Pure interview declarations — implementation freeze
+
+Prerequisite1b19528 preserves legacy finalization storage and current M03 campaign
+composition. Root owns src/lib/campaign-agent/contracts.ts and shared records;
+schema_tests authored six independent pure groups, and schema_review reviews
+without edits. No product route, native authority or provider is activated here.
+
+The contract derives all30 field names and value schemas from CampaignFieldObjectSchema.
+Binding is exact PlanningScope/workspace/campaign; snapshot binds campaign/fields/
+planning revisions and exact selection identity/version/content hash. A fields
+hash uses domain infame-campaign-fields-v1 and the existing central parsed values.
+Omitted values stay absent. Central deliverable merging remains unchanged; original
+customer text is separately retained exactly, including whitespace/language.
+
+CustomerTextSource has immutable ID/binding/historical snapshot/native author/
+original text/UTC creation and domain infame-customer-text-v1 hash. FieldConfirmation
+is a typed30-member union containing batch/current reviewed snapshot/value/hash,
+explicit field choice or1..4 unique ordered text-source references, confirmer/time
+and domain infame-field-confirmation-v1 hash (excluding duplicate value).
+Actual author/source access and entailment are native obligations, never inferred
+from valid hashes. All text is safe, nonblank and unmodified.
+
+CampaignAgentState retains fields, current snapshot, preferences and at most64
+unique source references. Input TEXT/MEDIA/VOICE_MESSAGE/LIVE_VOICE and output
+TEXT/VOICE/TEXT_AND_VOICE are independent preferences, not capabilities or consent.
+Assistance is currently MANUAL_GUIDANCE/UNAVAILABLE. UNCONFIRMED permits partial
+fields. REVIEWED_SET requires complete central fields and exactly30 distinct
+confirmation IDs in central field order, matching each actual field value hash
+and the whole current snapshot; changed revision/selection invalidates coverage
+even when values return to their previous hashes. Confirmation does not approve
+the generated brief or authorize a creator/customer contract.
+
+All schemas reject unknown keys and unsafe/nonfinite/undefined/prototype JSON
+before parsing. Source/confirmation envelope and fields each cap65536 compactUTF8
+bytes; state caps131072. Recoverable safeParse failure never leaks a hash-codec
+exception. Hash inputs are domain-separated and use parsed central output.
+These hashed schemas are server-side; future browser wire validation must not
+bundle the existing Node/Prisma canonical codec.
+
+Next native slice resolves actual retained source/batch records under current
+OWN/CLIENT plan authority, keeps explicit final review separate from generation,
+and reuses unapproved full brief/owner review. Media purposes, provider entitlements,
+genuine Anthropic results, voice and full original MVP carryover remain required.

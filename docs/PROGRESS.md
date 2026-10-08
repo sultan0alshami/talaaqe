@@ -548,3 +548,40 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Root stages exactly11 schema/migration/native-test/plan/ownership/progress paths,
   excluding unrelated research/output/tmp and preserving task data. The complete
   managed/MVP and guided multimodal-agent goal remains active.
+
+
+## Guided campaign interview declarations — 2026-10-08
+
+- Saved reviewed legacy finalization checkpoint1b19528 after current1102/132 all
+  four gates and exact11-path index review. Restored local preview25177 starts
+  Next16.3.8 successfully; both selected `/` and reference `/classic` return200
+  and actual Infame wordmark. This is local startup, not live AI/voice readiness.
+- Independent source mapping confirms M03 full manual fields/brief/owner review
+  are reusable, but current chat is explicitly unprocessed and canonical provider
+  routes remain unavailable. Root adopted six independent pure groups only after
+  typed inert declarations existed; all6 meaningfully failed550ms on missing
+  validation, not module/setup absence. The new strict server-side contracts bind
+  original text, exact central30 typed fields, source/batch/value/state hashes,
+  complete current review and independent input/output preferences. No product
+  route, provider, approval, native confirmation or quota is activated.
+- Initial implementation passed5/6; the last test constructed usageRights10000,
+  invalid against its inherited central5000 limit. Its independent author corrected
+  only that fixture to5000, preserving a real >65KiB valid multibyte field witness,
+  and corrected two test TypeScript inference issues. Added actual central parsed
+  duplicate-deliverable merging/hash coverage without changing the central schema.
+  Current6/6 passed523ms; TypeScript and scoped warning-free lint pass. Independent
+  source review confirms whole-current30 coverage/value hashes, stale revision/
+  selection invalidation, original text and recoverable plain-JSON bounds.
+- Full gates and final review precede this contract checkpoint. Native durable
+  text/preferences/explicit final batch/current authority and existing unapproved
+  generation are next; genuine pooled/provider/media/voice and full managed/MVP
+  implementation remain required. OpenAI stays disabled.
+
+- Final current-source npm run check61759 passed all four gates: TypeScript,
+  warning-free ESLint,1108/1108 guarded tests across133 files (284.30s), supported
+  Webpack build and deployment privacy188 manifests/37228 references/zero private
+  paths. Corrective independent source review cleared the central parsed-value
+  merging witness and valid >65KiB fixture. This unused pure module has no UI or
+  provider callers, so no browser rerun is claimed. Root stages six exact pure
+  contract/test/shared-record paths; native orchestration preparation and unrelated
+  research/output/tmp remain unstaged. Full goal remains active.
