@@ -29,6 +29,7 @@ import {
 import { DealTerms } from "./deal-terms";
 import { DealBrief } from "./deal-brief";
 import { useDealRequest } from "./deal-request";
+import { useDealHydrationReady } from "./deal-hydration";
 
 export type DealReadiness = {
   requirements?: DealComposeDTO["requirements"];
@@ -177,7 +178,8 @@ export function DealScreen({
     [ratingComment, setRatingComment] = useState<OriginalText>(emptyText);
   const request = useDealRequest(actorUserId, `deal:${deal.id}`),
     readFlight = useRef(false);
-  const locked = request.busy || !!request.pending || readBusy;
+  const hydrated = useDealHydrationReady();
+  const locked = !hydrated || request.busy || !!request.pending || readBusy;
   const recipient = deal.currentOffer.recipientUserId === actorUserId,
     negotiating = ["OFFERED", "COUNTERED"].includes(deal.status);
   const ownConfirmation = deal.confirmations.some(
@@ -374,7 +376,7 @@ export function DealScreen({
     evidence = record(record(deliveryEvent?.payload).evidence),
     evidenceText = original(evidence.text);
   return (
-    <div className={styles.page}>
+    <div className={styles.page} aria-busy={!hydrated}>
       <header className={styles.header}>
         <Link
           href={`/${role.toLowerCase()}/deals`}
@@ -429,7 +431,7 @@ export function DealScreen({
               </p>
               <Button
                 variant="outline"
-                disabled={request.busy}
+                disabled={!hydrated || request.busy}
                 onClick={() =>
                   request.retry<{ deal?: DealDTO; draft?: OfferDraftDTO }>(
                     (result) => {
@@ -465,7 +467,7 @@ export function DealScreen({
             <CardContent className="space-y-6">
               <DealTerms terms={deal.currentOffer.terms} />
               {currentTemplate && (
-                <details className="rounded-xl border border-border p-4">
+                <details inert={!hydrated} className="rounded-xl border border-border p-4">
                   <summary className="min-h-12 cursor-pointer py-3 font-medium">
                     {copy(
                       "اقرأ الشروط المراجعة لهذا العرض",
@@ -625,7 +627,7 @@ export function DealScreen({
                     : copy("اقترح شروطًا معدّلة", "Propose revised terms")}
                 </Button>
                 {recipient && (
-                  <details className="rounded-xl border border-border p-4">
+                  <details inert={!hydrated} className="rounded-xl border border-border p-4">
                     <summary className="min-h-12 cursor-pointer py-3 font-medium">
                       {copy("ارفض العرض بسبب واضح", "Decline with a clear reason")}
                     </summary>
@@ -785,7 +787,7 @@ export function DealScreen({
                     {deal.agreement.content}
                   </div>
                 </section>
-                <details className="rounded-xl border border-border p-4">
+                <details inert={!hydrated} className="rounded-xl border border-border p-4">
                   <summary className="min-h-12 cursor-pointer py-3 font-medium">
                     {copy(
                       "مرجع النسخة وتفاصيل السياسات",
@@ -1301,6 +1303,7 @@ export function DealScreen({
               <div className="space-y-4">
                 {deal.offers.map((offer) => (
                   <details
+                    inert={!hydrated}
                     key={offer.id}
                     className="rounded-xl border border-border p-4"
                   >

@@ -14,7 +14,7 @@ export default async function BrandDealPage({
     { id } = await params;
   let deal;
   try {
-    deal = await getDeal(actor.userId, id);
+    deal = await getDeal(actor.userId, id, { serverAuth: actor });
   } catch (error) {
     if (error instanceof DealError && error.code === "NOT_FOUND") notFound();
     throw error;
@@ -26,7 +26,7 @@ export default async function BrandDealPage({
       campaignId: deal.campaignId,
       creatorId: deal.creatorId,
       dealId: deal.id,
-    });
+    }, undefined, undefined, { serverAuth: actor });
   } catch (error) {
     if (!(error instanceof DealError)) throw error;
     unavailable =

@@ -4,6 +4,7 @@ import { useId } from "react";
 import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import { useI18n } from "@/lib/i18n";
 import { campaignRequirementRows } from "./campaign-field-display";
+import { useDealHydrationReady } from "./deal-hydration";
 
 // Read the already-loaded, owner-approved version belonging to this deal.
 // Current execution/eligibility warnings remain in the parent deal screen.
@@ -13,6 +14,7 @@ export function DealBrief({ requirements, campaignId, briefVersion }: {
   briefVersion: number;
 }) {
   const { isAr } = useI18n(), id = useId();
+  const hydrated = useDealHydrationReady();
   const copy = (ar: string, en: string) => isAr ? ar : en;
   const matches = requirements?.campaignId === campaignId && requirements?.version === briefVersion;
   if (!requirements || !matches) return <section aria-labelledby={id} className="space-y-3">
@@ -25,7 +27,7 @@ export function DealBrief({ requirements, campaignId, briefVersion }: {
   return <section aria-labelledby={id} className="space-y-3">
     <h2 id={id}>{copy("موجز الصفقة المعتمد", "Deal’s approved brief")} · {copy("النسخة", "Version")} <bdi>{requirements.version}</bdi></h2>
     <p className="text-sm leading-7 text-muted-foreground">{copy("هذه المتطلبات المحفوظة للنسخة المعتمدة المرتبطة بالصفقة. شروط العرض والاتفاق وفحوص الجاهزية الحالية مستقلة.", "These are the saved requirements of the approved version linked to this deal. Offer terms, the agreement and current readiness checks remain separate.")}</p>
-    <details className="min-w-0 rounded-xl border border-border p-4">
+    <details inert={!hydrated} className="min-w-0 rounded-xl border border-border p-4">
       <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{copy("متطلبات الموجز المعتمدة", "Approved brief requirements")}</summary>
       <dl className="min-w-0 space-y-4">{rows.map(row => <div key={row.key} data-brief-field={row.key} className="min-w-0 border-b border-border pb-4 last:border-b-0 last:pb-0">
         <dt className="text-xs font-semibold text-muted-foreground">{row.label}</dt>

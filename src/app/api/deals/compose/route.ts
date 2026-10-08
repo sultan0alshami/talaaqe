@@ -10,5 +10,5 @@ export const GET = domainHandler(async (request: Request) => {
     throw new z.ZodError([
       { code: "custom", path: [], message: "Duplicate query parameter" },
     ]);
-  return getDealComposeContext(actor.userId, Object.fromEntries(params));
+  return getDealComposeContext(actor.userId, Object.fromEntries(params), undefined, undefined, { serverAuth: actor });
 });

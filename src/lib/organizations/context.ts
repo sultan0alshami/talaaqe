@@ -41,6 +41,13 @@ async function authorizeActor(tx: Pick<OrganizationTransaction, "user" | "authSe
 export async function assertLockedOrganizationActor(tx: Pick<OrganizationTransaction, "user" | "authSession">, actor: OrganizationActor) {
   await authorizeActor(tx, claims(actor));
 }
+// Self-profile/deal participants are fixed BRAND+CREATOR authority, distinct
+// from tenant authority. Trusted callers already hold complete owner/reviewer
+// User locks and this exact AuthSession lock; this helper adds no locks or roles.
+export async function assertLockedProfileActor(tx: Pick<OrganizationTransaction, "user" | "authSession">,
+  actor: OrganizationActor, checkpoint?: () => void) {
+  await authorizeActor(tx, claims(actor), checkpoint, profileRoles);
+}
 export async function checkOrganizationActor(actor: OrganizationActor, options: OrganizationOptions = {}, checkpoint?: () => void) {
   await authorizeActor(organizationDb(options), claims(actor), checkpoint);
 }

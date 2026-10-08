@@ -4,7 +4,7 @@ import { listDeals } from "@/lib/deals/service";
 
 export default async function CreatorDealsPage() {
   const actor = await requirePageSession("CREATOR");
-  const data = await listDeals(actor.userId, {});
+  const data = await listDeals(actor.userId, {}, { serverAuth: actor });
   return (
     <DealList
       initialDeals={data.deals}

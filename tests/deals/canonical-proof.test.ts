@@ -1,9 +1,8 @@
-import "./clock";
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { applyDealCommand, createDealOffer, getDeal } from "@/lib/deals/service";
-import { cleanup, fixture, user } from "./fixtures";
+import { cleanup, nativeFixture as fixture, user } from "./fixtures";
 
 afterEach(cleanup);
 describe("commercial actions adopt current accepted account proof", () => {
@@ -16,10 +15,10 @@ describe("commercial actions adopt current accepted account proof", () => {
   it("blocks acceptance after proof deletion or reviewer suspension while preserving party history", async () => {
     const f = await fixture(), deal = (await createDealOffer(f.brandUserId, f.input, f.options)).deal;
     const account = await prisma.socialAccount.findUniqueOrThrow({ where: { id: f.target.accountId } });
-    const accept = () => applyDealCommand(f.target.userId, deal.id, { operationKey: randomUUID(), expectedVersion: deal.version, action: "ACCEPT", offerId: deal.currentOffer.id, expectedOfferVersion: deal.currentOffer.version }, f.options);
+    const accept = () => applyDealCommand(f.target.userId, deal.id, { operationKey: randomUUID(), expectedVersion: deal.version, action: "ACCEPT", offerId: deal.currentOffer.id, expectedOfferVersion: deal.currentOffer.version }, f.creatorOptions);
     await prisma.privateAsset.update({ where: { id: account.ownershipProofAssetId! }, data: { deletedAt: f.options.now } });
     await expect(accept()).rejects.toMatchObject({ code: "CREATOR_NOT_EXECUTABLE" });
-    expect((await getDeal(f.target.userId, deal.id, f.options)).status).toBe("OFFERED");
+    expect((await getDeal(f.target.userId, deal.id, f.creatorOptions)).status).toBe("OFFERED");
     await prisma.privateAsset.update({ where: { id: account.ownershipProofAssetId! }, data: { deletedAt: null } });
     await prisma.user.update({ where: { id: f.target.reviewerId }, data: { active: false } });
     await expect(accept()).rejects.toMatchObject({ code: "CREATOR_NOT_EXECUTABLE" });

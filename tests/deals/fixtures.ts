@@ -4,6 +4,7 @@ import { cleanupReviewedEvidence, reviewedOwnershipFixture, type EvidenceTarget 
 import { createCampaign, generateCampaignBrief, approveCampaignBrief } from "@/lib/campaigns/service";
 import { campaignFields } from "../campaigns/fixtures";
 import type { DealPolicyVerifier } from "@/lib/deals/contracts";
+import { nativeDealActor } from "./native-actors";
 
 export const users: string[] = [];
 export const now = new Date("2026-10-05T12:00:00.000Z");
@@ -55,6 +56,17 @@ export async function fixture(count = 2, budget = "10001", evidence: { now?: Dat
   return { brandUserId, brandId: brand.id, target, campaign: approved.campaign, terms,
     input: { operationKey: randomUUID(), campaignId: created.id, creatorId: target.id, expectedCampaignRevision: approved.campaign.revision,
       expectedBriefVersion: generated.brief.version, terms }, options: { now: commandClock, policyVerifier: syntheticPolicy } };
+}
+export async function nativeFixture(count = 2, budget = "10001", evidence: { now?: Date; target?: EvidenceTarget } = {}) {
+  const f = await fixture(count, budget, evidence), target = evidence.target ?? "test";
+  const brandSession = await nativeDealActor(f.brandUserId, target);
+  const creatorSession = await nativeDealActor(f.target.userId, target);
+  // One explicit business instant follows actual campaign approval; native
+  // authentication always uses the real clock and the same captured tuples.
+  const options = { ...f.options, now: new Date() };
+  return { ...f, brandSession, creatorSession,
+    options: { ...options, serverAuth: brandSession.actor },
+    creatorOptions: { ...options, serverAuth: creatorSession.actor } };
 }
 export async function cleanup() {
   await prisma.outboxEvent.deleteMany({ where: { OR: users.map((id) => ({ payload: { path: ["actorUserId"], equals: id } })) } });

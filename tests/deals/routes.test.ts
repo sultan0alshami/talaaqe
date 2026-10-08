@@ -1,34 +1,34 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ getSession }));
+import { SESSION_COOKIE } from "@/lib/jwt";
+let token: string | null = null;
+// Only Next's request-cookie context is a seam; JWT resolution, native Users,
+// AuthSessions, production route/domain code and both clocks remain real.
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => name === SESSION_COOKIE && token ? { name, value: token } : undefined }) }));
 import { GET as list, POST as create } from "@/app/api/deals/route";
 import { GET as read } from "@/app/api/deals/[id]/route";
 import { POST as mutate } from "@/app/api/deals/[id]/commands/route";
 import { POST as draft } from "@/app/api/deals/drafts/route";
 import { GET as readDraft } from "@/app/api/deals/drafts/[id]/route";
 import { applyDealCommand, createDealOffer } from "@/lib/deals/service";
-import { cleanup, fixture, user, now } from "./fixtures";
+import { cleanup, nativeFixture as fixture, user } from "./fixtures";
+import { nativeDealActor } from "./native-actors";
 
 const origin = "http://127.0.0.1:3100";
 let previousOrigin: string | undefined;
 beforeAll(() => {
   previousOrigin = process.env.APP_ORIGIN;
   process.env.APP_ORIGIN = origin;
-  // The shared domain fixtures use an explicit fixed observation clock. Freeze
-  // Date only so the actual production adapter evaluates that same instant.
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(now);
 });
 afterAll(async () => {
   if (previousOrigin === undefined) delete process.env.APP_ORIGIN;
   else process.env.APP_ORIGIN = previousOrigin;
-  vi.useRealTimers();
+  token = null;
   await cleanup();
 });
-function session(userId: string, role: "BRAND" | "CREATOR") {
-  getSession.mockResolvedValue({ userId, role });
+function session(signed: Awaited<ReturnType<typeof nativeDealActor>>) {
+  token = signed.token;
 }
 function request(path: string, body?: unknown, requestOrigin = origin) {
   return new Request(`${origin}/api/deals${path}`, {
@@ -45,7 +45,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
   it("loads original-participant private histories, preserves envelopes and conceals foreign deals", async () => {
     const f = await fixture(),
       deal = (await createDealOffer(f.brandUserId, f.input, f.options)).deal;
-    session(f.brandUserId, "BRAND");
+    session(f.brandSession);
     const response = await read(request(`/${deal.id}`), ctx(deal.id)),
       body = await response.json();
     expect(response.status).toBe(200);
@@ -57,10 +57,10 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
         (row: { id: string }) => row.id,
       ),
     ).toContain(deal.id);
-    session(f.target.userId, "CREATOR");
+    session(f.creatorSession);
     expect((await read(request(`/${deal.id}`), ctx(deal.id))).status).toBe(200);
-    const outsider = await user("BRAND");
-    session(outsider, "BRAND");
+    const outsider = await user("BRAND"), outsiderSession = await nativeDealActor(outsider);
+    session(outsiderSession);
     expect((await read(request(`/${deal.id}`), ctx(deal.id))).status).toBe(404);
     expect((await (await list(request(""))).json()).data.deals).toEqual([]);
     await prisma.creator.update({
@@ -70,16 +70,17 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
     const replacement = await prisma.creator.findUniqueOrThrow({
       where: { id: f.target.id },
     });
-    session(replacement.userId!, "CREATOR");
+    const replacementSession = await nativeDealActor(replacement.userId!);
+    session(replacementSession);
     expect((await read(request(`/${deal.id}`), ctx(deal.id))).status).toBe(404);
   });
   it("enforces current roles, exact mutation origin, strict schemas and unavailable legal readiness", async () => {
     const f = await fixture();
-    getSession.mockResolvedValue(null);
+    token = null;
     expect((await list(request(""))).status).toBe(401);
-    session(f.target.userId, "CREATOR");
+    session(f.creatorSession);
     expect((await create(request("", f.input))).status).toBe(403);
-    session(f.brandUserId, "BRAND");
+    session(f.brandSession);
     expect(
       (await create(request("", f.input, "https://attacker.invalid"))).status,
     ).toBe(403);
@@ -107,11 +108,11 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
       where: { id: f.brandUserId },
       data: { active: false },
     });
-    expect((await list(request(""))).status).toBe(403);
+    expect((await list(request(""))).status).toBe(401);
   });
   it("saves resumable incomplete original-language terms despite blocked sending and never exposes another actor's draft", async () => {
     const f = await fixture();
-    session(f.brandUserId, "BRAND");
+    session(f.brandSession);
     const input = {
       campaignId: f.campaign.id,
       creatorId: f.target.id,
@@ -144,7 +145,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
     );
     expect(stale.status).toBe(409);
     expect((await stale.json()).error.code).toBe("STALE_VERSION");
-    session(f.target.userId, "CREATOR");
+    session(f.creatorSession);
     expect(
       (
         await readDraft(
@@ -157,7 +158,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
   it("rejects own acceptance, stale commands and role-forged delivery while safely replaying original messages", async () => {
     const f = await fixture(),
       deal = (await createDealOffer(f.brandUserId, f.input, f.options)).deal;
-    session(f.brandUserId, "BRAND");
+    session(f.brandSession);
     const accept = {
       action: "ACCEPT",
       operationKey: randomUUID(),
@@ -238,7 +239,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
             expectedVersion: deal.version,
             ...fields,
           },
-          f.options,
+          actor === f.brandUserId ? f.options : f.creatorOptions,
         )
       ).deal;
     };
@@ -256,7 +257,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
       evidence: { text: { text: "إثبات اختبار", language: "ar" }, links: [] },
     });
     await send(f.brandUserId, "COMPLETE");
-    session(f.brandUserId, "BRAND");
+    session(f.brandSession);
     const rated = await mutate(
       request(`/${deal.id}/commands`, {
         action: "RATE",
@@ -268,7 +269,7 @@ describe("deal transport with real PostgreSQL and trusted production policy adap
       ctx(deal.id),
     );
     expect(rated.status).toBe(200);
-    session(f.target.userId, "CREATOR");
+    session(f.creatorSession);
     for (const response of [
       await read(request(`/${deal.id}`), ctx(deal.id)),
       await list(request("")),

@@ -20,6 +20,7 @@ import { useDealCopy } from "./deal-copy";
 import { DealEditor, type DraftTerms } from "./deal-editor";
 import { DealTerms } from "./deal-terms";
 import { useDealRequest } from "./deal-request";
+import { useDealHydrationReady } from "./deal-hydration";
 
 export function DealCompose({
   initialContext,
@@ -42,7 +43,8 @@ export function DealCompose({
       `compose:${context.campaign.id}:${context.creator.id}`,
     ),
     readFlight = useRef(false);
-  const locked = request.busy || !!request.pending || readBusy;
+  const hydrated = useDealHydrationReady();
+  const locked = !hydrated || request.busy || !!request.pending || readBusy;
   const composeQuery = new URLSearchParams({
     campaignId: context.campaign.id,
     creatorId: context.creator.id,
@@ -136,7 +138,7 @@ export function DealCompose({
     }
   }
   return (
-    <div className={`${styles.page} ${styles.compose}`}>
+    <div className={`${styles.page} ${styles.compose}`} aria-busy={!hydrated}>
       <header className={styles.header}>
         <Link
           href={`/brand/campaigns/${encodeURIComponent(context.campaign.id)}`}
@@ -232,7 +234,7 @@ export function DealCompose({
           {request.pending && (
             <Button
               variant="outline"
-              disabled={request.busy}
+              disabled={!hydrated || request.busy}
               onClick={() => request.retry(receive)}
             >
               {copy("أعد نفس الطلب بأمان", "Retry the same request safely")}

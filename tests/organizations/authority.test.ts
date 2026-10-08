@@ -471,11 +471,12 @@ it("invalidates captured agency delegation across an actual Brand-owner transfer
 
 it("preserves accepted direct-deal parties and agreement bytes while new organization association grants no historical access", async () => {
   const f = await fixture(); ownedUserIds.push(f.brandUserId);
-  const owner = await signedActor(f.brandUserId), seat = await actor();
-  const options = { ...f.options, now: new Date(Math.max(Date.now() + 1000, f.options.now.getTime())) };
+  const owner = await signedActor(f.brandUserId), recipient = await signedActor(f.target.userId), seat = await actor();
+  const options = { ...f.options, now: new Date(Math.max(Date.now() + 1000, f.options.now.getTime())), serverAuth: owner.actor };
+  const creatorOptions = { ...options, serverAuth: recipient.actor };
   const offered = (await createDealOffer(f.brandUserId, f.input, options)).deal;
   const accepted = (await applyDealCommand(f.target.userId, offered.id, { operationKey: randomUUID(), expectedVersion: offered.version,
-    action: "ACCEPT", offerId: offered.currentOffer.id, expectedOfferVersion: offered.currentOffer.version }, options)).deal;
+    action: "ACCEPT", offerId: offered.currentOffer.id, expectedOfferVersion: offered.currentOffer.version }, creatorOptions)).deal;
   const before = {
     offers: await prisma.dealOffer.findMany({ where: { dealId: accepted.id }, orderBy: { version: "asc" } }),
     agreements: await prisma.agreementSnapshot.findMany({ where: { dealId: accepted.id }, orderBy: { version: "asc" } }),
@@ -494,6 +495,6 @@ it("preserves accepted direct-deal parties and agreement bytes while new organiz
   expect(JSON.stringify(after) === JSON.stringify(before)).toBe(true);
   expect(before.agreements.length).toBe(1);
   expect((await getDeal(f.brandUserId, accepted.id, options)).id).toBe(accepted.id);
-  expect((await getDeal(f.target.userId, accepted.id, options)).id).toBe(accepted.id);
-  await expect(getDeal(seat.user.id, accepted.id, options)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  expect((await getDeal(f.target.userId, accepted.id, creatorOptions)).id).toBe(accepted.id);
+  await expect(getDeal(seat.user.id, accepted.id, { ...options, serverAuth: seat.actor })).rejects.toMatchObject({ code: "NOT_FOUND" });
 });

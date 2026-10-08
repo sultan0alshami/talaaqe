@@ -13,7 +13,7 @@ export default async function BrandPage() {
     prisma.deal.count({ where: { ...dealWhere, status: { in: ["OFFERED", "COUNTERED"] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: { in: ["ACCEPTED", "AGREED", "DELIVERED"] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: "COMPLETED" } }),
-    listDeals(actor.userId, { limit: 3 }),
+    listDeals(actor.userId, { limit: 3 }, { serverAuth: actor }),
   ]);
   return <RoleDashboard name={actor.name} role="BRAND" state={user.brand?.state ?? "DRAFT"} emailVerified={!!user.emailVerifiedAt} deals={deals} campaigns={campaignOverview.campaignCount}
     pendingDeals={pendingDeals} activeDeals={activeDeals} completedDeals={completedDeals}

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type Brand, type Campaign, type Creator, type Deal, type DealOffer } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { beginDealSession, withDealSession, lockDealSession, assertDealSession, retryDealCapture, type DealSession } from "./session";
 import { parseBriefContent, type CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import { allocateMoney, MoneySchema } from "@/lib/contracts/money";
 import { OfferTermsSchema, validateOfferTerms, type OfferTerms } from "@/lib/contracts/offers";
@@ -27,14 +28,20 @@ function clock(options: DealOptions): Date {
 }
 const past = (value: Date | null, now: Date) => value !== null && value <= now;
 async function context(tx: Tx, actor: string, campaignId: string, creatorId: string, write: boolean, originalCreatorUserId?: string,
-  access: "HISTORY" | "FRESH_READ" | "CREATE_REPLAY" = "HISTORY"): Promise<Context> {
+  access: "HISTORY" | "FRESH_READ" | "CREATE_REPLAY" = "HISTORY", suppliedActors?: EvidenceActorLocks): Promise<Context> {
   parse(Id, actor); parse(Id, campaignId); parse(Id, creatorId);
   const reference = await tx.campaign.findUnique({ where: { id: campaignId }, select: { brand: { select: { id: true, userId: true } } } });
   const target = await tx.creator.findUnique({ where: { id: creatorId }, select: { userId: true } });
-  if (!reference || !target) throw new DealError("NOT_FOUND", 404);
+  if (!reference || !target) {
+    if (!suppliedActors) { await lockEvidenceActors(tx, { otherOwnerIds: [actor], updateOwners: write }); await lockDealSession(tx); }
+    throw new DealError("NOT_FOUND", 404);
+  }
   // All current/historical owners, then evidence/policy reviewers, precede
   // domain locks. The captured identity sets are checked after waiting.
-  const evidenceActors = await lockEvidenceActors(tx, { creatorIds: [creatorId], brandIds: [reference.brand.id], otherOwnerIds: [actor, ...(originalCreatorUserId ? [originalCreatorUserId] : [])], includePolicies: true, updateOwners: write });
+  const evidenceActors = suppliedActors ?? await lockEvidenceActors(tx, { creatorIds: [creatorId], brandIds: [reference.brand.id], otherOwnerIds: [actor, ...(originalCreatorUserId ? [originalCreatorUserId] : [])], includePolicies: true, updateOwners: write });
+  if (!suppliedActors) await lockDealSession(tx);
+  if (evidenceActors.brandOwners.get(reference.brand.id) !== reference.brand.userId || evidenceActors.creatorOwners.get(creatorId) !== target.userId
+    || !evidenceActors.ownerIds.has(actor) || originalCreatorUserId && !evidenceActors.ownerIds.has(originalCreatorUserId)) retryDealCapture();
   await tx.$queryRaw`SELECT id FROM "Brand" WHERE id=${reference.brand.id} FOR SHARE`;
   await tx.$queryRaw`SELECT id FROM "Creator" WHERE id=${creatorId} FOR SHARE`;
   if (write) await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id=${campaignId} FOR UPDATE`;
@@ -45,7 +52,7 @@ async function context(tx: Tx, actor: string, campaignId: string, creatorId: str
     tx.creator.findUnique({ where: { id: creatorId }, select: { userId: true } }),
     tx.user.findUnique({ where: { id: actor }, select: { active: true, role: true } }),
   ]);
-  if (brandIdentity?.userId !== reference.brand.userId || creatorIdentity?.userId !== target.userId || campaignIdentity?.brandId !== reference.brand.id) throw new DealError("STALE_PARTICIPANTS");
+  if (brandIdentity?.userId !== reference.brand.userId || creatorIdentity?.userId !== target.userId || campaignIdentity?.brandId !== reference.brand.id) retryDealCapture();
   if (!user?.active || (user.role !== "BRAND" && user.role !== "CREATOR")) throw new DealError("FORBIDDEN", 403);
   if (actor !== brandIdentity.userId && actor !== creatorIdentity.userId && actor !== originalCreatorUserId) throw new DealError("NOT_FOUND", 404);
   const role = actor === brandIdentity.userId ? "BRAND" : "CREATOR";
@@ -66,30 +73,30 @@ async function context(tx: Tx, actor: string, campaignId: string, creatorId: str
 // Domain-only helper for the private draft service. Server transports invoke the
 // public commands, never supply a transaction callback or trusted policy context.
 export const dealParticipantContext = context;
-async function owned<T>(actor: string, dealId: string, options: DealOptions, write: boolean, operation: (tx: Tx, deal: Deal, ctx: Context, now: Date) => Promise<T>): Promise<T> {
-  parse(Id, dealId); const client = options.client ?? prisma; clock(options);
-  return client.$transaction(async tx => {
-    const reference = await tx.deal.findUnique({ where: { id: dealId }, select: { campaignId: true, creatorId: true } });
-    if (!reference) {
-      const user = await tx.user.findUnique({ where: { id: actor }, select: { active: true, role: true } });
-      if (!user?.active || !["BRAND", "CREATOR"].includes(user.role)) throw new DealError("FORBIDDEN", 403);
-      throw new DealError("NOT_FOUND", 404);
-    }
-    const first = await tx.dealOffer.findUnique({ where: { dealId_version: { dealId, version: 1 } } });
-    if (!first) throw new DealError("INVALID_DEAL_HISTORY");
-    if (actor !== first.proposerUserId && actor !== first.recipientUserId) {
-      const user = await tx.user.findUnique({ where: { id: actor }, select: { active: true, role: true } });
-      if (!user?.active || !["BRAND", "CREATOR"].includes(user.role)) throw new DealError("FORBIDDEN", 403);
-      throw new DealError("NOT_FOUND", 404);
-    }
-    const ctx = await context(tx, actor, reference.campaignId, reference.creatorId, write, first.recipientUserId);
-    if (ctx.brandUserId !== first.proposerUserId) throw new DealError("STALE_PARTICIPANTS");
-    if (write) await tx.$queryRaw`SELECT id FROM "Deal" WHERE id=${dealId} FOR UPDATE`;
-    else await tx.$queryRaw`SELECT id FROM "Deal" WHERE id=${dealId} FOR SHARE`;
-    const deal = await tx.deal.findUniqueOrThrow({ where: { id: dealId } });
-    if (deal.brandId !== ctx.brand.id || deal.creatorId !== ctx.creator.id || deal.campaignId !== ctx.campaign.id) throw new DealError("STALE_PARTICIPANTS");
-    return operation(tx, deal, ctx, clock(options));
-  }, { maxWait: 10_000, timeout: 20_000 });
+// Internal same-transaction composition; the complete User inventory is supplied
+// only by bounded list/compose callers, never by a request or model argument.
+export async function ownedDealInTransaction<T>(tx: Tx, actor: string, dealId: string, write: boolean,
+  operation: (tx: Tx, deal: Deal, ctx: Context) => Promise<T>, suppliedActors?: EvidenceActorLocks): Promise<T> {
+  const reference = await tx.deal.findUnique({ where: { id: dealId }, select: { campaignId: true, creatorId: true } });
+  const first = reference ? await tx.dealOffer.findUnique({ where: { dealId_version: { dealId, version: 1 } },
+    select: { proposerUserId: true, recipientUserId: true } }) : null;
+  if (!reference || !first || actor !== first.proposerUserId && actor !== first.recipientUserId) {
+    if (!suppliedActors) { await lockEvidenceActors(tx, { otherOwnerIds: [actor], updateOwners: write }); await lockDealSession(tx); }
+    throw new DealError(reference && !first ? "INVALID_DEAL_HISTORY" : "NOT_FOUND", reference && !first ? 409 : 404);
+  }
+  const ctx = await context(tx, actor, reference.campaignId, reference.creatorId, write, first.recipientUserId, "HISTORY", suppliedActors);
+  if (ctx.brandUserId !== first.proposerUserId) throw new DealError("STALE_PARTICIPANTS");
+  if (write) await tx.$queryRaw`SELECT id FROM "Deal" WHERE id=${dealId} FOR UPDATE`;
+  else await tx.$queryRaw`SELECT id FROM "Deal" WHERE id=${dealId} FOR SHARE`;
+  const deal = await tx.deal.findUniqueOrThrow({ where: { id: dealId } });
+  if (deal.brandId !== ctx.brand.id || deal.creatorId !== ctx.creator.id || deal.campaignId !== ctx.campaign.id) throw new DealError("STALE_PARTICIPANTS");
+  return operation(tx, deal, ctx);
+}
+async function owned<T>(actor: string, dealId: string, session: DealSession, write: boolean,
+  operation: (tx: Tx, deal: Deal, ctx: Context, now: Date) => Promise<T>): Promise<T> {
+  parse(Id, dealId); clock(session.options);
+  return withDealSession(session, write, tx => ownedDealInTransaction(tx, actor, dealId, write,
+    (tx, deal, ctx) => operation(tx, deal, ctx, clock(session.options))));
 }
 async function requirements(tx: Tx, ctx: Context, version: number, current: boolean, now: Date): Promise<CampaignRequirementsDTO> {
   const brief = await tx.campaignBrief.findUnique({ where: { campaignId_version: { campaignId: ctx.campaign.id, version } } });
@@ -147,6 +154,7 @@ function termsFor(value: unknown, r: CampaignRequirementsDTO): OfferTerms {
 async function verify(tx: Tx, actor: string, ctx: Context, terms: OfferTerms, stage: "OFFER" | "ACCEPT" | "CONFIRM", options: DealOptions, trusted: DealPolicyContext, language?: "ar" | "en"): Promise<DealPolicyEvidence> {
   if (!options.policyVerifier) throw new DealError("POLICY_UNAVAILABLE", 503);
   const evidence = await options.policyVerifier(tx, actor, ctx.campaign.id, ctx.creator.id, terms, stage, language, { ...trusted, evidenceActors: ctx.evidenceActors });
+  await assertDealSession(tx);
   if (!evidence?.governingTerms || evidence.governingTerms.id !== terms.governingTermsVersionId || !["ar", "en"].includes(evidence.governingTerms.language)
     || !evidence.governingTerms.content.trim() || !evidence.policyVersion || !Array.isArray(evidence.licenceSnapshots) || !Array.isArray(evidence.marketPolicyVersions)) throw new DealError("POLICY_UNAVAILABLE", 503);
   inputJson(evidence); return evidence;
@@ -213,8 +221,9 @@ export async function dealDTO(tx: Tx, deal: Deal, actor: string, now: Date) {
 }
 export type DealDTO = Awaited<ReturnType<typeof dealDTO>>;
 export async function createDealOffer(actor: string, input: unknown, options: DealOptions = {}): Promise<{ deal: DealDTO; replayed: boolean }> {
+  const session = await beginDealSession(actor, options); options = session.options;
   const command = parse(CreateDealSchema, input), hash = canonicalHash({ action: "CREATE", ...command }); clock(options);
-  return (options.client ?? prisma).$transaction(async tx => {
+  return withDealSession(session, true, async tx => {
     const ctx = await context(tx, actor, command.campaignId, command.creatorId, true, undefined, "CREATE_REPLAY");
     const now = clock(options);
     if (ctx.role !== "BRAND") throw new DealError("ROLE_ONLY", 403);
@@ -240,20 +249,34 @@ export async function createDealOffer(actor: string, input: unknown, options: De
     await event(tx, deal, actor, command.operationKey, "deal.offered", { offerVersion: 1, origin: deal.origin, slotOrdinal: ordinal }, now);
     await ledger(tx, deal, actor, command.operationKey, hash, now);
     return { deal: await dealDTO(tx, deal, actor, now), replayed: false };
-  }, { maxWait: 10_000, timeout: 20_000 });
+  });
 }
 export async function getDeal(actor: string, dealId: string, options: DealOptions = {}): Promise<DealDTO> {
-  return owned(actor, dealId, options, false, (tx, deal, _ctx, now) => dealDTO(tx, deal, actor, now));
+  const session = await beginDealSession(actor, options);
+  return owned(actor, dealId, session, false, (tx, deal, _ctx, now) => dealDTO(tx, deal, actor, now));
 }
 export async function listDeals(actor: string, input: unknown = {}, options: DealOptions = {}) {
-  const query = parse(z.object({ limit: z.number().int().min(1).max(50).default(20), cursor: Id.optional() }).strict(), input), client = options.client ?? prisma;
-  const user = await client.user.findUnique({ where: { id: actor }, select: { active: true, role: true } });
-  if (!user?.active || (user.role !== "BRAND" && user.role !== "CREATOR")) throw new DealError("FORBIDDEN", 403);
-  const where: Prisma.DealWhereInput = user.role === "BRAND" ? { brand: { userId: actor }, offers: { some: { version: 1, proposerUserId: actor } } }
+  const session = await beginDealSession(actor, options); options = session.options;
+  const query = parse(z.object({ limit: z.number().int().min(1).max(50).default(20), cursor: Id.optional() }).strict(), input);
+  clock(options);
+  const where: Prisma.DealWhereInput = session.actor.role === "BRAND" ? { brand: { userId: actor }, offers: { some: { version: 1, proposerUserId: actor } } }
     : { offers: { some: { version: 1, recipientUserId: actor } } };
-  if (query.cursor && !await client.deal.findFirst({ where: { ...where, id: query.cursor } })) throw new DealError("INVALID_CURSOR", 400);
-  const rows = await client.deal.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: query.limit + 1, ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}) });
-  return { deals: await Promise.all(rows.slice(0, query.limit).map(row => getDeal(actor, row.id, options))), nextCursor: rows.length > query.limit ? rows[query.limit - 1].id : null };
+  return withDealSession(session, false, async tx => {
+    const page = () => tx.deal.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}), select: { id: true, campaignId: true, creatorId: true, brandId: true,
+        offers: { where: { version: 1 }, select: { proposerUserId: true, recipientUserId: true } } } });
+    const references = await page();
+    const actors = await lockEvidenceActors(tx, { creatorIds: [...new Set(references.map(row => row.creatorId))],
+      brandIds: [...new Set(references.map(row => row.brandId))], otherOwnerIds: [actor, ...references.flatMap(row => row.offers.flatMap(offer => [offer.proposerUserId, offer.recipientUserId]))], includePolicies: true });
+    await lockDealSession(tx);
+    if (query.cursor && !await tx.deal.findFirst({ where: { ...where, id: query.cursor }, select: { id: true } })) throw new DealError("INVALID_CURSOR", 400);
+    const rows = await page();
+    if (canonicalHash(rows) !== canonicalHash(references)) retryDealCapture();
+    const deals: DealDTO[] = [];
+    for (const row of rows.slice(0, query.limit)) deals.push(await ownedDealInTransaction(tx, actor, row.id, false,
+      (tx, deal) => dealDTO(tx, deal, actor, clock(options)), actors));
+    return { deals, nextCursor: rows.length > query.limit ? rows[query.limit - 1].id : null };
+  });
 }
 async function currentOffer(tx: Tx, deal: Deal, command: Extract<DealCommand, { action: "COUNTER" | "ACCEPT" | "DECLINE" }>): Promise<DealOffer> {
   if (!["OFFERED", "COUNTERED"].includes(deal.status)) throw new DealError("INVALID_STATE");
@@ -281,8 +304,9 @@ async function agreementFor(tx: Tx, deal: Deal, ctx: Context, offer: DealOffer, 
   await tx.agreementSnapshot.create({ data: { dealId: deal.id, version: 1, offerVersion: offer.version, briefVersion: deal.briefVersion, content: inputJson(agreement), createdAt: now } });
 }
 export async function applyDealCommand(actor: string, dealId: string, input: unknown, options: DealOptions = {}): Promise<{ deal: DealDTO; replayed: boolean }> {
+  const session = await beginDealSession(actor, options); options = session.options;
   const command = parse(DealCommandSchema, input), hash = canonicalHash({ dealId, ...command });
-  return owned(actor, dealId, options, true, async (tx, deal, ctx, now) => {
+  return owned(actor, dealId, session, true, async (tx, deal, ctx, now) => {
     if (await replay(tx, actor, command.operationKey, hash, dealId)) return { deal: await dealDTO(tx, deal, actor, now), replayed: true };
     if (deal.version !== command.expectedVersion) throw new DealError("STALE_VERSION");
     if (ctx.creatorUserId !== ctx.originalCreatorUserId && !["CANCEL", "MESSAGE"].includes(command.action)) throw new DealError("STALE_PARTICIPANTS");

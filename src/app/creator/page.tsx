@@ -11,7 +11,7 @@ export default async function CreatorPage() {
     prisma.deal.count({ where: { ...dealWhere, status: { in: ["OFFERED", "COUNTERED"] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: { in: ["ACCEPTED", "AGREED", "DELIVERED"] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: "COMPLETED" } }),
-    listDeals(actor.userId, { limit: 5 }),
+    listDeals(actor.userId, { limit: 5 }, { serverAuth: actor }),
   ]);
   return <RoleDashboard name={actor.name} role="CREATOR" state={user.creator?.state ?? "DRAFT"} emailVerified={!!user.emailVerifiedAt} deals={deals} campaigns={0}
     pendingDeals={pendingDeals} activeDeals={activeDeals} completedDeals={completedDeals}

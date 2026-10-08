@@ -5,6 +5,7 @@ import { InterfaceLanguageSchema, OriginalTextSchema, UtcDateTimeSchema } from "
 import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import type { MatchingPolicyReader } from "@/lib/matching/persistence";
 import type { EvidenceActorLocks } from "@/lib/evidence/readiness";
+import type { OrganizationActor } from "@/lib/organizations/context";
 
 export class DealError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "DealError"; }
@@ -21,7 +22,10 @@ export type DealPolicyContext = { requirements: CampaignRequirementsDTO; dealId:
 export type DealPolicyVerifier = (tx: Prisma.TransactionClient, actorUserId: string, campaignId: string,
   creatorId: string, terms: OfferTerms | undefined, stage: "OFFER" | "ACCEPT" | "CONFIRM", requestedLanguage?: "ar" | "en",
   context?: DealPolicyContext) => Promise<DealPolicyEvidence>;
-export type DealOptions = { client?: PrismaClient; now?: Date; policyVerifier?: DealPolicyVerifier; policyReader?: MatchingPolicyReader };
+// Trusted server metadata only; never a legacy command field/hash input.
+// Public entrypoints fail closed when this captured native tuple is absent.
+export type DealOptions = { client?: PrismaClient; now?: Date; policyVerifier?: DealPolicyVerifier; policyReader?: MatchingPolicyReader;
+  serverAuth?: OrganizationActor };
 const id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const key = z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/);
 export const CreateDealSchema = z.object({

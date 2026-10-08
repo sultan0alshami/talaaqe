@@ -31,6 +31,7 @@ import {
 import { TIMEZONE_SUGGESTIONS } from "@/lib/contracts/timezone-suggestions";
 import type { OfferDraftDTO } from "@/lib/deals/drafts";
 import { useDealCopy } from "./deal-copy";
+import { useDealHydrationReady } from "./deal-hydration";
 
 export type ReviewedTermsOption = {
   id: string;
@@ -96,6 +97,7 @@ export function DealEditor({
 }) {
   const { isAr, copy, errorCopy } = useDealCopy(),
     prefix = useId();
+  const hydrated = useDealHydrationReady();
   const [currency, setCurrency] = useState(
       initialTerms.amount?.currencyCode ?? "",
     ),
@@ -179,7 +181,11 @@ export function DealEditor({
   }
   const field = (name: string) => `${prefix}-${name}`;
   return (
-    <fieldset className={styles.editor} disabled={busy}>
+    <fieldset
+      className={styles.editor}
+      disabled={!hydrated || busy}
+      aria-busy={!hydrated}
+    >
       <legend className="sr-only">{copy("شروط العرض", "Offer terms")}</legend>
       <Card>
         <CardHeader>
@@ -578,7 +584,7 @@ export function DealEditor({
             </select>
           </label>
           {selectedTemplate && (
-            <details className="rounded-2xl border border-border p-4">
+            <details inert={!hydrated} className="rounded-2xl border border-border p-4">
               <summary className="min-h-12 cursor-pointer py-3 font-medium">
                 {copy("اقرأ نص الشروط المراجعة", "Read the reviewed terms")}
               </summary>

@@ -132,14 +132,15 @@ async function acceptedLegacy() {
   // Explicit synthetic eligibility after actual proof review; no publication,
   // provider/legal or policy verification claim is made by these fixture flags.
   await prisma.creator.update({ where: { id: legacy.target.id }, data: { state: "PUBLISHED", brandVisible: true } });
-  const options = { policyVerifier: legacy.options.policyVerifier }; // Existing labelled synthetic reviewed historical terms, never planning resolver input.
+  const owner = await sign(legacy.brandUserId), recipient = await sign(legacy.target.userId);
+  const options = { policyVerifier: legacy.options.policyVerifier, serverAuth: owner.actor }; // Existing labelled synthetic reviewed historical terms, never planning resolver input.
+  const creatorOptions = { ...options, serverAuth: recipient.actor };
   const offered = await createDealOffer(legacy.brandUserId, legacy.input, options);
   const accepted = await applyDealCommand(legacy.target.userId, offered.deal.id, { operationKey: key(), expectedVersion: offered.deal.version,
-    action: "ACCEPT", offerId: offered.deal.currentOffer.id, expectedOfferVersion: offered.deal.currentOffer.version, language: "ar" }, options);
+    action: "ACCEPT", offerId: offered.deal.currentOffer.id, expectedOfferVersion: offered.deal.currentOffer.version, language: "ar" }, creatorOptions);
   expect(accepted.deal.status).toBe("ACCEPTED"); expect(accepted.deal.agreement).not.toBeNull();
   const brand = await prisma.brand.findUniqueOrThrow({ where: { id: legacy.brandId } });
-  return { legacy, options, deal: accepted.deal, owner: { ...await sign(legacy.brandUserId), brand, scope: { kind: "OWN_BRAND", brandId: brand.id } as PlanningScope },
-    recipient: await sign(legacy.target.userId) };
+  return { legacy, options, creatorOptions, deal: accepted.deal, owner: { ...owner, brand, scope: { kind: "OWN_BRAND", brandId: brand.id } as PlanningScope }, recipient };
 }
 async function submitBrief(actor: OrganizationActor, scope: PlanningScope, campaignId: string, briefId: string, version: number) {
   return step(actor, scope, campaignId, "SUBMIT_BRIEF", { briefId, expectedBriefVersion: version });
@@ -244,9 +245,9 @@ describe("full M03 campaign planning: native synthetic scoped/manual/legacy inte
     const confirmed = await applyDealCommand(retained.owner.user.id, retained.deal.id, { operationKey: key(), expectedVersion: frozen.version, action: "CONFIRM", agreementId: agreement.id,
       expectedAgreementVersion: agreement.version }, retained.options);
     const agreed = await applyDealCommand(retained.recipient.user.id, retained.deal.id, { operationKey: key(), expectedVersion: confirmed.deal.version, action: "CONFIRM", agreementId: agreement.id,
-      expectedAgreementVersion: agreement.version }, retained.options); expect(agreed.deal.status).toBe("AGREED");
+      expectedAgreementVersion: agreement.version }, retained.creatorOptions); expect(agreed.deal.status).toBe("AGREED");
     expect(agreed.deal.briefVersion).toBe(retained.deal.briefVersion); expect(agreed.deal.agreement).toEqual(retained.deal.agreement);
-    expect((await getDeal(retained.recipient.user.id, retained.deal.id, retained.options)).offers.find(row => row.version === 1)).toEqual(offer);
+    expect((await getDeal(retained.recipient.user.id, retained.deal.id, retained.creatorOptions)).offers.find(row => row.version === 1)).toEqual(offer);
     for (const row of oldCommands) expect(await prisma.campaignCommand.findUniqueOrThrow({ where: { id: row.id } })).toEqual(row);
     expect((await createDealOffer(retained.owner.user.id, retained.legacy.input, retained.options)).replayed).toBe(true);
     await reject(createDealOffer(retained.owner.user.id, { ...retained.legacy.input, operationKey: key(), expectedCampaignRevision: bound.campaignRevision }, retained.options), "MANAGED_CAMPAIGN_REQUIRED");
@@ -315,17 +316,17 @@ describe("full M03 campaign planning: native synthetic scoped/manual/legacy inte
     await prisma.portfolioVersion.create({ data: { creatorId: target.id, version: 1, inputRevision: 1, approvedAt: evidenceAt,
       content: { title: "Synthetic original public title", bio: "Original fixture biography", sections: [], method: "APPROVED_FACT_TEMPLATE" } } });
     await prisma.creator.update({ where: { id: target.id }, data: { primaryAccountId: account.id, state: "PUBLISHED", publicConsentAt: evidenceAt, brandVisible: true } });
-    expect((await getDealComposeContext(f.user.id, { campaignId: old.campaign.id, creatorId: target.id })).campaign.id).toBe(old.campaign.id);
+    expect((await getDealComposeContext(f.user.id, { campaignId: old.campaign.id, creatorId: target.id }, undefined, undefined, { serverAuth: f.actor })).campaign.id).toBe(old.campaign.id);
     await reject(decideCampaignMatch(f.user.id, first.result.campaignId, { operationKey: key(), creatorId: target.id, runId: key(), decision: "SAVED", expectedDecisionRevision: 0,
       expectedBriefVersion: generated.result.version }, matchingOptions), "NOT_FOUND", 404);
-    await reject(getDealComposeContext(f.user.id, { campaignId: first.result.campaignId, creatorId: target.id }), "NOT_FOUND", 404);
+    await reject(getDealComposeContext(f.user.id, { campaignId: first.result.campaignId, creatorId: target.id }, undefined, undefined, { serverAuth: f.actor }), "NOT_FOUND", 404);
     const draft = await prisma.offerDraft.create({ data: { actorUserId: f.user.id, campaignId: first.result.campaignId, creatorId: target.id, terms: {} } });
-    await reject(getOfferDraft(f.user.id, draft.id), "NOT_FOUND", 404);
-    await reject(saveOfferDraft(f.user.id, { campaignId: first.result.campaignId, creatorId: target.id, operationKey: key(), expectedRevision: 0, patch: {} }), "NOT_FOUND", 404);
+    await reject(getOfferDraft(f.user.id, draft.id, { serverAuth: f.actor }), "NOT_FOUND", 404);
+    await reject(saveOfferDraft(f.user.id, { campaignId: first.result.campaignId, creatorId: target.id, operationKey: key(), expectedRevision: 0, patch: {} }, { serverAuth: f.actor }), "NOT_FOUND", 404);
     const terms = { deliverables: [{ platform: "INSTAGRAM", format: "STORY", count: 1 }], amount: { amountMinor: "1", currencyCode: "KWD" }, period: campaignFields.period,
       usageRights: "Original fixture terms", note: { text: "Original direct fixture", language: "en" }, governingTermsVersionId: "synthetic-historical-terms", licencePolicyVersionIds: [] };
     await reject(createDealOffer(f.user.id, { operationKey: key(), campaignId: first.result.campaignId, creatorId: target.id, expectedCampaignRevision: ownerApproved.campaignRevision,
-      expectedBriefVersion: generated.result.version, terms }), "NOT_FOUND", 404);
+      expectedBriefVersion: generated.result.version, terms }, { serverAuth: f.actor }), "NOT_FOUND", 404);
     // Ordinary account administration excludes every native planning binding.
     // Create OWN only here, after the earlier legacy count/selector checks.
     const ownForAdmin = await createPlanning(f.actor, f.scope, { kind: "NONE" }, { ...campaignFields, title: "OWN unsubmitted ADMIN exclusion canary" });

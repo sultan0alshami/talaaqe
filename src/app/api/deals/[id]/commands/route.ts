@@ -12,7 +12,8 @@ export const POST = domainHandler(
       (await context.params).id,
       await parseBody(request, DealCommandSchema),
       {
-        policyVerifier: reviewedDealPolicies,
+        serverAuth: actor,
+      policyVerifier: reviewedDealPolicies,
         policyReader: reviewedMatchingPolicies,
       },
     );

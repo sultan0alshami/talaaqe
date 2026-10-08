@@ -7,7 +7,7 @@ import { listQuery } from "./_schemas";
 
 export const GET = domainHandler(async (request: Request) => {
   const actor = await requireRole("BRAND", "CREATOR");
-  return listDeals(actor.userId, listQuery(request));
+  return listDeals(actor.userId, listQuery(request), { serverAuth: actor });
 });
 export const POST = domainHandler(async (request: Request) => {
   const actor = await requireRole("BRAND");
@@ -15,6 +15,7 @@ export const POST = domainHandler(async (request: Request) => {
     actor.userId,
     await parseBody(request, CreateDealSchema),
     {
+      serverAuth: actor,
       policyVerifier: reviewedDealPolicies,
       policyReader: reviewedMatchingPolicies,
     },

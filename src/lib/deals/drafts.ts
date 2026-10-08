@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { OfferDraft, Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { lockEvidenceActors } from "@/lib/evidence/readiness";
+import { beginDealSession, withDealSession, lockDealSession } from "./session";
 import { MoneySchema } from "@/lib/contracts/money";
 import { OfferTermsSchema } from "@/lib/contracts/offers";
 import { TimeZoneSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
@@ -27,10 +28,11 @@ async function creatorDraftParty(tx: Prisma.TransactionClient, actor: string, ca
   if (role === "CREATOR" && !await tx.deal.findFirst({ where: { campaignId, creatorId, creator: { userId: actor }, offers: { some: { version: 1, recipientUserId: actor } } }, select: { id: true } })) throw new DealError("NOT_FOUND", 404);
 }
 export async function getOfferDraft(actor: string, draftId: string, options: DealOptions = {}): Promise<OfferDraftDTO> {
+  const session = await beginDealSession(actor, options);
   parse(Id, draftId);
-  return (options.client ?? prisma).$transaction(async tx => {
+  return withDealSession(session, false, async tx => {
     const draft = await tx.offerDraft.findFirst({ where: { id: draftId, actorUserId: actor }, select: { campaignId: true, creatorId: true } });
-    if (!draft) throw new DealError("NOT_FOUND", 404);
+    if (!draft) { await lockEvidenceActors(tx, { otherOwnerIds: [actor] }); await lockDealSession(tx); throw new DealError("NOT_FOUND", 404); }
     const ctx = await dealParticipantContext(tx, actor, draft.campaignId, draft.creatorId, false, undefined, "FRESH_READ");
     await creatorDraftParty(tx, actor, draft.campaignId, draft.creatorId, ctx.role);
     await tx.$queryRaw`SELECT id FROM "OfferDraft" WHERE id=${draftId} FOR SHARE`;
@@ -38,9 +40,10 @@ export async function getOfferDraft(actor: string, draftId: string, options: Dea
   });
 }
 export async function saveOfferDraft(actor: string, input: unknown, options: DealOptions = {}): Promise<{ draft: OfferDraftDTO; replayed: boolean }> {
+  const session = await beginDealSession(actor, options); options = session.options;
   const command = parse(SaveSchema, input), hash = canonicalHash(command), now = options.now ?? new Date();
   if (!Number.isFinite(now.getTime())) throw new DealError("INVALID_CLOCK", 400);
-  return (options.client ?? prisma).$transaction(async tx => {
+  return withDealSession(session, true, async tx => {
     const ctx = await dealParticipantContext(tx, actor, command.campaignId, command.creatorId, true, undefined, "CREATE_REPLAY");
     await creatorDraftParty(tx, actor, command.campaignId, command.creatorId, ctx.role);
     const previous = await tx.offerDraftCommand.findUnique({ where: { actorUserId_operationKey: { actorUserId: actor, operationKey: command.operationKey } } });
@@ -67,5 +70,5 @@ export async function saveOfferDraft(actor: string, input: unknown, options: Dea
     }
     await tx.offerDraftCommand.create({ data: { draftId: draft.id, actorUserId: actor, operationKey: command.operationKey, payloadHash: hash, result: { draftId: draft.id, revision: draft.revision }, createdAt: now } });
     return { draft: dto(draft), replayed: false };
-  }, { maxWait: 10_000, timeout: 20_000 });
+  });
 }

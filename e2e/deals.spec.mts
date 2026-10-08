@@ -19,6 +19,7 @@ import { resolveCampaignPolicyReview } from "../src/lib/policies";
 import { authenticate, openSession } from "../src/lib/identity";
 import { SESSION_COOKIE } from "../src/lib/jwt";
 import { cleanup, fixture } from "../tests/deals/fixtures";
+import { nativeDealActor } from "../tests/deals/native-actors";
 import { AgreementContentSchema } from "../src/lib/deals/contracts";
 
 const state = taskState(),
@@ -26,6 +27,39 @@ const state = taskState(),
 const policies: string[] = [],
   assets: string[] = [],
   contactUsers: string[] = [];
+type HydrationEvent = { kind: "console"; messageType: string } | { kind: "pageerror" };
+const hydrationEvents = new WeakMap<import("@playwright/test").BrowserContext, HydrationEvent[]>();
+function currentHydrationEvents(context: import("@playwright/test").BrowserContext) {
+  const events = hydrationEvents.get(context);
+  if (!events) throw new Error("The journey hydration collector was not initialized");
+  return events;
+}
+function collectHydrationEvents(context: import("@playwright/test").BrowserContext, events: HydrationEvent[]) {
+  const observed = new WeakSet<import("@playwright/test").Page>();
+  const observe = (page: import("@playwright/test").Page) => {
+    if (observed.has(page)) return;
+    observed.add(page);
+    // React reports mismatches through several console types. Keep only safe
+    // categories, never raw console text, private inputs or session metadata.
+    page.on("console", message => {
+      if (/hydration|hydrated|did not match|didn't match|does not match|expected server html to contain|expected not to contain.*server html/i.test(message.text())) {
+        events.push({ kind: "console", messageType: message.type() });
+      }
+    });
+    page.on("pageerror", () => events.push({ kind: "pageerror" }));
+  };
+  context.pages().forEach(observe);
+  context.on("page", observe);
+}
+test.beforeEach(({ context }) => {
+  const events: HydrationEvent[] = [];
+  hydrationEvents.set(context, events);
+  collectHydrationEvents(context, events);
+});
+test.afterEach(({ context }) => {
+  expect(currentHydrationEvents(context), "Hydration console mismatches and uncaught page errors").toEqual([]);
+  hydrationEvents.delete(context);
+});
 if (process.env.DATABASE_URL !== assertLocalTarget(state, "e2e"))
   throw new Error(
     "Deal browser journeys require the exact isolated E2E target",
@@ -133,8 +167,12 @@ async function ownedFixture(language: "ar" | "en" = "ar") {
     creator = await db.user.findUniqueOrThrow({
       where: { id: f.target.userId },
     });
+  const brandSession = await nativeDealActor(f.brandUserId, "e2e");
+  const creatorSession = await nativeDealActor(f.target.userId, "e2e");
   return {
     ...f,
+    options: { ...f.options, serverAuth: brandSession.actor },
+    creatorOptions: { ...f.options, serverAuth: creatorSession.actor },
     password,
     brandEmail: brand.email,
     creatorEmail: creator.email,
@@ -319,6 +357,115 @@ async function signIn(
   ]);
 }
 
+function hydrationLatch<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  // A route can fail before its corresponding gate is awaited. Keep that failure
+  // available to the caller without an unhandled detached rejection.
+  void promise.catch(() => {});
+  return { promise, resolve, reject };
+}
+
+async function holdDealClient(
+  page: import("@playwright/test").Page,
+  component: "deal-compose" | "deal-screen",
+) {
+  const marker = `[project]/src/components/infame/${component}.tsx [app-client] (ecmascript)`;
+  const arrived = hydrationLatch<void>(), delivered = hydrationLatch<void>(), released = hydrationLatch<void>();
+  const active = new Set<Promise<void>>();
+  let held = false, terminalFailure: { error: unknown } | undefined;
+  const scripts = (url: URL) => url.origin === origin && url.pathname.startsWith("/_next/static/chunks/") && url.pathname.endsWith(".js");
+  const handler = (route: import("@playwright/test").Route) => {
+    const work = (async () => {
+      const actual = await route.fetch();
+      expect(actual.status()).toBe(200);
+      const relevant = (await actual.body()).includes(Buffer.from(marker));
+      if (relevant) {
+        held = true;
+        arrived.resolve();
+        await released.promise;
+      }
+      // Preserve every actual byte/header/status; only delivery scheduling varies.
+      await route.fulfill({ response: actual });
+      if (relevant) delivered.resolve();
+    })();
+    active.add(work);
+    void work.then(() => active.delete(work), error => {
+      active.delete(work);
+      terminalFailure = { error };
+      arrived.reject(error);
+      delivered.reject(error);
+    });
+    return work;
+  };
+  await page.route(scripts, handler);
+  return {
+    async waitForHeld() {
+      // A bounded assertion observes the actual route latch; it is not a timing
+      // delay, hydration guess or second user action.
+      await expect.poll(() => held || !!terminalFailure, { timeout: 10000,
+        message: "The actual required deal client module response must be held" }).toBe(true);
+      if (terminalFailure) throw terminalFailure.error;
+      await arrived.promise;
+    },
+    async release() { released.resolve(); await delivered.promise; },
+    async close() {
+      released.resolve();
+      try {
+        // Removing a route can continue its pending request. Finish every actual
+        // delivery first so its handler remains the sole owner of fulfillment.
+        while (active.size) await Promise.allSettled([...active]);
+        if (terminalFailure) throw terminalFailure.error;
+        if (held) await delivered.promise;
+      } finally {
+        await page.unroute(scripts, handler);
+      }
+    },
+  };
+}
+
+async function watchJournalRestoration(
+  page: import("@playwright/test").Page,
+  input: import("@playwright/test").Locator,
+  retryName: string,
+) {
+  await input.evaluate((element, name) => {
+    const id = element.id;
+    let earlyEnabled = false, journalSeen = false;
+    const observe = () => {
+      journalSeen ||= [...document.querySelectorAll("button")].some(button =>
+        button.textContent?.trim() === name && button.getClientRects().length > 0);
+      const current = document.getElementById(id);
+      if (!journalSeen && current && !current.matches(":disabled") && !current.closest('[aria-disabled="true"]')) earlyEnabled = true;
+    };
+    const observer = new MutationObserver(observe);
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ["disabled", "aria-disabled", "hidden", "style", "class"] });
+    const state = window as typeof window & {
+      __infameJournalHydrationWitness?: { read: () => boolean; stop: () => void };
+    };
+    state.__infameJournalHydrationWitness = { read: () => earlyEnabled, stop: () => observer.disconnect() };
+    observe();
+  }, retryName);
+  return {
+    async sawEarlyEnabled() {
+      return page.evaluate(() => (window as typeof window & {
+        __infameJournalHydrationWitness?: { read: () => boolean };
+      }).__infameJournalHydrationWitness?.read() ?? true);
+    },
+    async close() {
+      await page.evaluate(() => {
+        const state = window as typeof window & {
+          __infameJournalHydrationWitness?: { stop: () => void };
+        };
+        state.__infameJournalHydrationWitness?.stop();
+        delete state.__infameJournalHydrationWitness;
+      });
+    },
+  };
+}
+
 test("resumable private offer composition stays usable while sending is blocked", async ({
   page,
   context,
@@ -331,9 +478,19 @@ test("resumable private offer composition stays usable while sending is blocked"
       { name: "infame_lang", value: "en", domain: "localhost", path: "/" },
     ]);
   await signIn(context, f.brandEmail, f.password);
-  await page.goto(
-    `/brand/deals/new?campaignId=${f.campaign.id}&creatorId=${f.target.id}`,
-  );
+  const hydration = await holdDealClient(page, "deal-compose");
+  const firstCurrency = page.getByLabel(label("عملة العرض", "Offer currency"), { exact: true });
+  const firstNote = page.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
+  try {
+    await page.goto(`/brand/deals/new?campaignId=${f.campaign.id}&creatorId=${f.target.id}`, { waitUntil: "commit" });
+    await hydration.waitForHeld();
+    await expect(firstCurrency).toBeVisible();
+    await expect(firstCurrency).toBeDisabled();
+    await expect(firstNote).toBeDisabled();
+    await hydration.release();
+    await expect(firstCurrency).toBeEnabled();
+    await expect(firstNote).toBeEnabled();
+  } finally { await hydration.close(); }
   await expect(
     page.getByRole("heading", {
       name: label("جهّز عرض التعاون", "Prepare a collaboration offer"),
@@ -367,7 +524,16 @@ test("resumable private offer composition stays usable while sending is blocked"
       { exact: true },
     ),
   ).toBeVisible();
-  await page.reload();
+  const resumeHydration = await holdDealClient(page, "deal-compose");
+  try {
+    await page.reload({ waitUntil: "commit" });
+    await resumeHydration.waitForHeld();
+    await expect(firstNote).toBeVisible();
+    await expect(firstNote).toBeDisabled();
+    await resumeHydration.release();
+    await expect(firstNote).toBeEnabled();
+    // Existing exact saved-note/currency assertions follow without being replaced.
+  } finally { await resumeHydration.close(); }
   await expect(
     page.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true }),
   ).toHaveValue("مسودة عربية أصلية للعرض");
@@ -412,7 +578,24 @@ test("current approved proof, portfolio, contact and reviewed policies enable th
     await (await page.request.get(`/api/deals/compose?${query}`)).json()
   ).data;
   expect(readiness.readiness).toEqual({ canSend: true, blockedReasons: [] });
-  await page.goto(`/brand/deals/new?${query}`);
+  const hydration = await holdDealClient(page, "deal-compose");
+  const currencyControl = page.getByLabel(label("عملة العرض", "Offer currency"), { exact: true });
+  const amountControl = page.getByLabel(label("المبلغ", "Amount"), { exact: true });
+  const addControl = page.getByRole("button", { name: label("أضف مخرجًا", "Add deliverable"), exact: true });
+  try {
+    await page.goto(`/brand/deals/new?${query}`, { waitUntil: "commit" });
+    await hydration.waitForHeld();
+    await expect(amountControl).toBeVisible();
+    // Consequential RED: the current SSR form exposes enabled inputs without a
+    // handler. API readiness is genuinely true from the existing assertion at419.
+    await expect(currencyControl).toBeDisabled();
+    await expect(amountControl).toBeDisabled();
+    await expect(addControl).toBeDisabled();
+    await hydration.release();
+    await expect(currencyControl).toBeEnabled();
+    await expect(amountControl).toBeEnabled();
+    await expect(addControl).toBeEnabled();
+  } finally { await hydration.close(); }
   await page
     .getByLabel(label("عملة العرض", "Offer currency"), { exact: true })
     .selectOption("KWD");
@@ -425,6 +608,7 @@ test("current approved proof, portfolio, contact and reviewed policies enable th
       exact: true,
     })
     .click();
+  await expect(amountControl).toHaveValue("5.000");
   await page.getByLabel(label("العدد", "Count"), { exact: true }).fill("2");
   await page
     .getByLabel(label("البداية (UTC)", "Starts at (UTC)"), { exact: true })
@@ -710,7 +894,37 @@ test("offer parties, response-loss replay after reload and original text remain 
     ]);
   const deal = (await createDealOffer(f.brandUserId, f.input, f.options)).deal;
   await signIn(context, f.brandEmail, f.password);
-  await page.goto(`/brand/deals/${deal.id}`);
+  const messageControl = page.getByLabel(label("رسالتك", "Your message"), { exact: true });
+  const nativeHistory = page.locator("details").last();
+  const nativeSummary = nativeHistory.locator("summary").first();
+  const initialHydration = await holdDealClient(page, "deal-screen");
+  try {
+    await page.goto(`/brand/deals/${deal.id}`, { waitUntil: "commit" });
+    await initialHydration.waitForHeld();
+    await nativeSummary.scrollIntoViewIfNeeded();
+    await expect(nativeSummary).toBeVisible();
+    await expect(nativeHistory).not.toHaveAttribute("open", "");
+    const heldBox = await nativeSummary.boundingBox();
+    expect(heldBox).not.toBeNull();
+    if (!heldBox) throw new Error("The observed native summary has no mouse target");
+    // A real mouse action bypasses Locator's enabled wait and witnesses the
+    // browser-native disclosure behavior while the required module is held.
+    await page.mouse.click(heldBox.x + heldBox.width / 2, heldBox.y + heldBox.height / 2);
+    await expect(nativeHistory).not.toHaveAttribute("open", "");
+    await expect(messageControl).toBeVisible();
+    await expect(messageControl).toBeDisabled();
+    await initialHydration.release();
+    await expect(messageControl).toBeEnabled();
+    await nativeSummary.scrollIntoViewIfNeeded();
+    const readyBox = await nativeSummary.boundingBox();
+    expect(readyBox).not.toBeNull();
+    if (!readyBox) throw new Error("The ready native summary has no mouse target");
+    await page.mouse.click(readyBox.x + readyBox.width / 2, readyBox.y + readyBox.height / 2);
+    await expect(nativeHistory).toHaveAttribute("open", "");
+    // Restore the closed state for the original later Space-key witness.
+    await nativeSummary.click();
+    await expect(nativeHistory).not.toHaveAttribute("open", "");
+  } finally { await initialHydration.close(); }
   await expect(
     page.getByRole("heading", {
       name: label("تفاصيل الصفقة", "Deal details"),
@@ -753,19 +967,48 @@ test("offer parties, response-loss replay after reload and original text remain 
   ).toBeVisible();
   expect(await db.dealMessage.count({ where: { dealId: deal.id } })).toBe(1);
   await page.unroute(`**/api/deals/${deal.id}/commands`);
-  await page.reload();
+  const restoredRetry = page.getByRole("button", { name: label("أعد نفس الطلب بأمان", "Retry the same request safely"), exact: true });
+  const restoreHydration = await holdDealClient(page, "deal-screen");
+  let journalObserver: Awaited<ReturnType<typeof watchJournalRestoration>> | undefined;
+  try {
+    await page.reload({ waitUntil: "commit" });
+    await restoreHydration.waitForHeld();
+    await expect(messageControl).toBeVisible();
+    // SSR cannot know the existing browser request journal. Inputs must remain
+    // disabled until its actual storage snapshot has been restored.
+    await expect(messageControl).toBeDisabled();
+    journalObserver = await watchJournalRestoration(page, messageControl,
+      label("أعد نفس الطلب بأمان", "Retry the same request safely"));
+    await restoreHydration.release();
+    await expect(restoredRetry).toBeVisible();
+    await expect(restoredRetry).toBeEnabled();
+    // A genuinely pending request keeps new input locked even AFTER hydration.
+    await expect(messageControl).toBeDisabled();
+    // Observe across release->restored Retry, not merely its two endpoints. Any
+    // actionable empty-journal DOM commit is a failure, even if later relocked.
+    expect(await journalObserver.sawEarlyEnabled()).toBe(false);
+  } finally {
+    try { await restoreHydration.close(); }
+    finally { await journalObserver?.close(); }
+  }
   await expect(
     page.getByRole("button", {
       name: label("أعد نفس الطلب بأمان", "Retry the same request safely"),
       exact: true,
     }),
   ).toBeVisible();
+  const replayResponse = page.waitForResponse(response =>
+    new URL(response.url()).pathname === `/api/deals/${deal.id}/commands` && response.request().method() === "POST");
   await page
     .getByRole("button", {
       name: label("أعد نفس الطلب بأمان", "Retry the same request safely"),
       exact: true,
     })
     .click();
+  const replay = await replayResponse;
+  expect(replay.status()).toBe(200);
+  expect((await replay.json()).data.replayed).toBe(true);
+  await expect(messageControl).toBeEnabled();
   await expect(
     page.getByText("رسالة أصلية بعد فقد الاستجابة", { exact: true }),
   ).toBeVisible();
@@ -806,10 +1049,25 @@ test("two-tab counters preserve stale inputs, enforce the recipient and retain d
   const deal = await actualReviewedOffer(page, f);
   const other = await context.newPage();
   const open = async (tab: import("@playwright/test").Page, amount: string, note: string) => {
-    await tab.goto(`/brand/deals/${deal.id}`);
-    await tab.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true }).click();
-    await tab.getByLabel(label("المبلغ", "Amount"), { exact: true }).fill(amount);
-    await tab.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true }).fill(note);
+    const hydration = await holdDealClient(tab, "deal-screen");
+    const propose = tab.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true });
+    const amountControl = tab.getByLabel(label("المبلغ", "Amount"), { exact: true });
+    const noteControl = tab.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
+    try {
+      await tab.goto(`/brand/deals/${deal.id}`, { waitUntil: "commit" });
+      await hydration.waitForHeld();
+      await expect(propose).toBeVisible();
+      await expect(propose).toBeDisabled();
+      await hydration.release();
+      await expect(propose).toBeEnabled();
+      await propose.click(); // First actual click only; no retry.
+      await expect(amountControl).toBeVisible();
+      await expect(amountControl).toBeEnabled();
+      await amountControl.fill(amount);
+      await noteControl.fill(note);
+      await expect(amountControl).toHaveValue(amount);
+      await expect(noteControl).toHaveValue(note);
+    } finally { await hydration.close(); }
   };
   const send = async (tab: import("@playwright/test").Page) => {
     const response = tab.waitForResponse(r => r.url().endsWith(`/api/deals/${deal.id}/commands`) && r.request().method() === "POST");
@@ -819,6 +1077,11 @@ test("two-tab counters preserve stale inputs, enforce the recipient and retain d
   await open(page, "4.999", "عرض معدل أصلي من التبويب الأول");
   await open(other, "4.998", "مدخل أصلي محفوظ في التبويب القديم");
   expect((await send(page)).status()).toBe(200);
+  const firstCounterResponse = await page.request.get(`/api/deals/${deal.id}`);
+  expect(firstCounterResponse.status()).toBe(200);
+  const firstCounter = (await firstCounterResponse.json()).data;
+  expect(firstCounter.currentOffer.terms.amount).toEqual({ amountMinor: "4999", currencyCode: "KWD" });
+  expect(firstCounter.currentOffer.terms.note).toEqual({ text: "عرض معدل أصلي من التبويب الأول", language: "ar" });
   expect((await send(other)).status()).toBe(409);
   const note = other.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
   await expect(note).toHaveValue("مدخل أصلي محفوظ في التبويب القديم");
@@ -843,6 +1106,7 @@ test("two-tab counters preserve stale inputs, enforce the recipient and retain d
   expect(await db.agreementSnapshot.count({ where: { dealId: deal.id } })).toBe(0);
   await screenshot(other, `${info.project.name}-deal-original-counter-history`);
   const creatorContext = await browser.newContext({ baseURL: origin, viewport: english ? { width: 1440, height: 1000 } : { width: 360, height: 800 } });
+  collectHydrationEvents(creatorContext, currentHydrationEvents(context));
   try {
     await signIn(creatorContext, f.creatorEmail, f.password);
     const creatorPage = await creatorContext.newPage();
@@ -877,9 +1141,19 @@ test("reasoned cancellation stops progress and preserves original party messagin
     f = await reviewedFixture(english ? "en" : "ar");
   await signIn(context, f.brandEmail, f.password);
   const deal = await actualReviewedOffer(page, f);
-  await page.goto(`/brand/deals/${deal.id}`);
-  await page.getByRole("button", { name: label("ألغِ الصفقة بسبب واضح", "Cancel with a clear reason"), exact: true }).click();
+  const cancel = page.getByRole("button", { name: label("ألغِ الصفقة بسبب واضح", "Cancel with a clear reason"), exact: true });
   const confirm = page.getByRole("button", { name: label("أكّد إلغاء الصفقة", "Confirm cancellation"), exact: true });
+  const hydration = await holdDealClient(page, "deal-screen");
+  try {
+    await page.goto(`/brand/deals/${deal.id}`, { waitUntil: "commit" });
+    await hydration.waitForHeld();
+    await expect(cancel).toBeVisible();
+    await expect(cancel).toBeDisabled();
+    await hydration.release();
+    await expect(cancel).toBeEnabled();
+    await cancel.click(); // First actual click only; no retry.
+    await expect(confirm).toBeVisible();
+  } finally { await hydration.close(); }
   await expect(confirm).toBeDisabled();
   await page.getByLabel(label("سبب الإلغاء", "Cancellation reason"), { exact: true }).fill("سبب إلغاء أصلي محفوظ");
   const cancelledResponse = page.waitForResponse(r => r.url().endsWith(`/api/deals/${deal.id}/commands`) && r.request().method() === "POST");
@@ -913,10 +1187,23 @@ test("counter readiness follows actual policy restoration and withdrawal after r
   await signIn(context, f.brandEmail, f.password);
   const deal = await actualReviewedOffer(page, f);
   await db.policyVersion.update({ where: { id: f.marketId }, data: { status: "REVOKED" } });
-  await page.goto(`/brand/deals/${deal.id}`);
-  await page.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true }).click();
+  const propose = page.getByRole("button", { name: label("اقترح شروطًا معدّلة", "Propose revised terms"), exact: true });
   const submit = page.getByRole("button", { name: label("أرسل الشروط المعدّلة", "Send revised terms"), exact: true });
   const note = page.getByLabel(label("ملاحظة العرض", "Offer note"), { exact: true });
+  const hydration = await holdDealClient(page, "deal-screen");
+  try {
+    await page.goto(`/brand/deals/${deal.id}`, { waitUntil: "commit" });
+    await hydration.waitForHeld();
+    await expect(propose).toBeVisible();
+    await expect(propose).toBeDisabled();
+    await hydration.release();
+    // Editing remains available after client readiness even though real policy
+    // readiness is blocked. Submission eligibility is a separate existing gate.
+    await expect(propose).toBeEnabled();
+    await propose.click();
+    await expect(note).toBeVisible();
+    await expect(note).toBeEnabled();
+  } finally { await hydration.close(); }
   await note.fill("مدخل أصلي محفوظ أثناء مراجعة السياسة");
   await expect(submit).toBeDisabled();
   // Explicit synthetic control fixture restoration in the guarded E2E database.
@@ -960,7 +1247,7 @@ test("immutable agreement, separate confirmation, reported payment and sealed ra
           operationKey: randomUUID(),
           ...extra,
         },
-        f.options,
+        actor === f.brandUserId ? f.options : f.creatorOptions,
       )
     ).deal;
   };
@@ -994,7 +1281,19 @@ test("immutable agreement, separate confirmation, reported payment and sealed ra
     },
   });
   await send(f.brandUserId, "COMPLETE");
-  await page.reload();
+  const paymentCheck = page.getByLabel(label(
+    "أصرح بأنني دفعت المقابل للطرف الآخر، وأفهم أن إنفيم لا يتحقق من هذا الدفع.",
+    "I declare that I paid the other party and understand that Infame does not verify this payment.",
+  ), { exact: true });
+  const paymentHydration = await holdDealClient(page, "deal-screen");
+  try {
+    await page.reload({ waitUntil: "commit" });
+    await paymentHydration.waitForHeld();
+    await expect(paymentCheck).toBeVisible();
+    await expect(paymentCheck).toBeDisabled();
+    await paymentHydration.release();
+    await expect(paymentCheck).toBeEnabled();
+  } finally { await paymentHydration.close(); }
   await page
     .getByLabel(
       label(

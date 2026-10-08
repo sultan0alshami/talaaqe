@@ -21,7 +21,7 @@ export default async function NewDealPage({
   if (!query.success) notFound();
   let context;
   try {
-    context = await getDealComposeContext(actor.userId, query.data);
+    context = await getDealComposeContext(actor.userId, query.data, undefined, undefined, { serverAuth: actor });
   } catch (error) {
     if (
       (error instanceof DealError || error instanceof CampaignPlanningError) &&

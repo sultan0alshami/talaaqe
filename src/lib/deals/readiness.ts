@@ -7,23 +7,30 @@ import { record } from "@/lib/onboarding/drafts";
 import { loadEligibleCreator } from "@/lib/matching/persistence";
 import { offerVerificationSatisfied } from "@/lib/offer-verification";
 import { reviewedGoverningOptions, reviewedMatchingPolicies, resolveCampaignPolicyReview } from "@/lib/policies";
-import { DealError } from "./contracts";
-import { dealParticipantContext, getDeal } from "./service";
+import { DealError, type DealOptions } from "./contracts";
+import { dealParticipantContext, ownedDealInTransaction, dealDTO, type DealDTO } from "./service";
+import { beginDealSession, withDealSession } from "./session";
 import { OfferDraftTermsSchema } from "./drafts";
 
 const id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const QuerySchema = z.object({ campaignId: id, creatorId: id, dealId: id.optional(), matchRunId: id.optional() }).strict();
-export async function getDealComposeContext(actorUserId: string, input: unknown, client: PrismaClient = prisma, resourceNow?: Date) {
+export async function getDealComposeContext(actorUserId: string, input: unknown, client: PrismaClient = prisma, resourceNow?: Date,
+  trusted: Pick<DealOptions, "serverAuth"> = {}) {
+  const session = await beginDealSession(actorUserId, { client, now: resourceNow, ...trusted });
+  resourceNow = session.options.now;
   const parsed = QuerySchema.safeParse(input);
   if (!parsed.success) throw new DealError("VALIDATION", 400);
   const query = parsed.data;
   if (!Number.isFinite((resourceNow ?? new Date()).getTime())) throw new DealError("INVALID_CLOCK", 400);
-  const ownDeal = query.dealId ? await getDeal(actorUserId, query.dealId, { client, now: resourceNow }) : null;
-  if (ownDeal && (ownDeal.campaignId !== query.campaignId || ownDeal.creatorId !== query.creatorId)) throw new DealError("NOT_FOUND", 404);
-  return client.$transaction(async (tx) => {
+  return withDealSession(session, false, async (tx) => {
+    const existing = query.dealId ? await ownedDealInTransaction(tx, actorUserId, query.dealId, false,
+      async (tx, deal, ctx) => {
+        if (deal.campaignId !== query.campaignId || deal.creatorId !== query.creatorId) throw new DealError("NOT_FOUND", 404);
+        return { ctx, ownDeal: await dealDTO(tx, deal, actorUserId, resourceNow ?? new Date()) };
+      }) : null;
+    const ownDeal: DealDTO | null = existing?.ownDeal ?? null;
     const originalCreatorUserId = ownDeal?.offers.find((offer) => offer.version === 1)?.recipientUserId;
-    const ctx = await dealParticipantContext(tx, actorUserId, query.campaignId, query.creatorId, false, originalCreatorUserId,
-      ownDeal ? "HISTORY" : "FRESH_READ");
+    const ctx = existing?.ctx ?? await dealParticipantContext(tx, actorUserId, query.campaignId, query.creatorId, false, undefined, "FRESH_READ");
     const now = resourceNow ?? new Date();
     if (ctx.role === "CREATOR" && !ownDeal) throw new DealError("NOT_FOUND", 404);
     const visible = !ctx.creator.isTest && ctx.creator.state === "PUBLISHED" && ctx.creator.brandVisible && (!ctx.creator.userId || !!await publicCreator(ctx.creator.handle, tx, ctx.evidenceActors));
@@ -65,6 +72,6 @@ export async function getDealComposeContext(actorUserId: string, input: unknown,
       creator: { id: ctx.creator.id, displayName: ownDeal?.agreement?.partiesSnapshot.creatorName ?? (visible ? ctx.creator.displayName : ""), handle: ownDeal?.agreement?.partiesSnapshot.creatorHandle ?? (visible ? ctx.creator.handle : ""), claimed: ctx.creator.userId !== null }, requirements,
       draft: saved ? { id: saved.id, campaignId: saved.campaignId, creatorId: saved.creatorId, revision: saved.revision, terms: OfferDraftTermsSchema.parse(saved.terms), createdAt: saved.createdAt.toISOString(), updatedAt: saved.updatedAt.toISOString() } : null,
       templates, readiness: { canSend: blockedReasons.length === 0, blockedReasons: [...new Set(blockedReasons)] }, origin: query.matchRunId ? "MATCH" as const : "DIRECT" as const, matchRunId: query.matchRunId ?? null };
-  }, { maxWait: 10_000, timeout: 20_000 });
+  });
 }
 export type DealComposeDTO = Awaited<ReturnType<typeof getDealComposeContext>>;
