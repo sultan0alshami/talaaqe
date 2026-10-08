@@ -105,7 +105,11 @@ it("strict FRESH and CONTINUE declarations retain exact original subjects, brief
     for (const operationKey of ["", "with space", "key~alias", "اسم", "key\nline", "k".repeat(121), null, 1]) {
       expect(LegacyDirectAdmissionContentSchema.safeParse(replaced(content, ["source", "operationKey"], operationKey)).success).toBe(false);
     }
-    expect(LegacyDirectAdmissionContentSchema.safeParse(replaced(content, ["source", "operationKey"], "k".repeat(120))).success).toBe(true);
+    const maximalOperationKey = content.capability === "FRESH_PINNED_SCOPE" ? `create:${"k".repeat(120)}` : "k".repeat(120);
+    expect(LegacyDirectAdmissionContentSchema.safeParse(replaced(content, ["source", "operationKey"], maximalOperationKey)).success).toBe(true);
+    if (content.capability === "FRESH_PINNED_SCOPE") {
+      expect(LegacyDirectAdmissionContentSchema.safeParse(replaced(content, ["source", "operationKey"], `create:${"k".repeat(121)}`)).success).toBe(false);
+    }
     for (const path of [["admissionId"], ["subject", "campaignId"], ["subject", "brandId"], ["subject", "brandUserId"],
       ["subject", "creatorId"], ["subject", "creatorUserId"], ["approvedBrief", "id"], ["source", "id"],
       ["manifest", "id"], ["manifest", "entryId"]]) {
@@ -222,7 +226,7 @@ it("admission hashes include exact validated content, exclude retained storage m
     expect(canonicalHash(reverseKeys)).toBe(saved.sourceHash);
     expect(LegacyDirectAdmissionVersionSchema.parse({ ...reverseKeys, id: saved.id, createdAt: saved.createdAt, sourceHash: saved.sourceHash })).toEqual(saved);
     for (const changed of [{ ...content, version: 2 }, { ...content, provenance: "LIVE" },
-      replaced(content, ["approvedBrief", "contentHash"], hash("f")), replaced(content, ["source", "operationKey"], "changed-source-key"),
+      replaced(content, ["approvedBrief", "contentHash"], hash("f")), replaced(content, ["source", "operationKey"], content.capability === "FRESH_PINNED_SCOPE" ? "create:changed-source-key" : "changed-source-key"),
       replaced(content, ["source", "payloadHash"], hash("f")), replaced(content, ["source", "resultHash"], hash("f")),
       replaced(content, ["manifest", "entryId"], "another-entry"), replaced(content, ["subject", "creatorId"], "another-exact-creator")]) {
       expect(LegacyDirectAdmissionVersionSchema.safeParse({ ...saved, ...changed }).success).toBe(false);

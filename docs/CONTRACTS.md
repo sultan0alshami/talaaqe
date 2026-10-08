@@ -644,3 +644,25 @@ DealDTO adds only the exact retained approvedBrief through central campaignBrief
 New historical commands in this slice are MESSAGE, completed RATE and existing-stage role-gated paid/received reports. Other new commands keep strict current execution/qualification; the existing creator-transfer CANCEL exception remains unchanged. Both original current-owner pins are checked before full model hydration for strict commands. Rating migration22 changes only the SQL first-offer user/role branch, retaining service COMPLETED/native-session checks. Qualified confirmation, initial offer/counter guards, immutability/transitions/messages/FKs remain intact. These user reports never become verified transfers or managed contracts.
 
 Deal reload checks authoritative401/403 status before either JSON body, clears commercial draft/templates/success notice and locks protected controls. Exact readonly reload remains usable; only an actual successful CURRENT result clears denial. Session renewal is an explicit user authentication action. This preserves original Talaqee composition and saved server drafts without inventing current authority. Native historical reads/ratings and local browser proofs do not complete explicit direct admission, principal governance, managed procurement or live provider/legal readiness.
+
+
+### Exact legacy source receipt keys
+
+Campaign CREATE receipt pins retain the literal lowercase create: prefix followed
+by the producer's original1..120-character [A-Za-z0-9_:-] key, total8..127.
+Colon and nested create: text remain legitimate original suffix characters. Deal
+CREATE receipt pins keep the unchanged1..120 grammar. The whole stored string is
+part of admission content hashes; never strip, truncate, alias or normalize it.
+This corrects a declaration bound that excluded genuine campaign keys longer113.
+It changes no public campaign/deal command key/hash, journal or native permission.
+
+Actual producer proof remains distinct: Campaign hashes its exact parsed original
+partial CREATE command without an action tag and stores {campaign:initialDTO};
+default creator count1 means omission cannot be inferred from that result. Deal
+hashes {action:CREATE,...parsedOriginalCreate} and stores {dealId,version1}; MESSAGE
+uses its distinct dealId/command envelope. Neither journal has an action column.
+Controlled native verification must retain exact reviewed producer material and
+match actor/key/payload/result/subject/first-offer/approved-brief pins; actor/date/
+version/labels alone cannot establish a CREATE source. Empty production allowlist
+and fixture rejection remain required. No importer or direct admission activates
+from this pure key compatibility correction.

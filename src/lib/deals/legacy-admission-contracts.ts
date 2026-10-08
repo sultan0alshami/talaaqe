@@ -15,7 +15,10 @@ const common = { schemaVersion: z.literal(1), admissionId: id, provenance, versi
   approvedBrief: z.object({ id, version: revision, inputRevision: revision, approvedByUserId: id, contentHash: hash }).strict(),
   validity: ManagedAuthorityValiditySchema, manifest: z.object({ id, entryId: id }).strict() };
 const fresh = { capability: z.literal("FRESH_PINNED_SCOPE"),
-  source: z.object({ ...receipt, kind: z.literal("CAMPAIGN_COMMAND") }).strict() };
+  // Campaign CREATE retains the literal prefix plus the original1..120 key.
+  // The whole stored string participates in the hash; never strip or alias it.
+  source: z.object({ ...receipt, kind: z.literal("CAMPAIGN_COMMAND"),
+    operationKey: z.string().min(8).max(127).regex(/^create:[A-Za-z0-9_:-]{1,120}$/) }).strict() };
 const continuation = { capability: z.literal("CONTINUE_PINNED_DEAL"),
   source: z.object({ ...receipt, kind: z.literal("DEAL_COMMAND") }).strict(),
   existingDeal: z.object({ id, sourceHash: hash, firstOffer: z.object({ id, version: z.literal(1),
