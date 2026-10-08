@@ -26,26 +26,28 @@ export default async function CreatorDealPage({
       campaignId: deal.campaignId,
       creatorId: deal.creatorId,
       dealId: deal.id,
+      view: "CURRENT_EXECUTION",
     }, undefined, undefined, { serverAuth: actor });
   } catch (error) {
-    if (!(error instanceof DealError)) throw error;
+    if (!(error instanceof DealError) || error.status === 401 || error.status === 403) throw error;
     unavailable =
       error.code === "NOT_FOUND"
         ? "COMMERCIAL_CONTEXT_UNAVAILABLE"
         : error.code;
   }
+  const current = context?.kind === "CURRENT" ? context : undefined;
   return (
     <DealScreen
       initialDeal={deal}
       actorUserId={actor.userId}
       role="CREATOR"
-      initialDraft={context?.draft}
+      initialDraft={current?.draft}
       readiness={{
-        requirements: context?.requirements ?? null,
-        templates: context?.templates ?? [],
+        requirements: deal.approvedBrief.content.requirements,
+        templates: current?.templates ?? [],
         mandatoryPolicyVersionIds:
-          context?.requirements?.mandatoryPolicyVersionIds ?? [],
-        blockedReasons: context?.readiness.blockedReasons ?? [unavailable],
+          current?.requirements?.mandatoryPolicyVersionIds ?? [],
+        blockedReasons: current?.readiness.blockedReasons ?? [unavailable],
       }}
     />
   );

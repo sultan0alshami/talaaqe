@@ -6,6 +6,7 @@ import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import type { MatchingPolicyReader } from "@/lib/matching/persistence";
 import type { EvidenceActorLocks } from "@/lib/evidence/readiness";
 import type { OrganizationActor } from "@/lib/organizations/context";
+import type { CampaignBriefDTO } from "@/lib/campaigns/core";
 
 export class DealError extends Error {
   constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "DealError"; }
@@ -28,6 +29,20 @@ export type DealOptions = { client?: PrismaClient; now?: Date; policyVerifier?: 
   serverAuth?: OrganizationActor };
 const id = z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/);
 const key = z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/);
+// Trusted/current scope is proved natively, never by choosing this query lane.
+// These interfaces are inert until the independent historical failure witnesses.
+export const DealComposeQuerySchema = z.object({ campaignId: id, creatorId: id, dealId: id.optional(),
+  matchRunId: id.optional(), view: z.literal("CURRENT_EXECUTION").optional() }).strict()
+  .refine(value => value.view === undefined || value.dealId !== undefined);
+export type RetainedDealComposeDTO = {
+  kind: "HISTORY_ONLY"; dealId: string;
+  campaign: { id: string; title: string; briefVersion: number };
+  approvedBrief: CampaignBriefDTO;
+  parties: { brand: { userId: string; name: string | null };
+    creator: { userId: string; name: string | null; handle: string | null } };
+  readiness: { canSend: false; blockedReasons: ["HISTORY_ONLY"] };
+  origin: string; matchRunId: string | null;
+};
 export const CreateDealSchema = z.object({
   operationKey: key, campaignId: id, creatorId: id, expectedCampaignRevision: z.number().int().positive(),
   expectedBriefVersion: z.number().int().positive(), origin: z.enum(["MATCH", "DIRECT", "INVITE"]).default("DIRECT"),

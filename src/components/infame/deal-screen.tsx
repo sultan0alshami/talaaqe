@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DealCommandSchema } from "@/lib/deals/contracts";
 import type { DealDTO } from "@/lib/deals/service";
 import type { DealComposeDTO } from "@/lib/deals/readiness";
+import type { CampaignRequirementsDTO } from "@/lib/campaigns/contracts";
 import type { OfferDraftDTO } from "@/lib/deals/drafts";
 import type { OriginalText } from "@/lib/contracts/vocabulary";
 import { countryLabel } from "@/lib/contracts/country-labels";
@@ -32,7 +33,7 @@ import { useDealRequest } from "./deal-request";
 import { useDealHydrationReady } from "./deal-hydration";
 
 export type DealReadiness = {
-  requirements?: DealComposeDTO["requirements"];
+  requirements?: CampaignRequirementsDTO | null;
   templates: ReviewedTermsOption[];
   mandatoryPolicyVersionIds: string[];
   blockedReasons: string[];
@@ -153,6 +154,7 @@ export function DealScreen({
     [notice, setNotice] = useState<string | null>(null);
   const [commercial, setCommercial] = useState(readiness);
   const [readBusy, setReadBusy] = useState(false),
+    [authorizationDenied, setAuthorizationDenied] = useState(false),
     [counterOpen, setCounterOpen] = useState(false),
     [counterBase, setCounterBase] = useState({
       version: initialDeal.version,
@@ -179,7 +181,8 @@ export function DealScreen({
   const request = useDealRequest(actorUserId, `deal:${deal.id}`),
     readFlight = useRef(false);
   const hydrated = useDealHydrationReady();
-  const locked = !hydrated || request.busy || !!request.pending || readBusy;
+  const readLocked = !hydrated || request.busy || !!request.pending || readBusy;
+  const locked = readLocked || authorizationDenied;
   const recipient = deal.currentOffer.recipientUserId === actorUserId,
     negotiating = ["OFFERED", "COUNTERED"].includes(deal.status);
   const ownConfirmation = deal.confirmations.some(
@@ -275,8 +278,12 @@ export function DealScreen({
     request.setError(null);
     setNotice(null);
     try {
-      const response = await fetch(path, { cache: "no-store" }),
-        body = await response.json();
+      const response = await fetch(path, { cache: "no-store" });
+      if (response.status === 401 || response.status === 403) {
+        denyAuthorization(response.status);
+        return;
+      }
+      const body = await response.json();
       if (!response.ok) {
         request.setError(body.error?.code ?? "INTERNAL_ERROR");
         return;
@@ -293,21 +300,33 @@ export function DealScreen({
         campaignId: deal.campaignId,
         creatorId: deal.creatorId,
         dealId: deal.id,
+        view: "CURRENT_EXECUTION",
       });
       const contextResponse = await fetch(`/api/deals/compose?${query}`, {
           cache: "no-store",
-        }),
-        contextBody = await contextResponse.json();
+        });
+      if (contextResponse.status === 401 || contextResponse.status === 403) {
+        denyAuthorization(contextResponse.status);
+        return;
+      }
+      const contextBody = await contextResponse.json();
       if (contextResponse.ok) {
         const context: DealComposeDTO = contextBody.data;
-        setCommercial({
-          requirements: context.requirements,
-          templates: context.templates,
-          mandatoryPolicyVersionIds:
-            context.requirements?.mandatoryPolicyVersionIds ?? [],
-          blockedReasons: context.readiness.blockedReasons,
-        });
-        setDraft(context.draft);
+        if (context.kind === "CURRENT") {
+          setAuthorizationDenied(false);
+          setCommercial({
+            requirements: context.requirements,
+            templates: context.templates,
+            mandatoryPolicyVersionIds:
+              context.requirements?.mandatoryPolicyVersionIds ?? [],
+            blockedReasons: context.readiness.blockedReasons,
+          });
+          setDraft(context.draft);
+        } else {
+          setCommercial({ requirements: context.approvedBrief.content.requirements, templates: [],
+            mandatoryPolicyVersionIds: [], blockedReasons: context.readiness.blockedReasons });
+          setDraft(null);
+        }
       } else
         setCommercial({
           requirements: null,
@@ -331,6 +350,14 @@ export function DealScreen({
       readFlight.current = false;
       setReadBusy(false);
     }
+  }
+  function denyAuthorization(status: number) {
+    const code = status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN";
+    setAuthorizationDenied(true);
+    setDraft(null);
+    setCommercial({ requirements: null, templates: [], mandatoryPolicyVersionIds: [], blockedReasons: [code] });
+    setNotice(null);
+    request.setError(code);
   }
   async function saveDraft(patch: DraftTerms) {
     await request.run<{ draft: OfferDraftDTO }>(
@@ -400,7 +427,7 @@ export function DealScreen({
               {copy("نسخة الموجز", "Brief version")} {deal.briefVersion}
             </p>
           </div>
-          <Button variant="outline" onClick={reload} disabled={locked}>
+          <Button variant="outline" onClick={reload} disabled={readLocked}>
             {readBusy
               ? copy("جاري التحميل…", "Loading…")
               : copy("حمّل الحالة الحالية", "Load current state")}
@@ -507,7 +534,7 @@ export function DealScreen({
             </CardContent>
           </Card>
           <Card><CardContent>
-            <DealBrief requirements={commercial.requirements} campaignId={deal.campaignId} briefVersion={deal.briefVersion} />
+            <DealBrief requirements={deal.approvedBrief.content.requirements} campaignId={deal.campaignId} briefVersion={deal.briefVersion} />
           </CardContent></Card>
           {negotiating && (
             <Card>

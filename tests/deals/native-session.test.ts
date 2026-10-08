@@ -40,9 +40,11 @@ function options(f: Fixture, auth?: OrganizationActor): DealOptions {
   // In particular, do not reuse the earlier fixture-start observation as now.
   return { policyVerifier: f.options.policyVerifier, serverAuth: auth };
 }
-function compose(f: Fixture, actor: string, auth: OrganizationActor | undefined, dealId?: string) {
-  return getDealComposeContext(actor, { campaignId: f.campaign.id, creatorId: f.target.id, ...(dealId ? { dealId } : {}) },
+async function compose(f: Fixture, actor: string, auth: OrganizationActor | undefined, dealId?: string) {
+  const result = await getDealComposeContext(actor, { campaignId: f.campaign.id, creatorId: f.target.id, ...(dealId ? { dealId, view: "CURRENT_EXECUTION" } : {}) },
     prisma, undefined, { serverAuth: auth });
+  if (result.kind !== "CURRENT") throw new Error("Native readiness witness requires the current compose lane");
+  return result;
 }
 function message(deal: DealDTO, text = "  Private native message\nOriginal preserved words  ") {
   return DealCommandSchema.parse({ action: "MESSAGE", operationKey: key(), expectedVersion: deal.version, text: { text, language: "en" } });

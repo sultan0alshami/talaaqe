@@ -64,6 +64,14 @@ export function useDealCopy() {
         "ملف الصانع أو صلاحياته الحالية لا تتيح إجراءً تجاريًا الآن. تاريخ الصفقة محفوظ للطرفين الأصليين.",
         "The creator's current profile or permissions do not currently allow a commercial action. Deal history remains with the original parties.",
       ],
+      HISTORY_ONLY: [
+        "هذه النسخة تحفظ الموجز والاتفاق للطرفين الأصليين. الإجراءات التجارية تحتاج تحققًا مستقلاً من الصلاحيات الحالية.",
+        "This view retains the brief and agreement for the original parties. Commercial actions require a separate check of current authority.",
+      ],
+      CURRENT_EXECUTION_UNAVAILABLE: [
+        "تغيرت ملكية أحد الملفات؛ الموجز والاتفاق والتاريخ المحفوظ متاح للطرفين الأصليين، وصلاحية الإجراء التجاري الحالي غير متاحة.",
+        "A profile's ownership changed. The original parties can read the retained brief, agreement and history; current commercial authority is unavailable.",
+      ],
       POLICY_REVIEW_REQUIRED: [
         "أسواق الحملة تحتاج مراجعة موثقة للسياسات قبل المتابعة.",
         "The campaign markets need a documented policy review before proceeding.",

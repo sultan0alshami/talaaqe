@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { DealComposeDTO } from "@/lib/deals/readiness";
+import type { CurrentDealComposeDTO } from "@/lib/deals/readiness";
 import type { DealDTO } from "@/lib/deals/service";
 import type { OfferDraftDTO } from "@/lib/deals/drafts";
 import type { OfferTerms } from "@/lib/contracts/offers";
@@ -26,7 +26,7 @@ export function DealCompose({
   initialContext,
   actorUserId,
 }: {
-  initialContext: DealComposeDTO;
+  initialContext: CurrentDealComposeDTO;
   actorUserId: string;
 }) {
   const { copy, errorCopy } = useDealCopy(),

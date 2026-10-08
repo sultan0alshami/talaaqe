@@ -30,5 +30,6 @@ export default async function NewDealPage({
       notFound();
     throw error;
   }
+  if (context.kind !== "CURRENT") notFound();
   return <DealCompose initialContext={context} actorUserId={actor.userId} />;
 }

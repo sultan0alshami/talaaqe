@@ -16,9 +16,9 @@ import {
   approveCampaignBrief,
 } from "../src/lib/campaigns/service";
 import { resolveCampaignPolicyReview } from "../src/lib/policies";
-import { authenticate, openSession } from "../src/lib/identity";
+import { authenticate, openSession, resolveSession } from "../src/lib/identity";
 import { SESSION_COOKIE } from "../src/lib/jwt";
-import { cleanup, fixture } from "../tests/deals/fixtures";
+import { cleanup, fixture, user } from "../tests/deals/fixtures";
 import { nativeDealActor } from "../tests/deals/native-actors";
 import { AgreementContentSchema } from "../src/lib/deals/contracts";
 
@@ -771,7 +771,7 @@ test("current approved proof, portfolio, contact and reviewed policies enable th
     status: "AGREED",
     agreement: { id: frozen.id, version: frozen.version, ...frozenBefore },
   });
-  const historyComposeURL = `/api/deals/compose?${query}&dealId=${deal.id}`;
+  const historyComposeURL = `/api/deals/compose?${query}&dealId=${deal.id}&view=CURRENT_EXECUTION`;
   const composeBeforeResponse = await page.request.get(historyComposeURL);
   expect(composeBeforeResponse.status()).toBe(200);
   expect(composeBeforeResponse.headers()["cache-control"]).toBe("private, no-store");
@@ -1222,6 +1222,97 @@ test("counter readiness follows actual policy restoration and withdrawal after r
   await expect(submit).toBeDisabled();
   await expect(note).toHaveValue("مدخل أصلي محفوظ أثناء مراجعة السياسة");
   expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(1);
+  // Restore the same synthetic reviewed policy so protected CURRENT data is
+  // genuinely available before exercising an authoritative denial boundary.
+  await db.policyVersion.update({ where: { id: f.marketId }, data: { status: "VERIFIED" } });
+  const load = page.getByRole("button", { name: label("حمّل الحالة الحالية", "Load current state"), exact: true });
+  const actualCurrent = page.waitForResponse(response => new URL(response.url()).pathname === "/api/deals/compose"
+    && response.request().method() === "GET" && response.status() === 200);
+  await load.click();
+  const currentResponse = await actualCurrent;
+  expect((await currentResponse.json()).data).toMatchObject({ kind: "CURRENT", readiness: { canSend: true } });
+  await expect(load).toBeEnabled();
+  await expect(note).toHaveValue("مدخل أصلي محفوظ أثناء مراجعة السياسة");
+  const save = page.getByRole("button", { name: label("احفظ مسودة العرض الخاصة", "Save private offer draft"), exact: true });
+  const savedResponse = page.waitForResponse(response => new URL(response.url()).pathname === "/api/deals/drafts"
+    && response.request().method() === "POST");
+  await save.click();
+  expect((await savedResponse).status()).toBe(200);
+  await expect(save).toBeEnabled();
+
+  const cookie = (await context.cookies(origin)).find(cookie => cookie.name === SESSION_COOKIE);
+  expect(cookie).toBeDefined();
+  if (!cookie) throw new Error("The actual signed browser session cookie is absent");
+  const capturedSession = await resolveSession(cookie.value);
+  expect(capturedSession).not.toBeNull();
+  if (!capturedSession) throw new Error("The actual browser session did not resolve before revocation");
+  let actualHistory200 = false, actualComposeDenied = false;
+  const dealPath = `/api/deals/${deal.id}`;
+  const historyRoute = (url: URL) => url.origin === origin && url.pathname === dealPath;
+  const composeRoute = (url: URL) => url.origin === origin && url.pathname === "/api/deals/compose"
+    && url.searchParams.get("dealId") === deal.id && url.searchParams.get("view") === "CURRENT_EXECUTION";
+  const afterHistory = async (route: import("@playwright/test").Route) => {
+    const actual = await route.fetch();
+    expect(route.request().method()).toBe("GET");
+    expect(actual.status()).toBe(200);
+    actualHistory200 = true;
+    // Revoke the actual captured native session only AFTER genuine history GET
+    // succeeds and BEFORE its unchanged response lets the caller request compose.
+    await db.authSession.update({ where: { id: capturedSession.sessionId }, data: { revokedAt: new Date() } });
+    expect(await resolveSession(cookie.value)).toBeNull();
+    await route.fulfill({ response: actual });
+  };
+  const deniedCompose = async (route: import("@playwright/test").Route) => {
+    expect(actualHistory200).toBe(true);
+    const actual = await route.fetch();
+    expect(route.request().method()).toBe("GET");
+    expect(actual.status()).toBe(401);
+    actualComposeDenied = true;
+    // Disclosed negative delivery: retain the real native401 status/headers,
+    // but make its denial body malformed to require status-before-JSON handling.
+    // This is not a manufactured authentication/readiness response.
+    await route.fulfill({ response: actual, body: "{synthetic_native_auth_denial_malformed" });
+  };
+  await page.route(historyRoute, afterHistory);
+  await page.route(composeRoute, deniedCompose);
+  try {
+    const denial = page.waitForResponse(response => composeRoute(new URL(response.url())) && response.status() === 401);
+    await load.click();
+    expect((await denial).status()).toBe(401);
+    await expect(load).toBeEnabled(); // Current asynchronous reload has settled.
+    expect(actualHistory200).toBe(true); expect(actualComposeDenied).toBe(true);
+    await expect(page.getByText(label(
+      "تم تحميل الحالة الحالية. مدخلاتك ما تغيرت؛ راجع النسخ قبل إجراء جديد.",
+      "The current state is loaded. Your entries are unchanged; review versions before another action.",
+    ), { exact: true })).toHaveCount(0);
+    // Authoritative denial removes/locks protected CURRENT controls even when
+    // the response body cannot parse. No stale private draft/template may act.
+    for (const control of [note, save,
+      page.getByLabel(label("نسخة الشروط", "Terms version"), { exact: true }), submit]) {
+      if (await control.count()) {
+        expect(await control.isVisible() && await control.isEnabled()).toBe(false);
+      }
+    }
+  } finally {
+    await page.unroute(historyRoute, afterHistory);
+    await page.unroute(composeRoute, deniedCompose);
+  }
+
+  // Reauthentication is an explicit test user action after denial has been
+  // proved, never automatic domain/API renewal or a denial bypass.
+  await signIn(context, f.brandEmail, f.password);
+  const recoveredCurrent = page.waitForResponse(response => composeRoute(new URL(response.url())) && response.status() === 200);
+  await load.click();
+  const recovered = await recoveredCurrent;
+  expect((await recovered.json()).data).toMatchObject({ kind: "CURRENT", readiness: { canSend: true } });
+  await expect(load).toBeEnabled();
+  // Re-open after an authoritative CURRENT result if denial closed the editor.
+  if (!await note.count() || !await note.isVisible()) await propose.click();
+  await expect(note).toBeVisible();
+  await expect(note).toHaveValue("مدخل أصلي محفوظ أثناء مراجعة السياسة");
+  await expect(save).toBeEnabled();
+  expect(await db.dealOffer.count({ where: { dealId: deal.id } })).toBe(1);
+
 });
 
 test("immutable agreement, separate confirmation, reported payment and sealed ratings are readable", async ({
@@ -1375,6 +1466,139 @@ test("immutable agreement, separate confirmation, reported payment and sealed ra
     ),
   ).not.toContain("تعليق مختوم خاص للمتصفح");
   await expect(page.getByText(frozen.content, { exact: true })).toBeVisible();
+  // A real pre-transfer MESSAGE makes the retained-word witness nonempty.
+  const oldHistoryText = "رسالة أصلية محفوظة قبل نقل الملكية";
+  const messageInput = page.getByLabel(label("رسالتك", "Your message"), { exact: true });
+  const sentBeforeTransfer = page.waitForResponse(response => new URL(response.url()).pathname === `/api/deals/${deal.id}/commands`
+    && response.request().method() === "POST");
+  await messageInput.fill(oldHistoryText);
+  await page.getByRole("button", { name: label("أرسل الرسالة", "Send message"), exact: true }).click();
+  expect((await sentBeforeTransfer).status()).toBe(200);
+  await expect(page.locator("p").filter({ hasText: new RegExp(`^${oldHistoryText}$`) })).toBeVisible();
+  const baselineResponse = await page.request.get(`/api/deals/${deal.id}`);
+  expect(baselineResponse.status()).toBe(200);
+  const baselineHistory = (await baselineResponse.json()).data;
+  expect(baselineHistory.status).toBe("COMPLETED");
+  expect(baselineHistory.agreement.contentHash).toBe(frozen.contentHash);
+  const originalCreatorCookies = await context.cookies(origin);
+  await signIn(context, f.brandEmail, f.password);
+  const originalBrandCookies = await context.cookies(origin);
+  // Cookies above are genuine existing native sessions captured BEFORE transfer.
+  // No session is renewed to bypass the later suspension or an auth denial.
+  const replacementBrandId = await user("BRAND"), replacementCreatorId = await user("CREATOR");
+  const replacementBrand = await nativeDealActor(replacementBrandId, "e2e");
+  const replacementCreator = await nativeDealActor(replacementCreatorId, "e2e");
+  const privateCanary = `SYNTHETIC_TRANSFERRED_PRIVATE_${randomUUID()}`;
+  const currentCampaign = await db.campaign.findUniqueOrThrow({ where: { id: f.campaign.id }, select: { input: true } });
+  const currentInput = currentCampaign.input as Record<string, import("@prisma/client").Prisma.JsonValue>;
+  await db.campaign.update({ where: { id: f.campaign.id }, data: { title: privateCanary,
+    input: { ...currentInput, fields: { ...(currentInput.fields as Record<string, import("@prisma/client").Prisma.JsonValue>), title: privateCanary } } } });
+  await db.brand.update({ where: { id: f.brandId }, data: { userId: replacementBrandId, name: privateCanary,
+    description: privateCanary, state: "PRIVATE", profileFacts: { privateHistoryProbe: privateCanary } } });
+  await db.creator.update({ where: { id: f.target.id }, data: { userId: replacementCreatorId, displayName: privateCanary,
+    state: "PRIVATE", brandVisible: false, availability: { status: "UNKNOWN", privateHistoryProbe: privateCanary } } });
+  let expectedMessages = baselineHistory.messages;
+
+  for (const original of [
+    { role: "BRAND" as const, cookies: originalBrandCookies, path: "brand", userId: f.brandUserId },
+    { role: "CREATOR" as const, cookies: originalCreatorCookies, path: "creator", userId: f.target.userId },
+  ]) {
+    await context.addCookies(original.cookies);
+    const retainedResponse = await page.request.get(`/api/deals/${deal.id}`);
+    expect(retainedResponse.status()).toBe(200);
+    const retained = (await retainedResponse.json()).data;
+    expect(retained).toMatchObject({ id: deal.id, status: "COMPLETED", approvedBrief: baselineHistory.approvedBrief,
+      agreement: baselineHistory.agreement });
+    expect(retained.messages).toEqual(expectedMessages);
+    expect(JSON.stringify(retained).includes(privateCanary)).toBe(false);
+    const listResponse = await page.request.get("/api/deals");
+    expect(listResponse.status()).toBe(200);
+    const listed = (await listResponse.json()).data;
+    expect(listed.deals.find((row: { id: string }) => row.id === deal.id)).toMatchObject({ approvedBrief: baselineHistory.approvedBrief,
+      agreement: baselineHistory.agreement });
+    expect(listed.deals.find((row: { id: string }) => row.id === deal.id).messages).toEqual(expectedMessages);
+    expect(JSON.stringify(listed).includes(privateCanary)).toBe(false);
+    const historyURL = `/api/deals/compose?campaignId=${f.campaign.id}&creatorId=${f.target.id}&dealId=${deal.id}`;
+    const historyResponse = await page.request.get(historyURL);
+    expect(historyResponse.status()).toBe(200);
+    const pinned = (await historyResponse.json()).data;
+    expect(pinned).toMatchObject({ kind: "HISTORY_ONLY", approvedBrief: baselineHistory.approvedBrief,
+      campaign: { title: baselineHistory.approvedBrief.content.requirements.title },
+      parties: { brand: { userId: f.brandUserId, name: frozen.partiesSnapshot.brandName },
+        creator: { userId: f.target.userId, name: frozen.partiesSnapshot.creatorName, handle: frozen.partiesSnapshot.creatorHandle } },
+      readiness: { canSend: false, blockedReasons: ["HISTORY_ONLY"] } });
+    expect(JSON.stringify(pinned).includes(privateCanary)).toBe(false);
+    const unavailable = await page.request.get(`${historyURL}&view=CURRENT_EXECUTION`);
+    expect(unavailable.status()).toBe(409);
+    const unavailableBody = await unavailable.json();
+    expect(unavailableBody.error.code).toBe("CURRENT_EXECUTION_UNAVAILABLE");
+    expect(JSON.stringify(unavailableBody).includes(privateCanary)).toBe(false);
+
+    // Observe an actual Next client navigation/preload response, not a guessed
+    // RSC header or fabricated stream. Hard list navigation resets router cache.
+    const detailPath = `/${original.path}/deals/${deal.id}`;
+    const rsc = page.waitForResponse(response => new URL(response.url()).pathname === detailPath
+      && (response.headers()["content-type"] ?? "").includes("text/x-component"));
+    const listPageResponse = await page.goto(`/${original.path}/deals`);
+    expect(listPageResponse?.status()).toBe(200);
+    expect((await listPageResponse!.text()).includes(privateCanary)).toBe(false);
+    await page.locator(`a[href="${detailPath}"]`).first().click();
+    const rscResponse = await rsc;
+    expect(rscResponse.status()).toBe(200);
+    expect((await rscResponse.text()).includes(privateCanary)).toBe(false);
+    await expect(page.getByText(frozen.content, { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: label("متطلبات الموجز المعتمدة", "Approved brief requirements") }).first().click();
+    await expect(page.getByText(baselineHistory.approvedBrief.content.requirements.title, { exact: true }).first()).toBeVisible();
+    await expect(page.locator("p").filter({ hasText: new RegExp(`^${oldHistoryText}$`) })).toBeVisible();
+    expect((await page.locator("body").innerText()).includes(privateCanary)).toBe(false);
+    const ssr = await page.request.get(detailPath);
+    expect(ssr.status()).toBe(200);
+    expect((await ssr.text()).includes(privateCanary)).toBe(false);
+    for (const name of [label("اقترح شروطًا معدّلة", "Propose revised terms"), label("أكّد هذا الاتفاق", "Confirm this agreement")]) {
+      const control = page.getByRole("button", { name, exact: true });
+      if (await control.count()) expect(await control.isVisible() && await control.isEnabled()).toBe(false);
+    }
+    const newHistoryText = original.role === "BRAND" ? "رسالة أصلية من الشركة بعد نقل الملكية" : "رسالة أصلية من المنشئ بعد نقل الملكية";
+    const sentAfterTransfer = page.waitForResponse(response => new URL(response.url()).pathname === `/api/deals/${deal.id}/commands`
+      && response.request().method() === "POST");
+    await messageInput.fill(newHistoryText);
+    await page.getByRole("button", { name: label("أرسل الرسالة", "Send message"), exact: true }).click();
+    const sent = await sentAfterTransfer;
+    expect(sent.status()).toBe(200);
+    const actual = (await sent.json()).data.deal;
+    expect(actual.messages).toEqual(expect.arrayContaining(expectedMessages));
+    expect(actual.messages).toHaveLength(expectedMessages.length + 1);
+    expect(actual.messages.some((row: { senderUserId: string; text: { text: string } }) => row.senderUserId === original.userId && row.text.text === newHistoryText)).toBe(true);
+    expect(actual.messages.some((row: { text: { text: string } }) => row.text.text === oldHistoryText)).toBe(true);
+    expect(actual.agreement).toEqual(baselineHistory.agreement);
+    expect(actual.approvedBrief).toEqual(baselineHistory.approvedBrief);
+    expect(JSON.stringify(actual).includes(privateCanary)).toBe(false);
+    expectedMessages = actual.messages;
+  }
+
+  for (const replacement of [replacementBrand, replacementCreator]) {
+    const deniedContext = await context.browser()!.newContext({ baseURL: origin });
+    collectHydrationEvents(deniedContext, currentHydrationEvents(context));
+    try {
+      await deniedContext.addCookies([{ name: SESSION_COOKIE, value: replacement.token, url: origin, httpOnly: true, sameSite: "Lax" }]);
+      const deniedPage = await deniedContext.newPage();
+      const foreignHistory = await deniedPage.request.get(`/api/deals/${deal.id}`);
+      expect(foreignHistory.status()).toBe(404);
+      const foreignHistoryBody = await foreignHistory.text();
+      expect(foreignHistoryBody.includes(frozen.content)).toBe(false);
+      expect(foreignHistoryBody.includes(oldHistoryText)).toBe(false);
+      const foreignList = await deniedPage.request.get("/api/deals");
+      expect(foreignList.status()).toBe(200);
+      expect((await foreignList.json()).data.deals.some((row: { id: string }) => row.id === deal.id)).toBe(false);
+    } finally { await deniedContext.close(); }
+  }
+  // Restore the original Creator's SAME captured cookie for the untouched final
+  // suspension/API401/login assertions. No reactivation or session mint occurs.
+  await context.addCookies(originalCreatorCookies);
+  await page.goto(`/creator/deals/${deal.id}`);
+  await expect(page.getByText(frozen.content, { exact: true })).toBeVisible();
+  expect(await db.deal.count({ where: { campaignId: f.campaign.id } })).toBe(1);
+  expect(await db.agreementSnapshot.count({ where: { dealId: deal.id } })).toBe(1);
   await db.user.update({
     where: { id: f.target.userId },
     data: { active: false },
