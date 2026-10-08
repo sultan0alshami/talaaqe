@@ -1864,3 +1864,79 @@ model LegacyDirectAdmissionState {
   @@index([currentVersionId, admissionId, currentVersionNumber, currentSourceHash], map: "LegacyDirectAdmissionState_current_version")
   @@index([state, admissionId], map: "LegacyDirectAdmissionState_available")
 }
+
+// Inert Schema24 interfaces. Ordered entries finalize exact immutable versions;
+// trusted source verification and executable admission are separate runtime work.
+model LegacyAdmissionManifest {
+  id         String   @id
+  provenance String
+  content    Json     @db.JsonB
+  digest     String
+  createdAt  DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, provenance])
+  @@unique([id, provenance, digest])
+}
+
+model LegacyAdmissionManifestEntry {
+  manifestId  String
+  entryId     String
+  ordinal     Int
+  versionId   String   @unique
+  admissionId String
+  provenance  String
+  capability  String
+  version     Int
+  sourceHash  String
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+
+  @@id([manifestId, entryId])
+  @@unique([manifestId, ordinal])
+  @@unique([manifestId, admissionId, version])
+  @@unique([manifestId, entryId, versionId, admissionId, provenance, capability, version, sourceHash], map: "LegacyAdmissionManifestEntry_exact_member")
+  @@index([admissionId])
+}
+
+model LegacyAdmissionImportReceipt {
+  id              String   @id
+  importKey       String   @unique @db.Uuid
+  manifestId      String   @unique
+  provenance      String
+  digest          String
+  bundleHash      String
+  verifierVersion String
+  entryCount      Int
+  createdAt       DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, manifestId, provenance, digest])
+}
+
+model FreshDealAdmissionLink {
+  admissionId         String   @id
+  dealId              String   @unique
+  versionId           String
+  version             Int
+  sourceHash          String
+  provenance          String
+  capability          String
+  manifestId          String
+  manifestEntryId     String
+  digest              String
+  importReceiptId     String
+  firstOfferId        String
+  firstOfferVersion   Int
+  brandUserId         String
+  creatorUserId       String
+  approvedBriefId     String
+  approvedBriefVersion Int
+  createCommandId     String
+  createOperationKey  String
+  createPayloadHash   String
+  createResultHash    String
+  createdAt           DateTime @default(now()) @db.Timestamp(3)
+
+  @@index([versionId])
+  @@index([importReceiptId])
+  @@index([firstOfferId])
+  @@index([createCommandId])
+}
