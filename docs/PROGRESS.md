@@ -585,3 +585,68 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   provider callers, so no browser rerun is claimed. Root stages six exact pure
   contract/test/shared-record paths; native orchestration preparation and unrelated
   research/output/tmp remain unstaged. Full goal remains active.
+
+
+## Native campaign interview and API — 2026-10-08
+
+- Saved reviewed f122d69 six-path pure interview checkpoint after1108/133 all-four
+  gates284.30s and independent staged review. Native freeze reuses the existing
+  same-transaction M03 scope, separately requires current view+plan, server-mints
+  words/confirmation identity, exposes retained versus current review, and forces
+  new unapproved generation with exact selected provenance and64KiB snapshot cap.
+  Source/batch/brief JSON references are runtime-checked, not invented FKs.
+- Four exact scalar models and inactive typed services preceded independently
+  authored three native groups. Initial adopted test had a missing brace and
+  UUID-array TypeScript inference error; author corrected only the harness. Those
+  failures are not behavioral RED. Actual valid native sessions/M03/agency fixtures
+  then produced3/3 CAPABILITY_UNAVAILABLE failures1.37s. Reviewed migration30 adds
+  exact scope tuples, sequential immutable state identity, immutable children,
+  source64 cap with RR rejection, and strict journal scalar/result binding. Test
+  target applied it successfully; Prisma6.19.3 generated without preview stop.
+- Native service initially passed3/3 in12.28s, including genuine view/plan privacy
+  traps, exact current/native waits, source cardinality/paging, unapproved profile,
+  complete30 review, scope/ABA/overflow and expiration rollback. Independent review
+  found producer replay joins and counter horizons were insufficient. Seven labelled
+  raw-INSERT witnesses genuinely returned ACCEPTED instead of503 in4.86s; corrected
+  service binds original text/actor/snapshot/time, exact batch/choices/actor, requested
+  generation batch and actual profile fields/input epoch, plus current native horizons.
+  The enhanced3 groups passed13.75s, including identical-UUID confirmation concurrency.
+- Another actual lifetime witness failed5.72s when referenced Source DELETE committed
+  while GENERATE waited at its journal. Scoped Source/Batch FOR SHARE locks now retain
+  dependencies through commit; actual DELETE wait/after-commit missing-lineage503 is
+  verified. No raw trigger bypass or private provider proof is inferred.
+- Two independent native HTTP groups produced2/2 valid-request503 RED1.14s before
+  adapter activation. Current three routes enforce current BRAND before parsing,
+  strict OWN/CLIENT queries, real service scope/view+plan, FORM channel outside the
+  body, standard private/no-store/request-ID envelopes, origin and exact64KiB wire
+  limit. Native API2 passed2.26s, including forged fields/current denial/replay.
+  Combined current contracts/native/API11/11 passed17.68s; TypeScript and scoped
+  zero-warning lint pass. Corrective source review, dev/E2E migration rollout and
+  full gates precede this checkpoint. No UI/browser or live agent acceptance yet.
+- Inactive licensed-Studio/Talaqee UI and browser-WebCrypto candidates exist only
+  in tmp. They preserve page geometry and default to memory-only full words. Durable
+  minimal metadata/outcome recovery must be frozen before activation. Genuine AI
+  entitlement/provider/media/voice and all remaining managed/MVP work continue;
+  OpenAI stays disabled, no external publication/outreach/financial action occurred.
+
+- Corrective independent SQL query witnesses showed Source and Batch full-content
+  hydration still lacked exact agent/campaign/workspace predicates (four violations,
+ 15.67s); a subsequent foreign CampaignBrief receipt showed missing campaign/version
+  predicates, and archived-context manual preferences still threw ARCHIVED (two
+  genuine failures6.82s). Full-content queries now bind their own exact native scope
+  before hydration; archived preference changes clear review while retaining history.
+  Current contracts/native/API11/11 passed18.26s and TypeScript passes. Final runtime/
+  transport review is clear. All three task targets now retain30 migrations with
+  matching file checksums; no reset/application-data deletion occurred. Full gates
+  run next. Durable encrypted browser recovery and mounted UI/provider acceptance
+  remain separate work, with no full-goal completion claim.
+
+- Final current-source npm run check99236 passed TypeScript, warning-free ESLint,
+  1113/1113 guarded tests across135 files (302.96s), supported Webpack build and
+  deployment privacy191 manifests/38011 references/zero private paths. Current
+  native/API11-group union passed18.26s, with final source/transport/DDL/corrective
+  reviews clear and all three30-migration checksums matching. The existing platform
+  UI is unchanged, so no browser acceptance is claimed for the inactive candidates.
+  Root stages15 exact native/schema/API/test/shared-record paths; unrelated research,
+  output/tmp and future recovery preparation remain unstaged. Goal continues through
+  mounted interview/provider/media/voice and remaining managed/original MVP phases.

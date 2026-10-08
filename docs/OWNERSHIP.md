@@ -177,3 +177,13 @@ fixture/type corrections; schema_review independently reviews source and frozen
 semantics. Root observed6/6 genuine validation RED before implementation. No new
 provider, private-media purpose, native customer confirmation or application route
 is activated by the pure module. Only root runs guarded/gate/commit operations.
+
+Native campaign interview: f122d69 precedes new campaign-agent/native-contracts,
+service/transport and three static API mounts plus four scalar models/migration30.
+Root owns all active source/schema/records and execution. schema_tests authors only
+the three native service witness groups and explicit syntax/type/corruption/race
+extensions. schema_review independently reviews DDL and authors only the two API
+groups; campaign_agent_ui independently reviews runtime/transport and owns only
+inactive UI/browser candidates. Source/confirmation actors/dates/pins are minted
+under actual native scope; no provider or owner approval is delegated. Root alone
+runs guarded targets/gates and selectively stages; unrelated research remains.

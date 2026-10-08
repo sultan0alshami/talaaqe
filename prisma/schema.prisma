@@ -1940,3 +1940,62 @@ model FreshDealAdmissionLink {
   @@index([firstOfferId])
   @@index([createCommandId])
 }
+
+// Native interview interfaces; SQL owns restrictive scope/identity constraints.
+model CampaignAgent {
+  id          String   @id
+  campaignId  String   @unique
+  workspaceId String
+  revision    Int
+  state       Json     @db.JsonB
+  stateHash   String
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+  updatedAt   DateTime @db.Timestamp(3)
+
+  @@unique([id, campaignId, workspaceId])
+  @@index([workspaceId, campaignId])
+}
+
+model CampaignAgentTextSource {
+  id           String   @id
+  agentId      String
+  campaignId   String
+  workspaceId  String
+  authorUserId String
+  content      Json     @db.JsonB
+  sourceHash   String
+  createdAt    DateTime @default(now()) @db.Timestamp(3)
+
+  @@index([agentId, id])
+  @@index([authorUserId])
+}
+
+model CampaignAgentConfirmationBatch {
+  id                String   @id
+  agentId           String
+  campaignId        String
+  workspaceId       String
+  confirmedByUserId String
+  content           Json     @db.JsonB
+  contentHash       String
+  confirmedAt       DateTime @db.Timestamp(3)
+
+  @@index([agentId, id])
+  @@index([confirmedByUserId])
+}
+
+model CampaignAgentCommand {
+  id          String   @id
+  actorUserId String
+  operationKey String  @db.Uuid
+  agentId     String
+  campaignId  String
+  workspaceId String
+  action      String
+  payloadHash String
+  result      Json     @db.JsonB
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([actorUserId, operationKey])
+  @@index([agentId, id])
+}

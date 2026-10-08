@@ -697,3 +697,32 @@ Sources/confirmations/fields cap64KiB and state128KiB compactUTF8. The Node-back
 hashed schemas are server-side and currently have no product callers.
 See09-campaign-agent for the next native/provider/media/voice obligations; OpenAI
 stays disabled and no approval or commercial authority follows from these shapes.
+
+### Native campaign interview and private API
+
+Four additive CampaignAgent/TextSource/ConfirmationBatch/Command records bind the
+exact current planning campaign/workspace. Server-authenticated FORM actions alone
+mint source/confirmation IDs, actual actors, post-wait dates and hashes. Commands
+require current view plus plan under the same native M03 transaction; CLIENT plan
+does not imply view. Reads expose stored historical state and an explicit current
+snapshot/coverage, without rebasing old confirmations or mutating on GET.
+
+Each complete batch retains30 original confirmed values/source choices and exact
+snapshot. Generation resolves every source/batch under scoped retained row locks,
+forces a new unapproved full brief, stores exact selection provenance and enforces
+the existing64KiB submitted snapshot cap before commit. Actor expiry or overflow
+rolls back all changes. Generation advances native epochs and leaves current review
+UNCONFIRMED; original batch and receipt remain historical. Owner approval is separate.
+
+Exact replay requires current scope, actual counter horizons and original producer
+joins (text/actor/snapshot/time; batch/choices/actor; requested batch and brief values/
+input epoch). Missing/corrupt references fail503. Full Source/Batch/Brief content
+queries include their exact native scope before hydration. JSON references are
+runtime checked, not relational retention guarantees; no app deletion endpoint exists.
+
+GET `/api/campaign-agent` and `/sources`, POST `/commands` use current BRAND before
+parsing, strict OWN/CLIENT queries, current native scope,64KiB bodies, origin checks,
+standard request-ID envelopes and private/no-store. Source pages cap20 rows/262144
+bytes without text truncation. SQL source count64 rejects RR insertion; service
+commands remain Serializable. No provider, media upload, voice, subscription spend
+or campaign approval is enabled by this manual interview foundation.

@@ -62,13 +62,13 @@ export const CustomerTextSourceSchema = jsonGuard(z.object({ schemaVersion: z.li
     return sourceHash === digest({ domain: "infame-customer-text-v1", ...content });
   }, "Customer text source hash mismatch"), 65536);
 
-const confirmationSource = z.discriminatedUnion("kind", [
+export const CampaignAgentSourceChoiceSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("CUSTOMER_FIELD_CHOICE"), capturedValueHash: hash }).strict(),
   z.object({ kind: z.literal("CUSTOMER_TEXT"), references: uniqueReferences(4).min(1)
     .refine(items => items.every((item, index) => index === 0 || items[index - 1]!.id < item.id), "Source references must be ordered") }).strict(),
 ]);
 const confirmationBase = { schemaVersion: z.literal(1), id, binding: AgentBindingSchema, confirmationBatchId: id,
-  reviewedSnapshot: AgentSnapshotSchema, valueHash: hash, source: confirmationSource, confirmedByUserId: id,
+  reviewedSnapshot: AgentSnapshotSchema, valueHash: hash, source: CampaignAgentSourceChoiceSchema, confirmedByUserId: id,
   confirmedAt: UtcDateTimeSchema, confirmationHash: hash };
 function confirmedField<K extends CampaignAgentFieldKey>(field: K) {
   return z.object({ ...confirmationBase, field: z.literal(field), value: CampaignFieldObjectSchema.shape[field] }).strict();
@@ -101,10 +101,11 @@ const coverage = z.discriminatedUnion("kind", [
       .refine(items => new Set(items.map(item => item.id)).size === items.length, "Duplicate confirmation ID")
       .refine(items => items.every((item, index) => item.field === CampaignAgentFieldKeys[index]), "Complete ordered review required") }).strict(),
 ]);
+export const CampaignAgentPreferencesSchema = z.object({ input: z.enum(["TEXT", "MEDIA", "VOICE_MESSAGE", "LIVE_VOICE"]),
+  output: z.enum(["TEXT", "VOICE", "TEXT_AND_VOICE"]) }).strict();
 const state = z.object({ schemaVersion: z.literal(1), id, revision, binding: AgentBindingSchema, snapshot: AgentSnapshotSchema,
   fields: CampaignDraftFieldsSchema.refine(value => bytes(value) <= 65536, "Campaign fields exceed64KiB"),
-  preferences: z.object({ input: z.enum(["TEXT", "MEDIA", "VOICE_MESSAGE", "LIVE_VOICE"]),
-    output: z.enum(["TEXT", "VOICE", "TEXT_AND_VOICE"]) }).strict(),
+  preferences: CampaignAgentPreferencesSchema,
   assistance: z.object({ kind: z.literal("MANUAL_GUIDANCE"), agent: z.literal("UNAVAILABLE") }).strict(),
   textSourceReferences: uniqueReferences(64), confirmation: coverage, updatedAt: UtcDateTimeSchema, stateHash: hash,
 }).strict().refine(value => value.snapshot.fieldsHash === digest({ domain: "infame-campaign-fields-v1", fields: value.fields }), "Fields snapshot hash mismatch")
