@@ -1793,3 +1793,74 @@ model InfamePrincipalState {
   @@index([currentVersionId, principalId, currentVersionNumber, currentSourceHash], map: "InfamePrincipalState_current_version")
   @@index([state, principalId], map: "InfamePrincipalState_available")
 }
+
+// Inert Schema23A storage interfaces. SQL owns exact native/source pointers,
+// lifecycle guards and retention. No importer or executable admission exists.
+model LegacyDirectAdmission {
+  id            String   @id
+  provenance    String
+  capability    String
+  campaignId    String
+  brandId       String
+  brandUserId   String
+  creatorId     String
+  creatorUserId String
+  createdAt     DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, provenance, capability])
+  @@index([campaignId, creatorId])
+}
+
+model LegacyDirectAdmissionVersion {
+  id                    String   @id
+  admissionId           String
+  provenance            String
+  capability            String
+  version               Int
+  content               Json     @db.JsonB
+  sourceHash            String
+  createdAt             DateTime @default(now()) @db.Timestamp(3)
+  approvedBriefId       String
+  approvedBriefVersion  Int
+  approvedInputRevision Int
+  approvedByUserId      String
+  approvedContentHash   String
+  manifestId            String
+  manifestEntryId       String
+  sourceActorUserId      String
+  sourceOperationKey    String
+  sourcePayloadHash     String
+  sourceResultHash      String
+  campaignCommandId     String?
+  dealCommandId         String?
+  existingDealId        String?
+  existingDealHash      String?
+  firstOfferId          String?
+  firstOfferVersion     Int?
+  firstProposerUserId   String?
+  firstRecipientUserId  String?
+  firstOfferContentHash String?
+
+  @@unique([admissionId, version])
+  @@unique([id, admissionId, version, sourceHash])
+  @@unique([id, admissionId, provenance, capability, version, sourceHash])
+  @@index([approvedBriefId])
+  @@index([campaignCommandId])
+  @@index([dealCommandId])
+  @@index([existingDealId])
+  @@index([firstOfferId])
+}
+
+model LegacyDirectAdmissionState {
+  admissionId          String   @id
+  revision             Int
+  state                String
+  currentVersionId     String?
+  currentVersionNumber Int?
+  currentSourceHash    String?
+  createdAt            DateTime @default(now()) @db.Timestamp(3)
+  updatedAt            DateTime @db.Timestamp(3)
+
+  @@index([currentVersionId, admissionId, currentVersionNumber, currentSourceHash], map: "LegacyDirectAdmissionState_current_version")
+  @@index([state, admissionId], map: "LegacyDirectAdmissionState_available")
+}
