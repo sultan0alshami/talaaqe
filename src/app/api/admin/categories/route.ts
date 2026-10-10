@@ -2,24 +2,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { handler, ok, parseBody, requireRole } from "@/lib/api";
 
-export const GET = handler(async () => {
-  await requireRole("ADMIN");
-  const categories = await prisma.category.findMany({
-    include: { _count: { select: { skills: true, providers: true, projects: true } } },
-    orderBy: { sortOrder: "asc" },
-  });
-  return ok({
-    categories: categories.map((c) => ({
-      id: c.id,
-      nameAr: c.nameAr,
-      nameEn: c.nameEn,
-      count: c.demoCount,
-      skills: c._count.skills,
-      providers: c._count.providers,
-      projects: c._count.projects,
-    })),
-  });
-});
+// Native catalog read only; inherited mutation below stays retired by handler.
+export { loadAdminTaxonomy as GET } from "@/lib/admin/transport";
 
 const schema = z.object({
   nameAr: z.string().min(2).max(80),

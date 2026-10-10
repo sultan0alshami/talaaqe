@@ -217,3 +217,14 @@ two mounted browser journeys and independent source/scope review. No worker runs
 mutable databases/tests/builds or alters public readers, publication prerequisites,
 shared auth/schema/dependencies/providers; preserve other agents' work and original
 Talaqee. Plan05-onboarding-native-session specifies the exact boundary.
+
+Remaining administrative briefs/taxonomy phase: prerequisite1ad9d54 passed all
+four gates and20 browser regressions. Root owns the two pure DTO modules/native
+readers, shared admin transport, both SSR/GET mounts and all records/execution.
+schema_tests owns only ignored admin-briefs-taxonomy-native draft until adoption
+as at most three native groups. campaign_agent_ui owns only ignored screen/CSS
+candidates until native and mounted RED authorize their exact two existing leaves
+and one scoped module. schema_review independently reviews contracts/source/scope
+without edits. Preserve all other work. No taxonomy mutation, managed-scope access,
+schema/provider/dependency/shared-auth widening; plan07 freezes byte paging and
+exact catalog/assignment semantics.

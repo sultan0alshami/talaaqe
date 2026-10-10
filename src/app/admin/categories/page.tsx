@@ -1,30 +1,18 @@
 import { requirePageSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { getAdminTaxonomy } from "@/lib/admin/taxonomy";
+import { AdminReadError } from "@/lib/admin/contracts";
+import type { AdminTaxonomyDTO } from "@/lib/admin/taxonomy-contracts";
 import { CategoriesScreen } from "@/components/screens/admin/categories-screen";
 
-// Admin categories & skills — mirrors GET /api/admin/categories + /api/admin/skills.
 export default async function AdminCategoriesPage() {
-  await requirePageSession("ADMIN");
-  const [categories, skills] = await Promise.all([
-    prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
-    prisma.skill.findMany({ include: { category: true }, orderBy: { name: "asc" } }),
-  ]);
-
-  return (
-    <CategoriesScreen
-      categories={categories.map((c) => ({
-        id: c.id,
-        nameAr: c.nameAr,
-        nameEn: c.nameEn,
-        count: c.demoCount,
-      }))}
-      skills={skills.map((s) => ({
-        id: s.id,
-        name: s.name,
-        categoryId: s.categoryId,
-        categoryAr: s.category.nameAr,
-        categoryEn: s.category.nameEn,
-      }))}
-    />
-  );
+  const actor = await requirePageSession("ADMIN");
+  let initialTaxonomy: AdminTaxonomyDTO | null = null, errorCode: string | null = null;
+  try { initialTaxonomy = await getAdminTaxonomy(actor); }
+  catch (error) {
+    if (!(error instanceof AdminReadError)) throw error;
+    if (error.status === 401 || error.status === 403) redirect("/login");
+    errorCode = error.code;
+  }
+  return <CategoriesScreen key={actor.userId} initialTaxonomy={initialTaxonomy} errorCode={errorCode} />;
 }

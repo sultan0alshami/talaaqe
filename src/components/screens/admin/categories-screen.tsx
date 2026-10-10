@@ -1,315 +1,167 @@
 "use client";
-// Admin categories & skills (provider-admin spec §10): category grid, skill
-// chip cloud with delete, inline add-category / add-skill forms wired to the
-// real REST API (improvement over the prototype's demo-only buttons).
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { InfameBrandPattern } from "@/components/infame/brand-pattern";
+import { AdminTaxonomySchema, type AdminTaxonomyDTO } from "@/lib/admin/taxonomy-contracts";
+import { readCampaignAgentResponse } from "@/lib/campaign-agent/browser-transport";
 import { useI18n } from "@/lib/i18n";
-import { fmtNum } from "@/lib/format";
+import styles from "./admin-catalog-layout.module.css";
 
-type CategoryRow = { id: string; nameAr: string; nameEn: string; count: number };
-type SkillRow = { id: string; name: string; categoryId: string; categoryAr: string; categoryEn: string };
-
-const inputStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "8px 12px",
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--foreground)",
-  background: "var(--card)",
-  outline: "none",
+type Snapshot = { data: AdminTaxonomyDTO; fresh: boolean };
+type Flight = { generation: number; controller: AbortController; timer: ReturnType<typeof setTimeout> };
+type Industry = AdminTaxonomyDTO["fame"][number]["industry"];
+const fameLabels: Record<Industry, [string, string]> = {
+  sports: ["رياضة", "Sports"], acting: ["تمثيل", "Acting"], music: ["موسيقى", "Music"],
+  media: ["إعلام", "Media"], business: ["أعمال", "Business"], religion: ["دين", "Religion"],
+  academia: ["أكاديميا", "Academia"], gaming: ["ألعاب", "Gaming"], cooking: ["طبخ", "Cooking"],
+  fashion: ["أزياء", "Fashion"], travel: ["سفر", "Travel"], "social-only": ["شهرة عبر التواصل", "Social-only fame"],
 };
 
-export function CategoriesScreen({ categories, skills }: { categories: CategoryRow[]; skills: SkillRow[] }) {
-  const { t, isAr, pick } = useI18n();
-  const router = useRouter();
-
-  const [catFormOpen, setCatFormOpen] = useState(false);
-  const [skillFormOpen, setSkillFormOpen] = useState(false);
-  const [catNameAr, setCatNameAr] = useState("");
-  const [catNameEn, setCatNameEn] = useState("");
-  const [skillName, setSkillName] = useState("");
-  const [skillCatId, setSkillCatId] = useState(categories[0]?.id ?? "");
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const addCategory = async () => {
-    if (catNameAr.trim().length < 2 || catNameEn.trim().length < 2) return;
-    setBusy("cat");
+export function CategoriesScreen({ initialTaxonomy, errorCode = null }: {
+  initialTaxonomy: AdminTaxonomyDTO | null; errorCode?: string | null;
+}) {
+  const { lang, isAr, dir } = useI18n();
+  const copy = (ar: string, en: string) => isAr ? ar : en;
+  const controlsId = useId();
+  const [initial] = useState(() => {
+    const denied = errorCode === "UNAUTHENTICATED" || errorCode === "FORBIDDEN", parsed = AdminTaxonomySchema.safeParse(initialTaxonomy);
+    const snapshot: Snapshot | null = !denied && parsed.success ? { data: parsed.data, fresh: true } : null;
+    return { denied, snapshot, error: errorCode ?? (initialTaxonomy !== null && !snapshot ? "INVALID_RESPONSE" : null) };
+  });
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(initial.snapshot), snapshotRef = useRef(initial.snapshot);
+  const [error, setError] = useState<string | null>(initial.error), [busy, setBusy] = useState(false);
+  const [denied, setDenied] = useState(initial.denied), deniedRef = useRef(initial.denied);
+  const [search, setSearch] = useState(""), [parent, setParent] = useState("");
+  const mounted = useRef(false), generation = useRef(0), active = useRef<Flight | null>(null), heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    mounted.current = true;
+    const lifetime = { mounted, generation, active };
+    return () => {
+      lifetime.mounted.current = false; lifetime.generation.current++;
+      const flight = lifetime.active.current;
+      if (flight) { clearTimeout(flight.timer); flight.controller.abort(); }
+      lifetime.active.current = null;
+    };
+  }, []);
+  useEffect(() => { if (denied) heading.current?.focus(); }, [denied]);
+  async function refresh() {
+    if (!mounted.current || deniedRef.current || active.current) return;
+    const controller = new AbortController(), own = ++generation.current;
+    let timedOut = false;
+    const flight: Flight = { generation: own, controller,
+      timer: setTimeout(() => { timedOut = true; controller.abort(); }, 30000) };
+    active.current = flight; setBusy(true); setError(null);
+    if (snapshotRef.current) { const historical = { ...snapshotRef.current, fresh: false }; snapshotRef.current = historical; setSnapshot(historical); }
+    const current = () => mounted.current && !deniedRef.current && generation.current === own && active.current === flight;
     try {
-      const res = await fetch("/api/admin/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nameAr: catNameAr.trim(), nameEn: catNameEn.trim() }),
-      });
-      if (res.ok) {
-        setCatNameAr("");
-        setCatNameEn("");
-        setCatFormOpen(false);
-        router.refresh();
+      const response = await fetch("/api/admin/categories", { cache: "no-store", credentials: "same-origin", redirect: "error", signal: controller.signal });
+      if (!current()) return;
+      if (response.status === 401 || response.status === 403) {
+        deniedRef.current = true; generation.current++; controller.abort();
+        snapshotRef.current = null; setSnapshot(null); setSearch(""); setParent("");
+        setDenied(true); setError(response.status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN");
+        return;
       }
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const addSkill = async () => {
-    if (!skillName.trim() || !skillCatId) return;
-    setBusy("skill");
-    try {
-      const res = await fetch("/api/admin/skills", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: skillName.trim(), categoryId: skillCatId }),
-      });
-      if (res.ok) {
-        setSkillName("");
-        setSkillFormOpen(false);
-        router.refresh();
+      const envelope = await readCampaignAgentResponse(response, controller.signal, 2097152);
+      if (!current() || controller.signal.aborted) return;
+      if (!response.ok) { setError("UNAVAILABLE"); return; }
+      const data = envelope && typeof envelope === "object" && "data" in envelope ? envelope.data : undefined;
+      const parsed = AdminTaxonomySchema.safeParse(data);
+      if (!parsed.success || snapshotRef.current && Date.parse(parsed.data.asOf) < Date.parse(snapshotRef.current.data.asOf)) {
+        setError("INVALID_RESPONSE"); return;
       }
+      const accepted: Snapshot = { data: parsed.data, fresh: true };
+      snapshotRef.current = accepted; setSnapshot(accepted); setError(null);
+    } catch {
+      if (current()) setError(timedOut ? "TIMEOUT" : controller.signal.aborted ? "CANCELLED" : "UNAVAILABLE");
     } finally {
-      setBusy(null);
+      clearTimeout(flight.timer);
+      if (active.current === flight) { active.current = null; if (mounted.current) setBusy(false); }
     }
-  };
-
-  const deleteSkill = async (id: string) => {
-    setBusy(id);
-    try {
-      await fetch(`/api/admin/skills/${id}`, { method: "DELETE" });
-      router.refresh();
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <div style={{ maxWidth: 1040, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>{t.aNavCats}</h1>
-
-      {/* Categories grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-        {categories.map((c) => (
-          <div
-            key={c.id}
-            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 20px" }}
-          >
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--foreground)", marginBottom: 3 }}>
-              {pick(c.nameAr, c.nameEn)}
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>
-              {fmtNum(c.count)} {t.catProject}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Skills section header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "34px 0 16px" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t.skillsT}</h2>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setCatFormOpen((v) => !v)}
-            className="hover:bg-[#E1E9F6]"
-            style={{
-              background: "var(--muted)",
-              color: "var(--foreground)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: "7px 16px",
-              borderRadius: 999,
-            }}
-          >
-            {t.addCatBtn}
-          </button>
-          <button
-            onClick={() => setSkillFormOpen((v) => !v)}
-            className="hover:bg-[#D3EDEF]"
-            style={{
-              background: "var(--muted)",
-              color: "var(--foreground)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: "7px 16px",
-              borderRadius: 999,
-            }}
-          >
-            {t.addSkillBtn2}
-          </button>
-        </div>
-      </div>
-
-      {/* Inline add-category form */}
-      {catFormOpen && (
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: 16,
-            marginBottom: 14,
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <input
-            value={catNameAr}
-            onChange={(e) => setCatNameAr(e.target.value)}
-            placeholder={isAr ? "الاسم بالعربية" : "Arabic name"}
-            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
-          />
-          <input
-            dir="ltr"
-            value={catNameEn}
-            onChange={(e) => setCatNameEn(e.target.value)}
-            placeholder={isAr ? "الاسم بالإنجليزية" : "English name"}
-            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
-          />
-          <button
-            onClick={addCategory}
-            disabled={busy === "cat"}
-            className="hover:bg-[var(--foreground)]"
-            style={{
-              background: "var(--foreground)",
-              color: "var(--card)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: "9px 20px",
-              borderRadius: 10,
-              opacity: busy === "cat" ? 0.6 : 1,
-            }}
-          >
-            {isAr ? "حفظ" : "Save"}
-          </button>
-        </div>
-      )}
-
-      {/* Inline add-skill form */}
-      {skillFormOpen && (
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: 16,
-            marginBottom: 14,
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <input
-            dir="ltr"
-            value={skillName}
-            onChange={(e) => setSkillName(e.target.value)}
-            placeholder={isAr ? "اسم المهارة" : "Skill name"}
-            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
-          />
-          <select
-            value={skillCatId}
-            onChange={(e) => setSkillCatId(e.target.value)}
-            style={{ ...inputStyle, minWidth: 180, cursor: "pointer" }}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {pick(c.nameAr, c.nameEn)}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={addSkill}
-            disabled={busy === "skill"}
-            className="hover:bg-[var(--foreground)]"
-            style={{
-              background: "var(--foreground)",
-              color: "var(--card)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: "9px 20px",
-              borderRadius: 10,
-              opacity: busy === "skill" ? 0.6 : 1,
-            }}
-          >
-            {isAr ? "حفظ" : "Save"}
-          </button>
-        </div>
-      )}
-
-      {/* Skill chip cloud */}
-      <div
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: 18,
-          padding: 22,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 9,
-        }}
-      >
-        {skills.length === 0 && <span style={{ fontSize: 13.5, color: "var(--muted-foreground)" }}>—</span>}
-        {skills.map((sk) => (
-          <span
-            key={sk.id}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "var(--background)",
-              border: "1px solid var(--border)",
-              borderRadius: 999,
-              padding: "6px 7px 6px 14px",
-              whiteSpace: "nowrap",
-              opacity: busy === sk.id ? 0.5 : 1,
-            }}
-          >
-            <span dir="ltr" style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", whiteSpace: "nowrap" }}>
-              {sk.name}
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "var(--muted-foreground)",
-                background: "var(--muted)",
-                borderRadius: 999,
-                padding: "2px 10px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {pick(sk.categoryAr, sk.categoryEn)}
-            </span>
-            <button
-              onClick={() => deleteSkill(sk.id)}
-              disabled={busy === sk.id}
-              className="hover:text-[#B0433A]!"
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--muted-foreground)",
-                padding: "0 2px",
-                lineHeight: 1,
-              }}
-              aria-label={sk.name}
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
+  }
+  const data = snapshot?.data;
+  const view = useMemo(() => {
+    const rows = data?.niches ?? [], parents = rows.filter(row => row.parentSlug === null), children = rows.filter(row => row.parentSlug !== null);
+    const term = search.trim().toLocaleLowerCase(lang), matches = (row: typeof rows[number]) =>
+      !term || [row.slug, row.labelAr, row.labelEn].some(label => label.toLocaleLowerCase(lang).includes(term));
+    const bySlug = new Map(rows.map(row => [row.slug, row]));
+    const visibleParents = parents.filter(row => (!parent || row.slug === parent) &&
+      (matches(row) || children.some(child => child.parentSlug === row.slug && matches(child))));
+    const visibleChildren = children.filter(row => (!parent || row.parentSlug === parent) && matches(row));
+    return { parents, children, bySlug, visibleParents, visibleChildren };
+  }, [data, search, parent, lang]);
+  const number = (value: number) => new Intl.NumberFormat(lang).format(value);
+  function utc(value: string) {
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-SA" : "en-GB", { timeZone: "UTC", calendar: "gregory", dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  }
+  function explainError(code: string) {
+    return code === "UNAUTHENTICATED" ? copy("انتهت الجلسة. سجّل الدخول وافتح الصفحة مجددًا.", "Your session ended. Sign in and reopen this page.") :
+      code === "FORBIDDEN" ? copy("بيانات التصنيف غير متاحة لصلاحيتك الحالية.", "Taxonomy data is unavailable for your current permissions.") :
+      code === "TIMEOUT" ? copy("لم يصل الرد في الوقت المحدد. يمكنك إعادة القراءة نفسها.", "The response timed out. You can retry the same read.") :
+      copy("تعذّر تأكيد التصنيف وأعداده الحالية. احتفظنا بالنسخة السابقة إن وُجدت.", "The current catalog and counts could not be confirmed. Any previous snapshot is retained.");
+  }
+  return <section className={styles.page} dir={dir} data-admin-taxonomy>
+    <header className={styles.header}><div className={styles.headerCopy}>
+      <h1 ref={heading} tabIndex={-1}>{copy("التخصصات ومجالات الشهرة", "Niches and fame industries")}</h1>
+      <p className={styles.timestamp}>{data ? <>{copy("وقت القراءة:", "Read at:")} <time dateTime={data.asOf}>{utc(data.asOf)}</time> <bdi>UTC</bdi></> : copy("وقت القراءة غير متاح", "Read time unavailable")}</p>
+    </div><div className={styles.headerActions}><InfameBrandPattern compact />
+      <Button type="button" variant="outline" disabled={busy || denied} onClick={() => void refresh()} data-admin-taxonomy-refresh>
+        <RefreshCw aria-hidden="true" />{busy ? copy("جارٍ التحميل…", "Loading…") : copy("تحديث الأعداد", "Refresh counts")}
+      </Button>
+    </div></header>
+    <p className={styles.note}>{copy("الأعداد تشمل اختيارات صناع المحتوى المحفوظة، بما فيها الخاصة والاختبارية وغير النشطة. يُحسب الصانع مرة واحدة لكل اختيار مطابق، ويمكن أن يظهر في عدة تخصصات. عدد التصنيفات مستقل عن عدد الاختيارات.", "Counts cover stored creator assignments, including private, test and inactive records. Each creator is counted once per exact tag and may appear in several niches. Catalog size is separate from assignment counts.")}</p>
+    {error && <div className={styles.error} role="alert"><p>{explainError(error)}</p>
+      {!denied && <Button type="button" variant="outline" disabled={busy} onClick={() => void refresh()}>{copy("أعد القراءة نفسها", "Retry the same read")}</Button>}
+      {denied && <Button asChild variant="outline"><Link href="/login" prefetch={false}>{copy("تسجيل الدخول", "Sign in")}</Link></Button>}
+    </div>}
+    {snapshot && !snapshot.fresh && <p className={styles.notice} role="status">{copy("تظهر أعداد من نسخة سابقة؛ لم يتأكد تحديثها الحالي.", "Counts from a previous snapshot are shown; their current refresh is unconfirmed.")}</p>}
+    {busy && <p className={styles.notice} role="status">{copy("بانتظار الرد الفعلي…", "Waiting for the actual response…")}</p>}
+    <div className={styles.catalogSummary} aria-label={copy("حجم قائمة التصنيف", "Catalog size")}>
+      <p>{copy("عناصر القائمة", "Catalog entries")}: <strong data-taxonomy-catalog-count>{data ? number(data.niches.length) : copy("غير متاح", "Unavailable")}</strong></p>
+      <p>{copy("التخصصات الرئيسية", "Parent niches")}: <strong>{data ? number(view.parents.length) : copy("غير متاح", "Unavailable")}</strong></p>
+      <p>{copy("التخصصات الفرعية", "Child niches")}: <strong>{data ? number(view.children.length) : copy("غير متاح", "Unavailable")}</strong></p>
     </div>
-  );
+    {data ? <>
+      <p className={styles.note}>{copy("نسخة القائمة:", "Catalog version:")} <bdi dir="ltr">{data.source.version}</bdi> · {copy("تاريخ مراجعة المصدر:", "Source checked:")} <bdi dir="ltr">{data.source.checkedAt}</bdi></p>
+      <div className={styles.filters}>
+        <label htmlFor={controlsId + "-search"}>{copy("ابحث في التخصصات", "Search niches")}<Input id={controlsId + "-search"} type="search" value={search} maxLength={200} onChange={event => setSearch(event.target.value)} data-taxonomy-search /></label>
+        <label htmlFor={controlsId + "-parent"}>{copy("التخصص الرئيسي", "Parent niche")}<select id={controlsId + "-parent"} value={parent} onChange={event => setParent(event.target.value)} data-taxonomy-parent-filter>
+          <option value="">{copy("كل التخصصات الرئيسية", "All parent niches")}</option>
+          {view.parents.map(row => <option value={row.slug} key={row.slug}>{isAr ? row.labelAr : row.labelEn}</option>)}
+        </select></label>
+        <Button type="button" variant="outline" onClick={() => { setSearch(""); setParent(""); }}>{copy("مسح التصفية", "Clear filters")}</Button>
+      </div>
+      <h2 className={styles.sectionTitle}>{copy("التخصصات الرئيسية", "Parent niches")}</h2>
+      <p className={styles.note}>{copy("عدد التخصص الرئيسي يعكس اختياره المباشر. تظهر اختيارات التخصصات الفرعية منفصلة.", "A parent count reflects its direct assignment. Child assignments are shown separately.")}</p>
+      <div className={styles.categoryGrid} data-taxonomy-parent-grid>
+        {view.visibleParents.map(row => <article className={styles.categoryCard} key={row.slug} data-taxonomy-niche={row.slug}>
+          <h3>{isAr ? row.labelAr : row.labelEn}</h3><p><bdi data-taxonomy-assignment-count>{number(row.assignmentCount)}</bdi> {copy("صانع محتوى باختيار مطابق", "creators with this exact tag")}</p><p className={styles.slug}><bdi>{row.slug}</bdi></p>
+        </article>)}
+      </div>
+      {view.visibleParents.length === 0 && <p className={styles.empty}>{copy("لا توجد تخصصات رئيسية تطابق التصفية.", "No parent niches match the filters.")}</p>}
+      <div className={styles.sectionHeading}><h2>{copy("التخصصات الفرعية", "Child niches")}</h2><p className={styles.note}>{copy("عدد النتائج:", "Results:")} <bdi>{number(view.visibleChildren.length)}</bdi></p></div>
+      <div className={styles.chipRegion} data-taxonomy-child-region>
+        {view.visibleChildren.map(row => <article className={styles.taxonomyChip} key={row.slug} data-taxonomy-niche={row.slug}>
+          <div><h3>{isAr ? row.labelAr : row.labelEn}</h3><p className={styles.small}>{row.parentSlug && (isAr ? view.bySlug.get(row.parentSlug)!.labelAr : view.bySlug.get(row.parentSlug)!.labelEn)}</p></div>
+          <p><bdi data-taxonomy-assignment-count>{number(row.assignmentCount)}</bdi> {copy("اختيار مطابق", "exact assignments")}</p>
+        </article>)}
+        {view.visibleChildren.length === 0 && <p className={styles.empty}>{copy("لا توجد تخصصات فرعية تطابق التصفية.", "No child niches match the filters.")}</p>}
+      </div>
+      <div className={styles.sectionHeading}><h2>{copy("مجالات الشهرة", "Fame industries")}</h2><p className={styles.note}>{copy("مجالات مستقلة عن التخصص", "Fields independent of niches")} · <bdi data-taxonomy-fame-count>{number(data.fame.length)}</bdi></p></div>
+      <p className={styles.note}>{copy("التخصصات ذات الصلة تساعد على الفهم، وتبقى أعداد اختياراتها منفصلة.", "Related niches provide context; their assignment counts remain separate.")}</p>
+      <div className={styles.categoryGrid} data-taxonomy-fame-region>{data.fame.map(row => <article className={styles.categoryCard} key={row.industry} data-taxonomy-fame={row.industry}>
+        <h3>{fameLabels[row.industry][isAr ? 0 : 1]}</h3><p><bdi data-taxonomy-assignment-count>{number(row.assignmentCount)}</bdi> {copy("صانع محتوى باختيار مطابق", "creators with this exact tag")}</p>
+        <p className={styles.small}>{copy("تخصصات ذات صلة:", "Related niches:")} {row.relatedNicheSlugs.length ? row.relatedNicheSlugs.map(slug => isAr ? view.bySlug.get(slug)!.labelAr : view.bySlug.get(slug)!.labelEn).join(" · ") : copy("لا توجد تخصصات ذات صلة", "No related niches")}</p>
+      </article>)}</div>
+      <section className={styles.unknownRegion} aria-labelledby={controlsId + "-unknown"}>
+        <h2 id={controlsId + "-unknown"}>{copy("اختيارات محفوظة خارج القائمة", "Stored assignments outside the catalog")}</h2>
+        <p>{copy("صناع محتوى لديهم أي تخصص غير معروف:", "Creators with any unknown niche tag:")} <bdi data-taxonomy-unknown="nicheCreators">{number(data.unknownAssignments.nicheCreators)}</bdi></p>
+        <p>{copy("صناع محتوى لديهم أي مجال شهرة غير معروف:", "Creators with any unknown fame tag:")} <bdi data-taxonomy-unknown="fameCreators">{number(data.unknownAssignments.fameCreators)}</bdi></p>
+      </section>
+    </> : <div className={styles.unavailable}><h2>{copy("قائمة التصنيف وأعداد الاختيارات غير متاحة", "Catalog and assignment counts unavailable")}</h2><p>{denied ? copy("جدّد الدخول وافتح الصفحة مجددًا لعرض البيانات.", "Renew authentication and reopen this page to view data.") : copy("حمّل قراءة مسموحة لعرض القائمة والأعداد الفعلية.", "Load an authorized snapshot to see the catalog and actual counts.")}</p></div>}
+  </section>;
 }

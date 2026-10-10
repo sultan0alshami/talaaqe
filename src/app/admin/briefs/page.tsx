@@ -1,26 +1,18 @@
 import { requirePageSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { toBriefDTO } from "@/lib/dto";
+import { redirect } from "next/navigation";
+import { getAdminBriefs } from "@/lib/admin/briefs";
+import { AdminReadError } from "@/lib/admin/contracts";
+import type { AdminBriefsDTO } from "@/lib/admin/briefs-contracts";
 import { BriefsScreen } from "@/components/screens/admin/briefs-screen";
 
-// Admin briefs review — mirrors GET /api/admin/briefs.
 export default async function AdminBriefsPage() {
-  await requirePageSession("ADMIN");
-  const briefs = await prisma.brief.findMany({
-    include: { project: { include: { client: { include: { user: true } }, category: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return (
-    <BriefsScreen
-      briefs={briefs.map((b) => ({
-        ...toBriefDTO(b),
-        clientAr: b.project.client.user.companyName ?? b.project.client.user.name,
-        clientEn: b.project.client.user.nameEn ?? b.project.client.user.companyName ?? b.project.client.user.name,
-        categoryAr: b.project.category?.nameAr ?? null,
-        categoryEn: b.project.category?.nameEn ?? null,
-        createdAt: b.createdAt.toISOString(),
-      }))}
-    />
-  );
+  const actor = await requirePageSession("ADMIN");
+  let initialBriefs: AdminBriefsDTO | null = null, errorCode: string | null = null;
+  try { initialBriefs = await getAdminBriefs(actor); }
+  catch (error) {
+    if (!(error instanceof AdminReadError)) throw error;
+    if (error.status === 401 || error.status === 403) redirect("/login");
+    errorCode = error.code;
+  }
+  return <BriefsScreen key={actor.userId} initialBriefs={initialBriefs} errorCode={errorCode} />;
 }

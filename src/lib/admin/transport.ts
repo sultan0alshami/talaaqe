@@ -7,6 +7,20 @@ import { changeAdminUserStatus, getAdminUsers } from "./users";
 import { getAdminCampaigns } from "./campaigns";
 import { getAdminCreators } from "./creators";
 import { getAdminAnalytics } from "./analytics";
+import { getAdminBriefs } from "./briefs";
+import { getAdminTaxonomy } from "./taxonomy";
+
+export const loadAdminBriefs = domainHandler(async (request: Request) => {
+  const actor = await requireRole("ADMIN");
+  const entries = [...new URL(request.url).searchParams.entries()];
+  if (new Set(entries.map(([key]) => key)).size !== entries.length) throw new AdminReadError("VALIDATION", 422);
+  return getAdminBriefs(actor, Object.fromEntries(entries));
+});
+export const loadAdminTaxonomy = domainHandler(async (request: Request) => {
+  const actor = await requireRole("ADMIN");
+  if (new URL(request.url).search) throw new AdminReadError("VALIDATION", 422);
+  return getAdminTaxonomy(actor);
+});
 
 export const loadAdminAnalytics = domainHandler(async (request: Request) => {
   const actor = await requireRole("ADMIN");

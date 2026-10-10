@@ -1029,3 +1029,85 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Talaqee HEAD/work is unchanged; all three isolated targets retain31 matching
   migration checksums and dev3000/PG5644. No reset, provider activation, publication
   or new permission occurred. The larger implementation goal remains active.
+
+
+## Remaining administrative briefs and taxonomy — 2026-10-10
+
+- Prerequisite1ad9d54 saved the native onboarding checkpoint after all four gates
+  and20 mounted regressions. The isolated services/data/source history remain
+  preserved. Source scout found remaining Brief/Project quality-score and
+  Category/Skill/demo-count SSR leaves; their unsupported APIs remain retired.
+- Root froze07-original-admin-briefs-taxonomy and added pure native DTO contracts
+  plus inert adminRead→503 reader boundaries, with no HTTP/SSR activation. Full
+  stored requirements remain original; every planning binding is excluded before
+  paging/content. Exclusive ASCII ordering uses explicit native C collation and
+  full1.9M UTF-8 DTO byte budget/last-returned cursor. Catalog source/order/139
+  entries/12 fame keys/related-only hints and exact distinct assignment/unknown
+  creator counts are pinned separately. Pure review is clear after the full-byte
+  refinement; initial TypeScript passed. Native and UI candidates remain ignored
+  preparation until independent RED. No permissions/providers/mutations changed.
+- Root adopted exactly three native groups and observed meaningful inert-reader
+  RED1.66s after genuine signed actors, earlier workflow producers and M03 OWN/
+  CLIENT fixtures succeeded. Implemented readers preserve native ADMIN frames,
+  pre-projection SQL exclusions, C cursor ordering, original validated historical
+  requirements, full-byte candidate pagination and exact aggregate taxonomy.
+- First implementation run passed the auth/expiry and taxonomy groups; brief
+  fixture attempted to UPDATE a genuine approved immutable record and correctly
+  hit native23514. The author corrected only corruption/restoration to the actual
+  unapproved revision, preserving approved-history assertions and all503/no-audit
+  expectations. No trigger bypass or product guard relaxation occurred.
+- Current three groups passed7.96s, including31+tail mixed ASCII paging, protected
+  poison bodies excluded before projection,12 large valid CJK versions traversed
+  under1.9M with no skipped/duplicate rows, genuine revocation/expiry/audit rollback,
+  distinct duplicate/unknown/private/test/inactive counts and retired mutation
+  no effects. TypeScript and scoped warning-free lint passed; native source review
+  is clear. Actual API/SSR and retained UI mounts remain unchanged while independent
+  browser preparation establishes the original-view baseline.
+- Canonical GETbriefs/categories mounts now use the existing private domain
+  envelope after native GREEN/source review; unsupported category/skill/score
+  mutations remain retired. Duplicate/unknown brief queries and taxonomy queries
+  are rejected after current ADMIN resolution. Adapter TypeScript/lint passed.
+  Actual dev3000 anonymous malformed-query requests to both leaves returned401
+  UNAUTHENTICATED with private/no-store and request IDs. This is HTTP denial proof,
+  not authenticated browser acceptance. SSR/screens remain original pending their
+  native original-title baseline; ignored UI/CSS candidate review is clear.
+- Root selected the first mounted Arabic360 journey against unchanged legacy
+  SSR/screens. Actual earlier-workflow producer/ADMIN fixtures succeeded, but
+  the known original Arabic campaign title was absent at the first assertion
+  before any new data hooks (behavioral RED15343). Root authorized only the two
+  existing screen leaves and scoped CSS, and replaced both legacy SSR lookups
+  with actor-keyed current native DTO loaders/denial handling. The UI author
+  activated/froze those exact paths; browser author finishes a fixed independent
+  field-text oracle rather than comparing ReactNode values to strings.
+- Active adapter/SSR/UI integration review is clear and TSC/scoped warning-free
+  lint passed. First four mounted cases displayed actual historical fields,
+  exact budgets/paging and catalog counts before identifying a product search
+  issue: searching skincare under beauty inherited the parent's matching label
+  and returned all four children instead of one. Child search now requires its
+  own slug/label match while preserving parent context. A second harness
+  comparison captured time before a successful refresh/retry completed; its
+  author synchronizes actual response/flight completion, preserving strict
+  snapshot-time/privacy assertions. Full browser/gates remain pending.
+- Current corrected two-journey browser suite passed4/4 in16.5s across Arabic360
+  RTL/English LTR: complete historical30-field requirements/two pins/exact KWD,
+  current/native lineage failure, paging/byte-safe rows, true139/30/109/12 catalog
+  and distinct counts, precise search, actual401/403 prebody privacy/focus,
+  authenticated malformed-query422, historical malformed/old-asOf/network
+  delivery and captured-cursor retry. Successful reads now require completed
+  response, enabled control and the exact returned timestamp on screen. The
+  explicit late-delivery latch retains one bounded100ms post-delivery observation;
+  no synchronization sleep or relaxed assertion was added. Remaining admin
+  regression/all four gates are pending.
+- Current briefs/taxonomy+analytics+managed-exclusion browser regression passed
+ 12/12 in37.0s. Actual OWN/CLIENT protected drafts, truthful UTC aggregates,
+  historical requirements/counts and native denial/recovery remain intact.
+  Root started the full four gates against frozen source; future AI-budget
+  session-boundary investigation is read-only preparation, outside this commit.
+- All four gates passed: TypeScript, warning-free ESLint, guarded Vitest1142/
+ 146files in339.66s and actual Next Webpack production build. Deployment privacy
+  passed196 manifests/38989 references with zero private development paths.
+  Independent staged review is clear for17 owned paths; evidence wording now
+  accurately distinguishes the bounded late-delivery observation. No taxonomy
+  mutation, managed permission, provider activation or external publication was
+  added. Source history and existing data/work are preserved; full goal remains
+  active, with the AI-ledger native-session prerequisite next.
