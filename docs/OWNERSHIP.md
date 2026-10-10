@@ -197,3 +197,12 @@ until root-observed RED. schema_tests authors bounded native candidates and
 assigned corrections. schema_review authors the two browser journeys and reviews counts,
 preaggregate managed exclusions, UTC semantics, current authority and staged
 privacy. No overview widening, schema/provider/money or new operational grant.
+
+Private-safe install/offline phase: prerequisite e0596da is saved with all four
+gates and four mounted cases. Root owns manifest/config/public-shell mount,
+deterministic approved-vector icon exports, documentation and all execution.
+campaign_agent_ui owns only sw.js/offline.html/PwaInstall after root-observed
+policy/mounted RED. schema_tests authors two policy groups and a separately run
+production-HTTP check; schema_review authors two mounted journeys and independently
+reviews cache/privacy/lifecycle. All PWA event/response seams are labelled;
+device installation, HTTPS deployment, push and indexing are separate phases.

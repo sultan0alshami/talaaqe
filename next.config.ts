@@ -14,6 +14,23 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  async headers() {
+    return [
+      { source: "/sw.js", headers: [
+        { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Service-Worker-Allowed", value: "/" },
+        { key: "Content-Security-Policy", value: "default-src 'none'; script-src 'self'; connect-src 'self'" },
+      ] },
+      { source: "/offline.html", headers: [
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "X-Robots-Tag", value: "noindex, noarchive" },
+        { key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" },
+      ] },
+    ];
+  },
 };
 
 export default nextConfig;

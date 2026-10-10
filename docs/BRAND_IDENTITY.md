@@ -30,3 +30,10 @@ shared component preserves the existing landing CSS geometry. Future UI, Studio
 components, campaign profiles and media/voice surfaces consume the same tokens.
 Marketing copy must reflect actual managed-campaign/provider readiness; this
 identity approval does not imply publication, legal verification or paid activation.
+
+Install icons are deterministic raster exports of the same vector, with the
+complete circles/dot/spark preserved: public/icons/infame-icon-192.png,
+infame-icon-512.png and infame-maskable-512.png. The maskable export has additional
+safe central padding. src/app/apple-icon.png is the180px Next touch-icon asset.
+These technical exports introduce no new artwork and do not establish actual
+device installation. The offline notice uses the unchanged inline vector.

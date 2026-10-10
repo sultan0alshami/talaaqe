@@ -824,3 +824,93 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   correctly identifies schema_review as browser author. Root saves this phase;
   PWA/install and remaining managed/MVP scope continue, with no live traction,
   provider/billing/publication or complete-goal claim.
+
+
+## Private-safe install and offline notice — 2026-10-10
+
+- Prerequisite e0596da analytics checkpoint saved after1132/142 all four gates,
+  four browser cases and independent source/staged review. Goal remains active.
+  Approved02-pwa-install narrows earlier carryover research to manifest/install/
+  standalone offline notice, excluding indexing/push/private caching. Root read
+  installed Next PWA/manifest/icons/headers guides and retained all task services.
+- Root exported exact approved SVG pattern to actual192/512/maskable PNGs and
+  Next-convention apple-icon180 via deterministic local Chromium rendering.
+  Maskable artwork is inside the safe central area and visually inspected; no
+  generated new art or dependency was introduced. Manifest uses same-origin
+  id/start/scope and Arabic default, without inferring business geography/currency.
+  Narrow worker/offline headers preserve unrelated metadata and deployment guards.
+- Independent two-group actual-worker VM witnesses produced2/2 genuine RED242ms
+  against inert source: no fetch listener/asynchronous install. Worker/offline
+  activation then exposed observable /about? empty-query handling (262ms). Exact
+  observed URL equality now rejects it without decoding unseen original paths.
+  Current2/2 passed253ms. Actual Fetch streams/UTF8/cache event seams prove65KiB
+  bounds, exactsoleURL/omitcredentials/no redirects, failure keeps prior cache,
+  version-only cleanup, no forced claim/reload and protected/mutation/RSC bypass;
+  they are not device/browser installation acceptance. InstallUI remains null
+  until independently authored mounted RED. Local browser and production-static
+  HTTP verification follow, with no production-guard bypass or provider action.
+
+- Actual null-install-control browser16351 failed the missing footer trigger;
+  worker then activated only PwaInstall. Actual lint exposed synchronous initial
+  effect updates/cleanup refs; corrected with captured mount epoch/microtask and
+  lifetime refs, without disabling rules. TSC and scoped lint pass. Two public
+  cases11039 passed after a harness-only hero innerText/textContent mismatch was
+  corrected; actual registration/control/single cache/six public offline fallbacks
+  and online restoration are observed inArabic360/English. Synthetic prompt
+  dismissal is interaction evidence only; untrusted install event is ignored.
+- The private/update journey's loopback proxy initially left hydration suspended.
+  Safe diagnostics found all19 JS chunks200 and five TypeError:/_next/hmr failures;
+  independent installed-source review confirmed the dev React debug stream needs
+  the genuine HMR WebSocket. A bounded test-owned raw TCP tunnel forwards only
+  that actual upgrade/binary stream, with cleanup of upgraded sockets. Worker
+  version delivery also omits conditional validators and serves200/no-store to
+  avoid304 suppressing changed bytes; exact numeric version namespace matches
+  product cleanup. These are harness corrections, not product acceptance.
+  The strict offline notice CSP correctly forbids network probes; such probes
+  now run from the actual authenticated app page while cache inspection stays on
+  the offline monitor. Private/update acceptance is still in progress.
+
+- Final full browser23481 passed4/4 in22.2s acrossArabic360/English: actual
+  registration/controller/single offline cache/public-six fallbacks and restoration;
+  genuine owned campaign/source words remain uncached, offline private GET/POST
+  fail normally, owner-change404/logout401 stay native, no command/receipt growth;
+  actual second worker waits with a dirty editor and unchanged controller/timeOrigin,
+  deliberate client closure enables ordinary activation and current-version cleanup
+  preserves unrelated cache. The initial active-worker poll could observe old A
+  still activated; corrected harness also requires no waiting/installing worker
+  before inspecting B cleanup. No skipWaiting/claim/reload/product relaxation.
+  Synthetic prompts remain labelled interaction checks, not device installation.
+  Full gates, actual production-static HTTP and independent review follow.
+
+- First full check58956 passed1134/143 tests327.30s and Webpack/privacy196
+  manifests39765 references/zero private paths. Production instrumentation
+  correctly rejected a task-shaped environment. Independent runner review also
+  identified direct auth/Prisma paths that do not call runtimeConfig, so the
+  corrected static fixture has no task DB or accepted signing secret: ephemeral
+  in-memory signer, nonexistent.invalid database endpoint, valid preview-shaped
+  HTTPS origin config and loopback server binding, with providers unavailable.
+  These are local static checks, not accepted production business readiness.
+- Actual production HTTP then failed icon-192: public/brand PNG URLs were caught
+  by the existing /brand dashboard navigation guard. Root relocated only the three
+  generated PNGs to public/icons and updated manifest/checker/docs, preserving
+  dashboard authorization and the original vector/master icon. Stage-only checker
+  diagnostics identify blocks without dumping exception values/bodies/secrets.
+  Current four browser cases96360 passed23.1s after this real correction and
+  warning-free scoped lint passes. Full gates repeat on final manifest/checker
+  source, then actual production-static HTTP runs again before commit.
+
+- Final source npm run check79467 passed all four gates: TypeScript, warning-free
+  ESLint,1134/1134 guarded tests across143 files (488.75s; workers continued
+  normally), supported Webpack build and deployment privacy196 manifests/39765
+  references/zero private paths. The actual rebuilt loopback production server
+ 29021 started213ms using unavailable.invalid DB/ephemeral signer/no providers;
+  scripts/check-pwa-http.mjs passed its one bounded real HTTP group in1.22s,
+  verifying production chunks, manifest/apple metadata, exact PNG dimensions and
+  bytes, worker/offline headers/bytes/CSP and anonymous private no-store denial.
+  No production guard was weakened, no task credentials supplied, no actual
+  production DB/provider/HTTPS deployment/device installation inferred.
+- Final browser4/4 passed23.1s, policy2/2 passed253ms and independent source/
+  staged review cleared17 exact paths including public/icons exports. Unrelated
+  research/output/tmp and production runner remain excluded. Root saves this
+  bounded install/offline phase; onboarding native-session correction and all
+  remaining managed/MVP work continue. OpenAI remains disabled and goal active.

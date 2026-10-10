@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#fffc00">
+  <title>لا يوجد اتصال — إنفيم / Infame is offline</title>
+  <style>
+    :root { color-scheme: light; background: #faf9f4; color: #121214; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 24px; }
+    main { width: min(100%, 600px); padding: clamp(24px, 5vw, 48px); border: 1px solid #12121424; border-radius: 32px; background: #f2f1e9; text-align: center; }
+    svg { display: block; width: min(100%, 340px); height: auto; margin: 0 auto 20px; }
+    h1 { margin: 0; font-size: clamp(28px, 6vw, 40px); line-height: 1.5; }
+    h2 { margin: 0; font-size: 21px; line-height: 1.5; }
+    p { margin: 12px 0 0; font-size: 16px; line-height: 1.8; overflow-wrap: anywhere; }
+    section + section { border-top: 1px solid #12121424; margin-top: 24px; padding-top: 24px; }
+    .note { color: #55545c; }
+    a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; max-width: 100%; padding: 12px 20px; border-radius: 14px; margin-top: 28px; background: #fffc00; color: #121214; font-weight: 600; line-height: 1.6; text-decoration: none; overflow-wrap: anywhere; }
+    a:hover { background: #f2ee00; }
+    a:focus-visible { outline: 3px solid #8134af; outline-offset: 5px; }
+    @media (max-width: 380px) { body { padding: 16px; } main { padding: 24px 20px; border-radius: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 176" fill="none" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="infame-gradient" x1="166" y1="33" x2="234" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#f58529"/><stop offset=".55" stop-color="#dd2a7b"/><stop offset="1" stop-color="#8134af"/></linearGradient></defs>
+      <g style="isolation:isolate"><circle cx="200" cy="92" r="68" fill="url(#infame-gradient)"/><circle cx="134" cy="92" r="68" fill="#fffc00" style="mix-blend-mode:multiply"/></g>
+      <circle cx="53" cy="26" r="12" fill="#121214"/>
+      <path d="M270 111v46m-23-23h46m-39-16 32 32m-32 0 32-32" stroke="#121214" stroke-width="2.5"/>
+    </svg>
+    <section aria-labelledby="offline-ar">
+      <h1 id="offline-ar">إنفيم — لا يوجد اتصال</h1>
+      <p>تعذّر الاتصال بالموقع. تحقق من اتصالك بالإنترنت، ثم حاول مرة أخرى.</p>
+      <p class="note">تحتاج صفحات حسابك وحملاتك إلى اتصال. لا تتوفر بياناتها في هذه الصفحة.</p>
+    </section>
+    <section lang="en" dir="ltr" aria-labelledby="offline-en">
+      <h2 id="offline-en">Infame — you’re offline</h2>
+      <p>We couldn’t reach the website. Check your internet connection and try again.</p>
+      <p class="note">Your account and campaigns require a connection. Their data is not available on this page.</p>
+    </section>
+    <a href="/">حاول مرة أخرى <span lang="en" dir="ltr">&nbsp; / Try again</span></a>
+  </main>
+</body>
+</html>

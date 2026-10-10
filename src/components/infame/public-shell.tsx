@@ -9,6 +9,7 @@ import { BRAND, THEME_COOKIE, type Theme } from "@/lib/brand";
 import { INFAME_COPY } from "@/lib/infame-copy";
 import { useI18n } from "@/lib/i18n";
 import { InfameBrandPattern } from "./brand-pattern";
+import { PwaInstall } from "./pwa-install";
 
 export function PublicShell({ children, initialTheme = "light" }: { children: React.ReactNode; initialTheme?: Theme }) {
   const { lang, isAr, toggleLang } = useI18n();
@@ -63,7 +64,7 @@ export function PublicShell({ children, initialTheme = "light" }: { children: Re
       <footer className="infame-footer">
         <div className="infame-container infame-footer-grid">
           <div><InfameBrandPattern compact /><Link href="/" className="infame-wordmark"><span className="infame-brand-dot" aria-hidden="true" />{isAr ? BRAND.nameAr : BRAND.name}</Link><p>{copy.footer.description}</p><p className="infame-footer-location">{copy.footer.location}</p></div>
-          <nav aria-label={isAr ? "روابط التذييل" : "Footer links"}>{navLinks}<Link href="/contact" className="infame-nav-link">{copy.footer.contact}</Link></nav>
+          <nav aria-label={isAr ? "روابط التذييل" : "Footer links"}>{navLinks}<Link href="/contact" className="infame-nav-link">{copy.footer.contact}</Link><PwaInstall /></nav>
         </div>
         <div className="infame-container infame-footer-bottom"><span>{copy.footer.copyright}</span><span dir="ltr">{BRAND.domain}</span></div>
       </footer>
