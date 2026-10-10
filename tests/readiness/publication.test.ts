@@ -148,7 +148,7 @@ describe("publication readiness: independent current native self-profile scope",
       expect(await prisma.onboardingDraft.findUniqueOrThrow({ where: { id: f.draft.id } })).toEqual(before.draft);
       expect(role === "CREATOR" ? await prisma.creator.findUniqueOrThrow({ where: { id: f.profileId } }) : await prisma.brand.findUniqueOrThrow({ where: { id: f.profileId } })).toEqual(before.profile);
       if (role === "CREATOR") {
-        const published = await profileCommand(f.owner.user.id, f.draft.id, { operationKey: key(), expectedRevision: 1, action: "PUBLISH", payload: { consent: true, portfolioVersion: 1 } });
+        const published = await profileCommand(f.owner.user.id, f.draft.id, { operationKey: key(), expectedRevision: 1, action: "PUBLISH", payload: { consent: true, portfolioVersion: 1 } }, { serverAuth: f.owner.actor });
         expect(published.replayed).toBe(false); const c = await prisma.creator.findUniqueOrThrow({ where: { id: f.profileId } }); expect(await publicCreator(c.handle)).toBeNull();
       }
     }

@@ -1,12 +1,19 @@
 import { requirePageSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getDraft } from "@/lib/onboarding/drafts";
+import { getDraft, OnboardingError } from "@/lib/onboarding/drafts";
+import { redirect } from "next/navigation";
 import { profileForOwner } from "@/lib/onboarding/profiles";
 import { OnboardingScreen } from "@/components/infame/onboarding-screen";
 export default async function Page() {
   const session = await requirePageSession("BRAND");
-  const draft = await prisma.onboardingDraft.findUnique({ where: { userId_kind: { userId: session.userId, kind: "BRAND" } }, select: { id: true } });
-  const owner = await profileForOwner(session.userId);
+  const options = { serverAuth: session };
+  let draft, owner;
+  try {
+    draft = await getDraft(session.userId, null, options);
+    owner = await profileForOwner(session.userId, options);
+  } catch (error) {
+    if (error instanceof OnboardingError && [401, 403].includes(error.status)) redirect("/login");
+    throw error;
+  }
   if (!owner) return null;
-  return <OnboardingScreen initialDraft={draft ? await getDraft(session.userId, draft.id) : null} initialOwner={owner} />;
+  return <OnboardingScreen key={session.userId} actorReference={session.userId} initialDraft={draft} initialOwner={owner} />;
 }

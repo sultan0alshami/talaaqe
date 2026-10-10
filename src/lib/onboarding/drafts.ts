@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { Prisma, PrismaClient, type OnboardingDraft, type SourceJob } from "@prisma/client";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { AvailabilitySchema, ArabicDialectSchema, ContentLanguageSchema, CountryCodeSchema, LocationSchema, normalizeBrandSlug, normalizeInfameHandle, PlatformSchema } from "@/lib/contracts/vocabulary";
 import { CurrencyCodeSchema } from "@/lib/contracts/money";
 
-export class OnboardingError extends Error {
-  constructor(public readonly code: string, public readonly status = 409) { super(code); this.name = "OnboardingError"; }
-}
+import { OnboardingError } from "./errors";
+export { OnboardingError } from "./errors";
+import { beginOnboardingSession, lockOnboardingSession, withOnboardingSession,
+  type OnboardingSession, type OnboardingReadOptions, type OnboardingCommandOptions } from "./session";
 export type Json = Prisma.JsonValue;
 export type DraftRole = "CREATOR" | "BRAND";
 export type Transaction = Prisma.TransactionClient;
@@ -107,7 +107,9 @@ async function authorize(tx: Transaction, actorUserId: string): Promise<DraftRol
   if (!user?.active || (user.role !== "CREATOR" && user.role !== "BRAND")) throw new OnboardingError("FORBIDDEN", 403);
   return user.role;
 }
-export async function withOwnedDraft<T>(client: PrismaClient, actorUserId: string, draftId: string,
+// Accepted server jobs keep their separate active-owner/token/consent lane.
+// Interactive functions never reach it from missing authentication metadata.
+export async function withAcceptedJobDraft<T>(client: PrismaClient, actorUserId: string, draftId: string,
   operation: (tx: Transaction, draft: OnboardingDraft, role: DraftRole) => Promise<T>,
   beforeDomainLock?: (tx: Transaction, role: DraftRole) => Promise<void>): Promise<T> {
   return client.$transaction(async (tx) => {
@@ -123,15 +125,49 @@ export async function withOwnedDraft<T>(client: PrismaClient, actorUserId: strin
     return operation(tx, current, role);
   }, { maxWait: 10_000, timeout: 20_000 });
 }
-export async function createOrResumeDraft(actorUserId: string, client: PrismaClient = prisma): Promise<DraftDTO> {
-  return client.$transaction(async (tx) => {
-    const role = await authorize(tx, actorUserId);
+export async function withOwnedDraft<T>(session: OnboardingSession, draftId: string,
+  operation: (tx: Transaction, draft: OnboardingDraft, role: DraftRole) => Promise<T>,
+  beforeDomainLock?: (tx: Transaction, role: DraftRole) => Promise<void>): Promise<T> {
+  return withOnboardingSession(session, true, async tx => {
+    const actorUserId = session.actor.userId, role = session.actor.role as DraftRole;
+    const owned = await tx.onboardingDraft.findFirst({ where: { id: draftId, userId: actorUserId, kind: role }, select: { id: true } });
+    // Publication captures/locks the complete sorted owner/reviewer inventory
+    // before the exact Session. It must take owner update locks up front.
+    if (owned && beforeDomainLock) await beforeDomainLock(tx, role);
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR UPDATE`;
+    await lockOnboardingSession(tx);
+    if (!owned) throw new OnboardingError("NOT_FOUND", 404);
+    await tx.$queryRaw`SELECT id FROM "OnboardingDraft" WHERE id=${draftId} FOR UPDATE`;
+    const current = await tx.onboardingDraft.findUnique({ where: { id: draftId } });
+    if (!current || current.userId !== actorUserId || current.kind !== role) throw new OnboardingError("NOT_FOUND", 404);
+    return operation(tx, current, role);
+  });
+}
+export async function createOrResumeDraft(actorUserId: string, options: OnboardingReadOptions = {}): Promise<DraftDTO> {
+  const session = await beginOnboardingSession(actorUserId, options);
+  return withOnboardingSession(session, true, async tx => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR UPDATE`;
+    await lockOnboardingSession(tx);
+    const role = session.actor.role as DraftRole;
     const draft = await tx.onboardingDraft.upsert({ where: { userId_kind: { userId: actorUserId, kind: role } }, create: { userId: actorUserId, kind: role }, update: {} });
     return draftDTO(tx, draft, role);
   });
 }
-export async function getDraft(actorUserId: string, draftId: string, client: PrismaClient = prisma): Promise<DraftDTO> {
-  return withOwnedDraft(client, actorUserId, draftId, (tx, draft, role) => draftDTO(tx, draft, role));
+export function getDraft(actorUserId: string, draftId: string, options?: OnboardingReadOptions): Promise<DraftDTO>;
+export function getDraft(actorUserId: string, draftId: null, options?: OnboardingReadOptions): Promise<DraftDTO | null>;
+export async function getDraft(actorUserId: string, draftId: string | null, options: OnboardingReadOptions = {}): Promise<DraftDTO | null> {
+  const session = await beginOnboardingSession(actorUserId, options);
+  return withOnboardingSession(session, false, async tx => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR SHARE`;
+    await lockOnboardingSession(tx);
+    const role = session.actor.role as DraftRole;
+    const reference = await tx.onboardingDraft.findFirst({ where: { ...(draftId === null ? {} : { id: draftId }), userId: actorUserId, kind: role }, select: { id: true } });
+    if (!reference) { if (draftId === null) return null; throw new OnboardingError("NOT_FOUND", 404); }
+    await tx.$queryRaw`SELECT id FROM "OnboardingDraft" WHERE id=${reference.id} FOR SHARE`;
+    const current = await tx.onboardingDraft.findUnique({ where: { id: reference.id } });
+    if (!current || current.userId !== actorUserId || current.kind !== role) throw new OnboardingError("NOT_FOUND", 404);
+    return draftDTO(tx, current, role);
+  });
 }
 
 export const CommandBaseSchema = z.object({ operationKey: z.string().min(1).max(120).regex(/^[A-Za-z0-9_:-]+$/), expectedRevision: z.number().int().positive().max(2_147_483_646) });
@@ -283,12 +319,13 @@ async function change(tx: Transaction, draft: OnboardingDraft, role: DraftRole, 
   return { input: inputJson(state), consent: inputJson(consent), step, mode };
 }
 
-export async function applyDraftCommand(actorUserId: string, draftId: string, input: unknown, client: PrismaClient = prisma, context: CommandContext = { channel: "FORM" }): Promise<{ draft: DraftDTO; replayed: boolean }> {
+export async function applyDraftCommand(actorUserId: string, draftId: string, input: unknown, options: OnboardingCommandOptions = {}): Promise<{ draft: DraftDTO; replayed: boolean }> {
+  const session = await beginOnboardingSession(actorUserId, options);
   checkedJson(input);
   const command = parse(CommandSchema, input);
-  if (context.channel === "VOICE") command.channel = "VOICE";
+  if (session.options.channel === "VOICE") command.channel = "VOICE";
   const operationKey = `draft:${command.operationKey}`, hash = canonicalHash(command);
-  return withOwnedDraft(client, actorUserId, draftId, async (tx, draft, role) => {
+  return withOwnedDraft(session, draftId, async (tx, draft, role) => {
     const replay = await commandReplay<{ draft: DraftDTO }>(tx, draft, operationKey, hash);
     if (replay) return { ...replay, replayed: true };
     requireRevision(draft, command.expectedRevision);

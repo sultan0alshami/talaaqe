@@ -2,18 +2,38 @@ import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { signup } from "@/lib/identity";
-import { createOrResumeDraft, applyDraftCommand, canonicalHash } from "@/lib/onboarding/drafts";
-import { profileCommand, profileForOwner, publicCreator, publicBrand } from "@/lib/onboarding/profiles";
+import { signup, openSession, resolveSession } from "@/lib/identity";
+import { captureOrganizationActor, type OrganizationActor } from "@/lib/organizations/context";
+import { createOrResumeDraft as nativeCreateOrResumeDraft, applyDraftCommand as nativeApplyDraftCommand, canonicalHash } from "@/lib/onboarding/drafts";
+import { profileCommand as nativeProfileCommand, profileForOwner as nativeProfileForOwner, publicCreator, publicBrand } from "@/lib/onboarding/profiles";
+import type { OnboardingReadOptions, OnboardingCommandOptions } from "@/lib/onboarding/session";
 import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
 
 const users: string[] = [];
-afterAll(async () => { await prisma.creator.deleteMany({ where: { userId: { in: users } } }); await cleanupReviewedEvidence(prisma, users, "test"); await prisma.user.deleteMany({ where: { id: { in: users } } }); });
+const actors = new Map<string, Readonly<OrganizationActor>>();
+afterAll(async () => { await prisma.creator.deleteMany({ where: { userId: { in: users } } }); await cleanupReviewedEvidence(prisma, users, "test"); await prisma.user.deleteMany({ where: { id: { in: users } } }); actors.clear(); });
+// Fixture setup captures native authority once. These forwarding helpers never
+// create or refresh a session, including after a fixture actor is invalidated.
+function readOptions(userId: string, client: PrismaClient = prisma): OnboardingReadOptions {
+  const serverAuth = actors.get(userId);
+  if (!serverAuth) throw new Error("Owned profile fixture session was not captured");
+  return { client, serverAuth };
+}
+function createOrResumeDraft(userId: string) { return nativeCreateOrResumeDraft(userId, readOptions(userId)); }
+function applyDraftCommand(userId: string, draftId: string, input: unknown) { return nativeApplyDraftCommand(userId, draftId, input, readOptions(userId)); }
+function profileCommand(userId: string, draftId: string, input: unknown, client: PrismaClient = prisma,
+  context: Pick<OnboardingCommandOptions, "channel"> = { channel: "FORM" }) {
+  return nativeProfileCommand(userId, draftId, input, { ...readOptions(userId, client), channel: context.channel });
+}
+function profileForOwner(userId: string, client: PrismaClient = prisma) { return nativeProfileForOwner(userId, readOptions(userId, client)); }
 async function fixture(role: "CREATOR" | "BRAND") {
   const suffix = randomBytes(6).toString("hex");
   const user = await signup({ name: "Synthetic ملف عربي", email: `profile-${suffix}@example.invalid`, password: "Profile fixture password 19", role });
   users.push(user.id);
-  return { user, draft: await createOrResumeDraft(user.id), handle: `test_${suffix}` };
+  const token = await openSession(user.id, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Owned profile native fixture session did not resolve");
+  const actor = captureOrganizationActor(session); actors.set(user.id, actor);
+  return { user, actor, draft: await createOrResumeDraft(user.id), handle: `test_${suffix}` };
 }
 async function reviewer() {
   const id = randomBytes(12).toString("hex");

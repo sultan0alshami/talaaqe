@@ -2,11 +2,23 @@ import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { applyDraftCommand, createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
-import { completeSourceJob, queueSourceJob, startSourceJob } from "@/lib/onboarding/jobs";
+import { openSession, resolveSession } from "@/lib/identity";
+import { captureOrganizationActor, type OrganizationActor } from "@/lib/organizations/context";
+import { applyDraftCommand as applyNativeDraftCommand, createOrResumeDraft as createNativeDraft, getDraft as getNativeDraft } from "@/lib/onboarding/drafts";
+import { completeSourceJob, queueSourceJob as queueNativeSourceJob, startSourceJob } from "@/lib/onboarding/jobs";
 
 const users: string[] = [], origin = "https://brand.example.com";
-afterEach(async () => { await prisma.user.deleteMany({ where: { id: { in: users.splice(0) } } }); });
+const sessions = new Map<string, Readonly<OrganizationActor>>();
+function serverAuth(userId: string) {
+  const actor = sessions.get(userId);
+  if (!actor) throw new Error("Owned draft-wait fixture is missing its captured native session");
+  return actor;
+}
+const createOrResumeDraft = (userId: string, client: PrismaClient = prisma) => createNativeDraft(userId, { client, serverAuth: serverAuth(userId) });
+const getDraft = (userId: string, draftId: string, client: PrismaClient = prisma) => getNativeDraft(userId, draftId, { client, serverAuth: serverAuth(userId) });
+const applyDraftCommand = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma) => applyNativeDraftCommand(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: "FORM" });
+const queueSourceJob = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma) => queueNativeSourceJob(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: "FORM" });
+afterEach(async () => { await prisma.user.deleteMany({ where: { id: { in: users.splice(0) } } }); sessions.clear(); });
 function latch() {
   let release!: () => void;
   return { promise: new Promise<void>(resolve => { release = resolve; }), release: () => release() };
@@ -14,6 +26,12 @@ function latch() {
 async function fixture() {
   const owner = randomUUID(), replacement = randomUUID(); users.push(owner, replacement);
   await prisma.user.createMany({ data: [owner, replacement].map(id => ({ id, name: "Synthetic draft ownership wait", email: `${id}@example.invalid`, passwordHash: "not-a-login", role: "BRAND" as const, isTest: true })) });
+  for (const userId of [owner, replacement]) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const token = await openSession(userId, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+    if (!session) throw new Error("Owned draft-wait fixture native session did not resolve");
+    sessions.set(userId, captureOrganizationActor(session));
+  }
   let draft = await createOrResumeDraft(owner);
   const identity = { platform: null, providerAccountId: null, normalizedHandle: null, confirmedOrigin: origin };
   draft = (await applyDraftCommand(owner, draft.id, { action: "SET_ANSWER", operationKey: randomUUID(), expectedRevision: draft.revision,

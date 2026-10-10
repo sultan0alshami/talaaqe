@@ -206,3 +206,14 @@ policy/mounted RED. schema_tests authors two policy groups and a separately run
 production-HTTP check; schema_review authors two mounted journeys and independently
 reviews cache/privacy/lifecycle. All PWA event/response seams are labelled;
 device installation, HTTPS deployment, push and indexing are separate phases.
+
+Interactive onboarding native sessions: root owns session/errors/drafts/profiles/
+jobs, both onboarding API adapters, four role SSR adapters, the optional readiness
+401/403 denial callback and shared records/execution. campaign_agent_ui owns only
+the onboarding-screen candidate and later activation after mounted RED.
+schema_tests owns the three native groups, the seven explicitly assigned stable
+session fixture files and at most two native transport groups. schema_review owns
+two mounted browser journeys and independent source/scope review. No worker runs
+mutable databases/tests/builds or alters public readers, publication prerequisites,
+shared auth/schema/dependencies/providers; preserve other agents' work and original
+Talaqee. Plan05-onboarding-native-session specifies the exact boundary.

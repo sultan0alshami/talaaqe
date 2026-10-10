@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { openSession, resolveSession } from "@/lib/identity";
 import { applyDraftCommand, createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
 import { profileCommand, publicCreator } from "@/lib/onboarding/profiles";
 import { cleanupReviewedEvidence, reviewedOwnershipFixture } from "../helpers/reviewed-evidence";
@@ -16,23 +17,26 @@ afterAll(async () => {
 });
 async function fixture() {
   const userId = randomUUID(), suffix = randomBytes(6).toString("hex"), handle = `review_${suffix}`, socialHandle = `synthetic_${suffix}`;
-  await prisma.user.create({ data: { id: userId, name: "Synthetic independent review", email: `${userId}@example.invalid`, passwordHash: "not-a-login", role: "CREATOR", isTest: false, emailVerifiedAt: new Date() } });
+  const user = await prisma.user.create({ data: { id: userId, name: "Synthetic independent review", email: `${userId}@example.invalid`, passwordHash: "not-a-login", role: "CREATOR", isTest: false, emailVerifiedAt: new Date() } });
   users.push(userId);
+  const token = await openSession(userId, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Synthetic independent review native session did not resolve");
+  const options = { serverAuth: { userId, role: session.role, sessionId: session.sessionId, sessionVersion: session.sessionVersion } };
   const adminId = randomUUID();
   await prisma.user.create({ data: { id: adminId, name: "Synthetic independent reviewer", email: `${adminId}@example.invalid`, passwordHash: "not-a-login", role: "ADMIN", isTest: true, active: true } });
   users.push(adminId);
   await prisma.creator.create({ data: { userId, handle, displayName: "Synthetic independent review", isTest: false } });
-  const draft = await createOrResumeDraft(userId);
+  const draft = await createOrResumeDraft(userId, options);
   const identity = { platform: "INSTAGRAM", providerAccountId: `provider-a-${suffix}`, normalizedHandle: socialHandle, confirmedOrigin: null };
   async function map(nextIdentity = identity) {
-    let current = await getDraft(userId, draft.id);
-    current = (await applyDraftCommand(userId, draft.id, { action: "SET_ANSWER", expectedRevision: current.revision, operationKey: randomUUID(), payload: { field: "sourceMapping", value: { sourceKey: "instagram", source: "INSTAGRAM", identity: nextIdentity } } })).draft;
-    current = (await applyDraftCommand(userId, draft.id, { action: "CONFIRM_ACCOUNT", expectedRevision: current.revision, operationKey: randomUUID(), payload: { sourceKey: "instagram", identity: nextIdentity } })).draft;
-    return (await applyDraftCommand(userId, draft.id, { action: "GRANT_IMPORT_CONSENT", expectedRevision: current.revision, operationKey: randomUUID(), payload: { sourceKey: "instagram", identity: nextIdentity, scopes: ["public-profile"], consentVersion: "synthetic-v1", granted: true } })).draft;
+    let current = await getDraft(userId, draft.id, options);
+    current = (await applyDraftCommand(userId, draft.id, { action: "SET_ANSWER", expectedRevision: current.revision, operationKey: randomUUID(), payload: { field: "sourceMapping", value: { sourceKey: "instagram", source: "INSTAGRAM", identity: nextIdentity } } }, options)).draft;
+    current = (await applyDraftCommand(userId, draft.id, { action: "CONFIRM_ACCOUNT", expectedRevision: current.revision, operationKey: randomUUID(), payload: { sourceKey: "instagram", identity: nextIdentity } }, options)).draft;
+    return (await applyDraftCommand(userId, draft.id, { action: "GRANT_IMPORT_CONSENT", expectedRevision: current.revision, operationKey: randomUUID(), payload: { sourceKey: "instagram", identity: nextIdentity, scopes: ["public-profile"], consentVersion: "synthetic-v1", granted: true } }, options)).draft;
   }
   async function command(action: string, payload: unknown) {
-    const current = await getDraft(userId, draft.id);
-    return profileCommand(userId, draft.id, { action, expectedRevision: current.revision, operationKey: randomUUID(), payload });
+    const current = await getDraft(userId, draft.id, options);
+    return profileCommand(userId, draft.id, { action, expectedRevision: current.revision, operationKey: randomUUID(), payload }, options);
   }
   const profile = { displayName: "Synthetic independent review", infameHandle: handle, bio: "Reviewed original bio", location: { countryCode: "EG", cityKey: null, cityLabel: null, timeZone: "Africa/Cairo" }, languages: ["ar"], dialects: [], nicheSlugs: ["tech"], fameIndustries: [], contentStyles: [], preferredCurrency: "KWD", minimumMinor: null, availability: { status: "UNKNOWN", startsAt: null, endsAt: null }, travelWilling: false, ratesVisibility: "PRIVATE", rates: [], primarySourceKey: "instagram" };
   await map();

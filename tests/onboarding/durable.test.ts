@@ -2,17 +2,35 @@ import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { applyDraftCommand, createOrResumeDraft, getDraft, OnboardingError } from "@/lib/onboarding/drafts";
-import { queueSourceJob, startSourceJob, checkpointSourceJob, completeSourceJob, failSourceJob } from "@/lib/onboarding/jobs";
+import { openSession, resolveSession } from "@/lib/identity";
+import { captureOrganizationActor, type OrganizationActor } from "@/lib/organizations/context";
+import { applyDraftCommand as applyNativeDraftCommand, createOrResumeDraft as createNativeDraft, getDraft as getNativeDraft, OnboardingError } from "@/lib/onboarding/drafts";
+import { queueSourceJob as queueNativeSourceJob, startSourceJob, checkpointSourceJob, completeSourceJob, failSourceJob } from "@/lib/onboarding/jobs";
 
 const users: string[] = [];
+const sessions = new Map<string, Readonly<OrganizationActor>>();
+function serverAuth(userId: string) {
+  const actor = sessions.get(userId);
+  if (!actor) throw new Error("Owned durable fixture is missing its captured native session");
+  return actor;
+}
+// Test-local forwarding only: each actor is captured once during fixture setup,
+// then retained unchanged through suspension/replay/concurrency. No call mints
+// or refreshes a session, and background exact-token exports remain untouched.
+const createOrResumeDraft = (userId: string, client: PrismaClient = prisma) => createNativeDraft(userId, { client, serverAuth: serverAuth(userId) });
+const getDraft = (userId: string, draftId: string, client: PrismaClient = prisma) => getNativeDraft(userId, draftId, { client, serverAuth: serverAuth(userId) });
+const applyDraftCommand = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma, context: { channel: "FORM" | "VOICE" } = { channel: "FORM" }) => applyNativeDraftCommand(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: context.channel });
+const queueSourceJob = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma, context: { channel: "FORM" | "VOICE" } = { channel: "FORM" }) => queueNativeSourceJob(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: context.channel });
 async function actor(role: "CREATOR" | "BRAND" | "ADMIN" = "CREATOR") {
   const id = randomUUID();
-  await prisma.user.create({ data: { id, name: "Synthetic onboarding", email: `${id}@example.invalid`, passwordHash: "not-a-login-hash", role, isTest: true } });
+  const user = await prisma.user.create({ data: { id, name: "Synthetic onboarding", email: `${id}@example.invalid`, passwordHash: "not-a-login-hash", role, isTest: true } });
   users.push(id);
+  const token = await openSession(id, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Owned durable fixture native session did not resolve");
+  sessions.set(id, captureOrganizationActor(session));
   return id;
 }
-afterAll(async () => { await prisma.user.deleteMany({ where: { id: { in: users } } }); });
+afterAll(async () => { await prisma.user.deleteMany({ where: { id: { in: users } } }); sessions.clear(); });
 
 const instagramIdentity = { platform: "INSTAGRAM", providerAccountId: "synthetic-provider-1", normalizedHandle: "synthetic_one", confirmedOrigin: null };
 const tiktokIdentity = { platform: "TIKTOK", providerAccountId: "synthetic-provider-2", normalizedHandle: "synthetic_two", confirmedOrigin: null };
@@ -38,7 +56,7 @@ describe("durable server-owned onboarding on guarded PostgreSQL", () => {
     const other = await actor();
     await expect(getDraft(other, first.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await prisma.user.update({ where: { id: owner }, data: { active: false } });
-    await expect(getDraft(owner, first.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(getDraft(owner, first.id)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await expect(createOrResumeDraft(await actor("ADMIN"))).rejects.toBeInstanceOf(OnboardingError);
   });
 

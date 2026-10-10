@@ -914,3 +914,118 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   research/output/tmp and production runner remain excluded. Root saves this
   bounded install/offline phase; onboarding native-session correction and all
   remaining managed/MVP work continue. OpenAI remains disabled and goal active.
+
+
+## Native interactive onboarding sessions — 2026-10-10
+
+- Prerequisite5b5f2a9 installs only private-safe public offline support after all
+  four gates, four browser cases and actual isolated production-static HTTP.
+  Temporary production fixture stopped; original dev/PG targets preserved and
+  all three31-migration checksums still match. Full goal remains active.
+- Approved05-onboarding-native-session targets six bare-ID interactive exports,
+  six API/SSR adapters and one existing UI leaf. Source review found missing
+  exact AuthSession/version/revocation/actual-clock rechecks and pre-body sticky
+  UI denial; these findings precede native exploit acceptance. Public readers and
+  accepted background exact-token/current-consent jobs retain separate authority.
+- Root froze separate trusted options containing client/serverAuth and command
+  channel; no PrismaClient compatibility/default-auth bypass, metadata never
+  changes command hashes/DTOs. Only pure types exist so far. Independent authors
+  prepare≤3 native groups and a bounded UI candidate before root-observed RED.
+  Complete owner/reviewer User locks precede AuthSession and domain locks; no
+  schema/dependency/provider/publication redesign is included in this correction.
+
+- Independent three-group native witness candidate adopted. Root deliberately
+  ran only its first baseline group against unchanged services (-t selection,
+  other two not executed yet): actual six bare-ID calls returned fourACCEPTED200
+  and twoSTALE_VERSION409 instead of uniform UNAUTHENTICATED401. This is genuine
+  source behavior,2.13s, not the later future-options argument-shape failure.
+  Stable real role/session fixtures, wait/expiry/token cases remain to execute
+  after the native boundary is implemented. UI candidate stays inactive; the
+  optional readiness-child401/403 callback is coordinator-owned and preserves
+  its current native assessment/404 behavior.
+
+- Root implemented all six strict interactive native-session boundaries and the
+  separate accepted-job lane. Complete owner/reviewer locks precede exact
+  AuthSession and domain locks; current actual-clock authorization wraps database
+  waits, replay, private projection/null and final commit. Independent source
+  review found no blocker; publication prerequisites and command hashes remain
+  unchanged. Both API and four SSR adapters now forward trusted metadata outside
+  command data; missing-draft lookup occurs inside the authenticated loader.
+- Native three-group witnesses passed6.31s after correcting only a fixture website
+  origin to the existing valid example.com policy. A later eight-file run produced
+  two timeouts over1778.09s without assertion outcomes; no product/test relaxation
+  followed. The targeted session-wait group passed1.42s, then the unchanged full
+  eight-file native/fixture union passed50/50 in22.40s. TypeScript and scoped
+  warning-free service/API/SSR lint passed. These are current owned synthetic
+  mechanics, not live identity/provider/publication acceptance.
+- The original UI retains only a temporary optional actor-reference prop for
+  mounted baseline testing. The frozen replacement candidate remains inactive
+  until browser RED. Root added the narrow readiness-child401/403 callback;404
+  and its native assessment remain unchanged. Browser/transport authors work
+  independently without mutable service/test/build execution.
+- Existing public-profile/publication browser union passed16/16 in37.0s across
+  Arabic360 RTL and English LTR with genuine native sessions, local proof fixtures
+  and labelled transport faults. No public-reader or prerequisite changes were
+  needed. Independent UI review corrected only the ignored candidate: uncertain
+  retries retain UNKNOWN on semantic negatives, reads pin the original draft
+  binding, and bounded2MiB decoding covers accepted native draft histories.
+  Candidate remains inactive pending its own mounted RED.
+- Root mounted the first Arabic360 native-denial browser witness against the
+  original onboarding UI. A genuine revoked-session command returned401; after
+  its malformed denial body the company-name input still remained (expected
+  count0, actual1 at the original-labelled private-field assertion). This is
+  behavioral RED, not a missing new-hook failure. Root authorized activation of
+  the corrected candidate only in onboarding-screen.tsx; existing geometry and
+  publication controls remain. Independent adapter/candidate review and two
+  transport groups are pending.
+- Root ran the two independent native transport groups. The first authenticated
+  query returned200 instead of the frozen query-free422 contract (RED1.45s);
+  all three endpoint operations now reject queries after role/current-session
+  resolution and before body/private lookup. Both groups passed1.52s, including
+  genuine cookies/session denials, exact64KiB replay/oversize refusal and unchanged
+  hashes/prefixes/renewed replay. The base initialize body contract is unchanged.
+- Review found the UI omitted native DRAFT state. The amended first browser
+  journey established a genuine new default-DRAFT owner/no draft; Type received
+  nativePOST200 and created one owned draft, but Save remained disabled at the
+  original-labelled assertion. Root authorized only central ProfileStateSchema
+  adoption. A further independent stale same-draft revision witness is being
+  added before guarding confirmed read reconciliation; no test is loosened.
+- Fresh-account DRAFT behavior passed after the central schema fix. Native denial
+  cleared private data but exposed a real post-commit focus failure; focus now
+  targets the mounted denial heading in an effect. The synchronized older-revision
+  witness then genuinely erased CONFIRMED after GET completion (RED); the actual
+  confirmed INIT/COMMAND revision is now retained and checked before hydration
+  or clearing recovery. Exact original body/key remain unchanged.
+- The first full four-case browser run exposed harness sequencing errors: the
+  readonly readiness control was inside a legitimately disabled pending fieldset,
+  and UNKNOWN rendered before the intercepted native POST completed. The author
+  used actual ADMIN→owner browser-cookie handshakes and held native403/native200
+  deliveries, plus explicit response/flight latches. A delayed fake409 was also
+  fully completed before native replay observation. No disabled-control forcing,
+  private raw dumps, fixed timing sleeps or weakened assertions remain. Native
+  display/company names retain their existing trim semantics while original
+  request bytes, keys, receipt hashes and replay remain exact.
+- Current corrected onboarding browser suite passed4/4 in21.5s across Arabic360
+  BRAND and English CREATOR. It proves actual fresh DRAFT initialization,
+  pre-body401/403 full private clearance/focus/sticky late-data suppression,
+  confirmed read-only recovery, rejected foreign/older draft responses, unknown
+  frozen retries including semantic-negative delivery, one actual receipt/outbox
+  and accepted300KB native histories. Independent source review is clear; current
+  TSC and scoped warning-free lint passed. Existing publication/public-profile
+  regression and all four gates remain to complete before this checkpoint.
+- Current combined onboarding/publication/public-profile browser regression
+  passed20/20 in42.2s after the final source fixes. Original-language publication,
+  selected accounts, proof withdrawal, readiness current-key/denial/recovery and
+  reduced-motion/long-handle behavior remain intact. Root started the required
+  complete check against frozen product source; original dev services and all
+  disposable data remain preserved. Next administrative-leaf work is preparation
+  only in its untracked plan and ignored agent drafts, excluded from this commit.
+- All four required gates passed against frozen source: TypeScript, warning-free
+  ESLint, guarded Vitest1139/145files in332.19s, and the actual Next Webpack
+  production build. Deployment privacy passed196 manifests/39183 references with
+  zero private development paths. Independent staged review is clear for exactly
+ 26 owned files; unrelated research, artifacts, future preparation and historical
+  working documentation differences are preserved outside the index. Original
+  Talaqee HEAD/work is unchanged; all three isolated targets retain31 matching
+  migration checksums and dev3000/PG5644. No reset, provider activation, publication
+  or new permission occurred. The larger implementation goal remains active.

@@ -9,9 +9,10 @@ import { assertWebsiteCapability, collectConfirmedWebsite } from "@/lib/imports/
 import { validateWebsiteUrl } from "@/lib/imports/website/destination";
 import {
   canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, jobDTO,
-  OnboardingError, parse, persistCommand, record, requireConsent, requireRevision, sourceKey, stateOf, withOwnedDraft,
-  type CommandContext, type DraftDTO, type DraftRole, type DraftState, type JobDTO, type Json, type ProposedFact, type Transaction,
+  OnboardingError, parse, persistCommand, record, requireConsent, requireRevision, sourceKey, stateOf, withOwnedDraft, withAcceptedJobDraft,
+  type DraftDTO, type DraftRole, type DraftState, type JobDTO, type Json, type ProposedFact, type Transaction,
 } from "./drafts";
+import { beginOnboardingSession, type OnboardingCommandOptions } from "./session";
 
 const QueueSchema = CommandBaseSchema.extend({ sourceKey: z.string(), channel: z.enum(["FORM", "VOICE"]).default("FORM") }).strict();
 const fieldKey = z.string().regex(/^[A-Za-z][A-Za-z0-9_.-]{0,99}$/).refine((key) => !["constructor", "prototype", "__proto__"].includes(key));
@@ -70,7 +71,7 @@ async function withJob<T>(client: PrismaClient, actorUserId: string, jobId: stri
   operation: (tx: Transaction, draft: OnboardingDraft, role: DraftRole, job: SourceJob) => Promise<T>): Promise<T> {
   const reference = await client.sourceJob.findUnique({ where: { id: jobId }, select: { draftId: true } });
   if (!reference) throw new OnboardingError("NOT_FOUND", 404);
-  return withOwnedDraft(client, actorUserId, reference.draftId, async (tx, draft, role) => {
+  return withAcceptedJobDraft(client, actorUserId, reference.draftId, async (tx, draft, role) => {
     await tx.$queryRaw`SELECT id FROM "SourceJob" WHERE id = ${jobId} FOR UPDATE`;
     const job = await tx.sourceJob.findUnique({ where: { id: jobId } });
     if (!job || job.draftId !== draft.id) throw new OnboardingError("NOT_FOUND", 404);
@@ -78,11 +79,12 @@ async function withJob<T>(client: PrismaClient, actorUserId: string, jobId: stri
   });
 }
 
-export async function queueSourceJob(actorUserId: string, draftId: string, input: unknown, client: PrismaClient = prisma, context: CommandContext = { channel: "FORM" }): Promise<{ draft: DraftDTO; job: JobDTO; replayed: boolean }> {
+export async function queueSourceJob(actorUserId: string, draftId: string, input: unknown, options: OnboardingCommandOptions = {}): Promise<{ draft: DraftDTO; job: JobDTO; replayed: boolean }> {
+  const session = await beginOnboardingSession(actorUserId, options);
   checkedJson(input);
   const command = parse(QueueSchema, input), key = sourceKey(command.sourceKey), operationKey = `import:${command.operationKey}`, hash = canonicalHash(command);
-  if (command.channel !== "FORM" || context.channel !== "FORM") throw new OnboardingError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
-  return withOwnedDraft(client, actorUserId, draftId, async (tx, draft, role) => {
+  if (command.channel !== "FORM" || session.options.channel !== "FORM") throw new OnboardingError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
+  return withOwnedDraft(session, draftId, async (tx, draft, role) => {
     const replay = await commandReplay<{ draft: DraftDTO; job: JobDTO }>(tx, draft, operationKey, hash);
     if (replay) return { ...replay, replayed: true };
     requireRevision(draft, command.expectedRevision);

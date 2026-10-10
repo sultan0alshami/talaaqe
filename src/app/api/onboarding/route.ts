@@ -1,17 +1,17 @@
 import { requireRole } from "@/lib/api";
 import { domainHandler } from "@/lib/domain-api";
-import { createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
+import { createOrResumeDraft, getDraft, OnboardingError } from "@/lib/onboarding/drafts";
 import { profileForOwner } from "@/lib/onboarding/profiles";
-import { prisma } from "@/lib/prisma";
 
-export const GET = domainHandler(async (_request: Request) => {
-  void _request;
+export const GET = domainHandler(async (request: Request) => {
   const session = await requireRole("CREATOR", "BRAND");
-  const draft = await prisma.onboardingDraft.findUnique({ where: { userId_kind: { userId: session.userId, kind: session.role } }, select: { id: true } });
-  return { draft: draft ? await getDraft(session.userId, draft.id) : null, owner: await profileForOwner(session.userId) };
+  if (new URL(request.url).search) throw new OnboardingError("VALIDATION", 422);
+  const options = { serverAuth: session };
+  return { draft: await getDraft(session.userId, null, options), owner: await profileForOwner(session.userId, options) };
 });
-export const POST = domainHandler(async (_request: Request) => {
-  void _request;
+export const POST = domainHandler(async (request: Request) => {
   const session = await requireRole("CREATOR", "BRAND");
-  return { draft: await createOrResumeDraft(session.userId), owner: await profileForOwner(session.userId) };
+  if (new URL(request.url).search) throw new OnboardingError("VALIDATION", 422);
+  const options = { serverAuth: session };
+  return { draft: await createOrResumeDraft(session.userId, options), owner: await profileForOwner(session.userId, options) };
 });

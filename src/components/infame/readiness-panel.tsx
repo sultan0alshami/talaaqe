@@ -70,10 +70,10 @@ const remedyLabels: Record<PublicationReadiness["remedies"][number]["kind"], [st
 };
 
 export function PublicationReadinessPanel({
-  role, portfolioVersion, visibleAccountIds, onGoToStep, refreshKey,
+  role, portfolioVersion, visibleAccountIds, onGoToStep, refreshKey, onDeny,
 }: {
   role: Role; portfolioVersion?: number; visibleAccountIds?: string[];
-  onGoToStep?: (step: number) => void; refreshKey?: number;
+  onGoToStep?: (step: number) => void; refreshKey?: number; onDeny?: (status: number) => void;
 }) {
   const { lang, isAr } = useI18n(), copy = (ar: string, en: string) => isAr ? ar : en;
   const headingId = "publication-readiness-" + useId();
@@ -90,6 +90,8 @@ export function PublicationReadinessPanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false), mutex = useRef(false), generation = useRef(0);
   const active = useRef<ActiveRead | null>(null), currentKey = useRef<string | null>(null);
+  const denialHandler = useRef(onDeny);
+  useEffect(() => { denialHandler.current = onDeny; }, [onDeny]);
 
   const load = useCallback(async (read: CapturedRead, focusAfter = false) => {
     if (!mounted.current || mutex.current || currentKey.current !== read.key) return;
@@ -105,6 +107,7 @@ export function PublicationReadinessPanel({
       // A same-request denial wins over cancellation and clears the private
       // assessment and its time before any denial body is parsed.
       if ([401, 403, 404].includes(response.status)) {
+        if (response.status === 401 || response.status === 403) denialHandler.current?.(response.status);
         setAssessment(null); setRetry(null);
         setFailure({ key: read.key, code: response.status === 401 ? "UNAUTHENTICATED" : response.status === 403 ? "FORBIDDEN" : "NOT_FOUND" });
         return;

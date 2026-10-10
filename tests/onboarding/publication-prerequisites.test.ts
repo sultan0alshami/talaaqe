@@ -77,7 +77,7 @@ describe("publication prerequisite extraction: independent actual native parity"
   it("keeps CREATOR PUBLISH action semantics for private/test profiles, future approval and unmatched input revision", async () => {
     const f = await fixture("CREATOR"), result = await prerequisites(f);
     expect(result).toMatchObject({ version: 1, inputRevision: 999, content: f.content }); expect(Date.parse(result.approvedAt!)).toBeGreaterThan(Date.now());
-    const published = await profileCommand(f.owner.user.id, f.draft.id, { operationKey: key(), expectedRevision: 1, action: "PUBLISH", payload: { consent: true, portfolioVersion: 1, visibleAccountIds: [] } });
+    const published = await profileCommand(f.owner.user.id, f.draft.id, { operationKey: key(), expectedRevision: 1, action: "PUBLISH", payload: { consent: true, portfolioVersion: 1, visibleAccountIds: [] } }, { serverAuth: f.owner.actor });
     expect(published.replayed).toBe(false); expect((await prisma.creator.findUniqueOrThrow({ where: { id: f.profileId } })).state).toBe("PUBLISHED");
     expect((await prisma.socialAccount.findUniqueOrThrow({ where: { id: f.accountId! } })).publicVisible).toBe(false);
     const current = await prisma.creator.findUniqueOrThrow({ where: { id: f.profileId } }); expect(await publicCreator(current.handle)).toBeNull();

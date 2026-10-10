@@ -5,8 +5,10 @@ import { AvailabilitySchema, ArabicDialectSchema, ContentLanguageSchema, Content
 import { CurrencyCodeSchema, MoneySchema } from "@/lib/contracts/money";
 import { NICHE_BY_SLUG } from "@/lib/contracts/taxonomy";
 import { acceptedRepresentativeProof, currentBrandOwner, currentCreatorOwner, lockEvidenceActors, lockEvidenceDomain, type EvidenceActorLocks } from "@/lib/evidence/readiness";
-import { canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, OnboardingError, parse, persistCommand, record, requireRevision, stateOf, withOwnedDraft, type CommandContext, type DraftDTO, type Json, type Transaction } from "./drafts";
+import { canonicalHash, checkedJson, CommandBaseSchema, commandReplay, consentOf, draftDTO, inputJson, OnboardingError, parse, persistCommand, record, requireRevision, stateOf, withOwnedDraft, type DraftDTO, type Json, type Transaction } from "./drafts";
 import { ProfileTextSchema as text, PortfolioContentSchema, type PortfolioContent } from "./portfolio-contract";
+import { beginOnboardingSession, lockOnboardingSession, withOnboardingSession,
+  type OnboardingReadOptions, type OnboardingCommandOptions } from "./session";
 import { creatorPublicationCore } from "./public-creator-core";
 import { assertPublicationPrerequisites, assertPublicationAccountSelection,
   currentPublicationPortfolio as currentPortfolio, type PublicationPortfolio as PortfolioDTO } from "./publication-prerequisites";
@@ -62,12 +64,13 @@ async function syncMappedAccounts(tx: Transaction, creator: Creator, draft: Onbo
   return primaryAccountId;
 }
 
-export async function profileCommand(actorUserId: string, draftId: string, input: unknown, client: PrismaClient = prisma, context: CommandContext = { channel: "FORM" }): Promise<Result> {
+export async function profileCommand(actorUserId: string, draftId: string, input: unknown, options: OnboardingCommandOptions = {}): Promise<Result> {
+  const session = await beginOnboardingSession(actorUserId, options);
   checkedJson(input);
-  if (context.channel !== "FORM") throw new OnboardingError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
+  if (session.options.channel !== "FORM") throw new OnboardingError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
   const command = parse(CommandSchema, input), operationKey = `profile:${command.operationKey}`, hash = canonicalHash(command);
   let evidenceActors!: EvidenceActorLocks;
-  return withOwnedDraft(client, actorUserId, draftId, async (tx, draft, role) => {
+  return withOwnedDraft(session, draftId, async (tx, draft, role) => {
     const replay = await commandReplay<Omit<Result, "replayed">>(tx, draft, operationKey, hash);
     if (replay) return { ...replay, replayed: true };
     requireRevision(draft, command.expectedRevision);
@@ -159,13 +162,15 @@ export async function profileCommand(actorUserId: string, draftId: string, input
     return { ...result, replayed: false };
   }, async (tx, role) => {
     const profile = role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId }, select: { id: true } }) : await tx.brand.findUnique({ where: { userId: actorUserId }, select: { id: true } });
-    evidenceActors = await lockEvidenceActors(tx, { creatorIds: role === "CREATOR" && profile ? [profile.id] : [], brandIds: role === "BRAND" && profile ? [profile.id] : [], otherOwnerIds: [actorUserId] });
+    evidenceActors = await lockEvidenceActors(tx, { creatorIds: role === "CREATOR" && profile ? [profile.id] : [], brandIds: role === "BRAND" && profile ? [profile.id] : [], otherOwnerIds: [actorUserId], updateOwners: true });
   });
 }
 
-export async function profileForOwner(actorUserId: string, client: PrismaClient = prisma) {
-  return client.$transaction(async tx => {
+export async function profileForOwner(actorUserId: string, options: OnboardingReadOptions = {}) {
+  const session = await beginOnboardingSession(actorUserId, options);
+  return withOnboardingSession(session, false, async tx => {
   await tx.$queryRaw`SELECT id FROM "User" WHERE id=${actorUserId} FOR SHARE`;
+  await lockOnboardingSession(tx);
   const initialUser = await tx.user.findUnique({ where: { id: actorUserId }, select: { active: true, role: true } });
   if (!initialUser?.active || (initialUser.role !== "CREATOR" && initialUser.role !== "BRAND")) throw new OnboardingError("FORBIDDEN", 403);
   const reference = initialUser.role === "CREATOR" ? await tx.creator.findUnique({ where: { userId: actorUserId }, select: { id: true } }) : await tx.brand.findUnique({ where: { userId: actorUserId }, select: { id: true } });
@@ -181,7 +186,7 @@ export async function profileForOwner(actorUserId: string, client: PrismaClient 
     : { id: brand!.id, displayName: brand!.name, handle: brand!.slug, bio: brand!.description, state: brand!.state, countryCode: brand!.countryCode, city: brand!.city, timeZone: brand!.timeZone, languages: [], dialects: [], nicheSlugs: [], fameIndustries: [], contentStyles: [], currency: null, minimumMinor: null, availability: null, travel: null, facts: brand!.profileFacts, primaryAccountId: null, website: brand!.website };
   const portfolio = await currentPortfolio(tx, user.role as "CREATOR" | "BRAND", profile.id);
   return { role: user.role, profile, accounts: creator?.accounts.map((account) => ({ id: account.id, platform: account.platform, handle: account.handle, ownershipStatus: account.ownershipStatus, publicVisible: account.publicVisible, brandVisible: account.brandVisible, mappingRevision: account.mappingRevision, factsApprovedAt: account.factsApprovedAt?.toISOString() ?? null })) ?? [], rates: creator?.rates.map((rate) => ({ platform: rate.platform, format: rate.format, currencyCode: rate.currency, amountMinor: rate.amountMinor.toString() })) ?? [], portfolio };
-  }, { maxWait: 10_000, timeout: 20_000 });
+  });
 }
 export type OwnerProfileDTO = NonNullable<Awaited<ReturnType<typeof profileForOwner>>>;
 

@@ -1,14 +1,32 @@
 import { randomUUID } from "node:crypto";
+import type { PrismaClient } from "@prisma/client";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { applyDraftCommand, createOrResumeDraft, getDraft } from "@/lib/onboarding/drafts";
-import { queueSourceJob, startSourceJob, completeSourceJob, runWebsiteSourceJob } from "@/lib/onboarding/jobs";
+import { openSession, resolveSession } from "@/lib/identity";
+import { captureOrganizationActor, type OrganizationActor } from "@/lib/organizations/context";
+import { applyDraftCommand as applyNativeDraftCommand, createOrResumeDraft as createNativeDraft, getDraft as getNativeDraft } from "@/lib/onboarding/drafts";
+import { queueSourceJob as queueNativeSourceJob, startSourceJob, completeSourceJob, runWebsiteSourceJob } from "@/lib/onboarding/jobs";
 import type { WebsiteDependencies } from "@/lib/imports/website/types";
 
 const owners: string[] = [], origin = "https://brand.example.com", publicIp = "93.184.216.34";
+const sessions = new Map<string, Readonly<OrganizationActor>>();
+function serverAuth(userId: string) {
+  const actor = sessions.get(userId);
+  if (!actor) throw new Error("Owned website fixture is missing its captured native session");
+  return actor;
+}
+// Only interactive requests forward the once-captured real fixture session.
+// Accepted worker orchestration and execution-token calls keep their own lane.
+const createOrResumeDraft = (userId: string, client: PrismaClient = prisma) => createNativeDraft(userId, { client, serverAuth: serverAuth(userId) });
+const getDraft = (userId: string, draftId: string, client: PrismaClient = prisma) => getNativeDraft(userId, draftId, { client, serverAuth: serverAuth(userId) });
+const applyDraftCommand = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma) => applyNativeDraftCommand(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: "FORM" });
+const queueSourceJob = (userId: string, draftId: string, input: unknown, client: PrismaClient = prisma) => queueNativeSourceJob(userId, draftId, input, { client, serverAuth: serverAuth(userId), channel: "FORM" });
 async function ready(website = true) {
   const id = randomUUID(); owners.push(id);
-  await prisma.user.create({ data: { id, name: "Synthetic website actor", email: `${id}@example.invalid`, passwordHash: "not-a-login-hash", role: website ? "BRAND" : "CREATOR", isTest: true } });
+  const user = await prisma.user.create({ data: { id, name: "Synthetic website actor", email: `${id}@example.invalid`, passwordHash: "not-a-login-hash", role: website ? "BRAND" : "CREATOR", isTest: true } });
+  const token = await openSession(id, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Owned website fixture native session did not resolve");
+  sessions.set(id, captureOrganizationActor(session));
   let draft = await createOrResumeDraft(id);
   const identity = website ? { platform: null, providerAccountId: null, normalizedHandle: null, confirmedOrigin: origin }
     : { platform: "INSTAGRAM", providerAccountId: "synthetic-account", normalizedHandle: "synthetic", confirmedOrigin: null };
@@ -21,7 +39,7 @@ async function ready(website = true) {
   const queued = await queueSourceJob(id, draft.id, { sourceKey, operationKey: randomUUID(), expectedRevision: draft.revision });
   return { owner: id, draft, job: queued.job, identity, sourceKey };
 }
-afterAll(async () => { await prisma.user.deleteMany({ where: { id: { in: owners } } }); });
+afterAll(async () => { await prisma.user.deleteMany({ where: { id: { in: owners } } }); sessions.clear(); });
 function dependencies(): WebsiteDependencies {
   return { capability: { enabled: true, mode: "DEVELOPMENT_FIXTURE", reviewVersion: "synthetic-v1" },
     resolver: { resolve: async () => [{ address: publicIp, family: 4 }] },
