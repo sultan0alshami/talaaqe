@@ -3,7 +3,7 @@
 // Reuses the existing campaign form's six Card groups and native codecs.
 import Link from "next/link";
 import type { z } from "zod";
-import { useEffect, useId, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useNavigationGuardRegistrar } from "@/components/shells/navigation-guard";
 import { CampaignBrief } from "@/components/infame/campaign-brief";
+import { CampaignAgentPanel } from "@/components/infame/campaign-agent-panel";
+import type { CampaignAgentResult } from "@/lib/campaign-agent/native-contracts";
+import type { CampaignAgentBarrierResult } from "@/lib/campaign-agent/recovery-contracts";
+import { readCampaignAgentResponse } from "@/lib/campaign-agent/browser-transport";
 import { ContextReferenceVersionFiles, OwnerReviewReferenceFiles } from "@/components/infame/context-reference-files";
 import { ManagedRequestAction, type ManagedRequestRecoveryState } from "@/components/infame/managed-order";
 import { managedRequestRecoveryKey } from "@/lib/managed/recovery-key";
@@ -420,6 +424,16 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
   const [authority, setAuthority] = useState(initial.plan), [pending, setPending] = useState<PlanningPending | null>(null), pendingRef = useRef<PlanningPending | null>(null);
   const [requestRecovery, setRequestRecovery] = useState<ManagedRequestRecoveryState>({ pending: false, busy: false, dirty: false, denied: false });
   const requestRecoveryRef = useRef(requestRecovery);
+  const [agentRecovery, setAgentRecovery] = useState({ pending: false, busy: false, dirty: false, denied: false });
+  const agentRecoveryRef = useRef(agentRecovery);
+  const [privacyEpoch, setPrivacyEpoch] = useState(0);
+  const privacyEpochRef = useRef(0);
+  const agentDenialListeners = useRef(new Set<(status: number) => void>());
+  const manualFormContainer = useRef<HTMLDivElement | null>(null);
+  const registerAgentDenial = useCallback((invalidate: (status: number) => void) => {
+    agentDenialListeners.current.add(invalidate); return () => { agentDenialListeners.current.delete(invalidate); };
+  }, []);
+  const [generatedAgentProfile, setGeneratedAgentProfile] = useState<{ briefId: string; briefVersion: number } | null>(null);
   const [viewAvailable, setViewAvailable] = useState(initial.viewAvailable), [readRetry, setReadRetry] = useState<EditorRead | null>(null);
   const [denied, setDenied] = useState(["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"].includes(initialError ?? "")), [historical, setHistorical] = useState(false);
   const [fieldError, setFieldError] = useState<string | undefined>(), [confirmNavigation, setConfirmNavigation] = useState(false);
@@ -429,6 +443,9 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
   const scopeDrift = !samePlanningScope(fixed.scope, scope) && (fixed.scope !== null || scope !== null) || fixed.routeId !== campaignId;
   function setCapture(value: PlanningPending | null) { pendingRef.current = value; setPending(value); }
   function clearPrivate() {
+    agentRecoveryRef.current = { pending: false, busy: false, dirty: false, denied: true };
+    setAgentRecovery(agentRecoveryRef.current); setGeneratedAgentProfile(null); privacyEpochRef.current++; setPrivacyEpoch(privacyEpochRef.current);
+    for (const invalidate of agentDenialListeners.current) invalidate(404);
     const deniedCampaignId = currentRef.current?.campaign.id ?? fixed.routeId;
     if (actorReference && fixed.scope && deniedCampaignId) {
       try { sessionStorage.removeItem(managedRequestRecoveryKey(actorReference, fixed.scope, deniedCampaignId)); }
@@ -450,23 +467,29 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
     if (previous.pending !== next.pending || previous.busy !== next.busy || previous.dirty !== next.dirty || previous.denied !== next.denied)
       setRequestRecovery(next);
   }
+  function receiveAgentRecovery(next: typeof agentRecovery) {
+    const previous = agentRecoveryRef.current; agentRecoveryRef.current = next;
+    if (next.denied) { if (!previous.denied) denyChild(); return; }
+    if (previous.pending !== next.pending || previous.busy !== next.busy || previous.dirty !== next.dirty || previous.denied !== next.denied)
+      setAgentRecovery(next);
+  }
   const canWrite = !protectedDenied && viewAvailable && (fixed.routeId === null || current !== null)
     && (fixed.scope?.kind === "OWN_BRAND" || authority?.capability === "plan"), terminal = current?.campaign.status === "CANCELLED" || current?.campaign.status === "COMPLETED";
-  const disabled = net.busy || pending !== null || requestRecovery.pending || protectedDenied || !canWrite || terminal;
+  const disabled = net.busy || pending !== null || requestRecovery.pending || agentRecovery.pending || agentRecovery.busy || agentRecovery.dirty || protectedDenied || !canWrite || terminal;
   function requestNavigation(continueNavigation: () => void, opener: HTMLElement | null) {
-    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy) { net.setError("UNRESOLVED_REQUEST"); return; }
-    if (!protectedDenied && (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty)) {
+    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy || agentRecoveryRef.current.pending || agentRecoveryRef.current.busy) { net.setError("UNRESOLVED_REQUEST"); return; }
+    if (!protectedDenied && (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty || agentRecoveryRef.current.dirty)) {
       navigationOpener.current = opener; setLeaveHref(null); setLeaveContinuation(() => continueNavigation); setConfirmNavigation(true);
     } else continueNavigation();
   }
   useCampaignPlanningNavigationRegistration(navigationRegistrar, { isBlocked: () => !protectedDenied && (formDirty || literalDirty || choiceDirty || pendingRef.current !== null || net.busy
-    || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy || requestRecoveryRef.current.dirty), requestLeave: requestNavigation });
+    || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy || requestRecoveryRef.current.dirty || agentRecoveryRef.current.pending || agentRecoveryRef.current.busy || agentRecoveryRef.current.dirty), requestLeave: requestNavigation });
   useEffect(() => { if (focusSequence) heading.current?.focus(); }, [focusSequence]);
   useEffect(() => {
-    if (!formDirty && !literalDirty && !choiceDirty && !pending && !requestRecovery.pending && !requestRecovery.dirty) return;
+    if (!formDirty && !literalDirty && !choiceDirty && !pending && !requestRecovery.pending && !requestRecovery.dirty && !agentRecovery.pending && !agentRecovery.busy && !agentRecovery.dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", beforeUnload); return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [formDirty, literalDirty, choiceDirty, pending, requestRecovery.pending, requestRecovery.dirty]);
+  }, [formDirty, literalDirty, choiceDirty, pending, requestRecovery.pending, requestRecovery.dirty, agentRecovery.pending, agentRecovery.busy, agentRecovery.dirty]);
   function detailPath(id: string, briefsAfter?: string | null) {
     if (!fixed.scope) throw new PlanningUiError("VALIDATION");
     const query = scopeQuery(fixed.scope); query.set("campaignId", id);
@@ -627,6 +650,29 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
     if (!id || protectedDenied || net.busy || pendingRef.current) return;
     startRead({ kind: "BRIEFS", path: detailPath(id, next.after), campaignId: id, position: capturedVersionPosition(next) });
   }
+  async function reconcileAgentReceipt(receipt: CampaignAgentResult | CampaignAgentBarrierResult, signal: AbortSignal) {
+    const epoch = privacyEpochRef.current;
+    const ensure = () => { if (signal.aborted || privacyEpochRef.current !== epoch || agentRecoveryRef.current.denied) throw new PlanningUiError("CANCELLED"); };
+    ensure();
+    const response = await fetch(detailPath(receipt.campaignId), { credentials: "same-origin", redirect: "error", cache: "no-store", signal }); ensure();
+    if ([401, 403, 404].includes(response.status)) { denyChild(); throw new PlanningUiError("NOT_FOUND"); }
+    if (!response.ok || response.headers.get("cache-control") !== "private, no-store") throw new PlanningUiError("INVALID_RESPONSE");
+    // Twenty individually bounded brief snapshots can exceed the Agent DTO cap.
+    const envelope = await readCampaignAgentResponse(response, signal, 2097152); ensure();
+    const next = PlanningCampaignSchema.safeParse(envelope && typeof envelope === "object" && "data" in envelope ? envelope.data : null);
+    if (!next.success || !samePlanningScope(fixed.scope, next.data.scope) || next.data.campaign.id !== receipt.campaignId
+      || next.data.campaign.revision < receipt.campaignRevision || next.data.planning.revision < receipt.planningRevision) throw new PlanningUiError("INVALID_RESPONSE");
+    const original = receipt.action === "RECOVERY_BARRIER" ? receipt.originalReceipt : receipt;
+    if (original?.action === "GENERATE_PROFILE") {
+      const generated = next.data.briefs.find(brief => brief.id === original.briefId && brief.version === original.briefVersion);
+      if (!generated && next.data.campaign.revision === original.campaignRevision) throw new PlanningUiError("INVALID_RESPONSE");
+      // A verified historical receipt may fall outside the first brief page.
+      // Reconcile current authority without substituting the latest profile;
+      // the existing history controls can load its exact retained version.
+      setGeneratedAgentProfile(generated ? { briefId: generated.id, briefVersion: generated.version } : null);
+    }
+    ensure(); install(next.data); setBriefPosition(emptyVersionPosition());
+  }
   function loadContexts(next = { after: null as string | null, history: [] as (string | null)[] }) {
     if (!fixed.scope || protectedDenied || net.busy) return;
     const query = scopeQuery(fixed.scope); query.set("limit", "20"); if (next.after) query.set("after", next.after);
@@ -638,13 +684,14 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
     startRead({ kind: "CONTEXT_VERSIONS", path: "/api/brand-contexts/detail?" + query, contextId: id, position: capturedVersionPosition(next) });
   }
   function guardNavigation(event: MouseEvent<HTMLAnchorElement>, href: string) {
-    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy) { event.preventDefault(); net.setError("UNRESOLVED_REQUEST"); return; }
-    if (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty) { event.preventDefault(); navigationOpener.current = event.currentTarget; setLeaveHref(href); setLeaveContinuation(null); setConfirmNavigation(true); }
+    if (pendingRef.current || net.busy || requestRecoveryRef.current.pending || requestRecoveryRef.current.busy || agentRecoveryRef.current.pending || agentRecoveryRef.current.busy) { event.preventDefault(); net.setError("UNRESOLVED_REQUEST"); return; }
+    if (formDirty || literalDirty || choiceDirty || requestRecoveryRef.current.dirty || agentRecoveryRef.current.dirty) { event.preventDefault(); navigationOpener.current = event.currentTarget; setLeaveHref(href); setLeaveContinuation(null); setConfirmNavigation(true); }
   }
   const contextHref = fixed.scope?.kind === "CLIENT" ? "/brand/context?clientId=" + encodeURIComponent(fixed.scope.clientId) : "/brand/context";
   const allCampaignsHref = fixed.scope?.kind === "CLIENT" ? "/brand/campaigns?clientId=" + encodeURIComponent(fixed.scope.clientId) : "/brand/campaigns";
   const displayed = protectedDenied ? null : current, label = (key: string) => planningLabels[key]?.[isAr ? 0 : 1] ?? key;
   const topBrief = displayed?.briefs[0];
+  const agentBrief = displayed?.briefs.find(brief => brief.id === generatedAgentProfile?.briefId && brief.version === generatedAgentProfile.briefVersion);
   return <section className={`${workflow.page} space-y-[22px]`}>
     <header className="space-y-3"><h1 ref={heading} tabIndex={-1} className="text-2xl font-bold">{displayed ? copy("رتّب تفاصيل حملتك", "Shape your campaign") : copy("ابدأ حملة مُدارة", "Start a managed campaign")}</h1>
       <p className="text-base leading-7 text-muted-foreground">{copy("احفظ الحقول وكلماتك اليدوية دون استخراج تلقائي، ثم راجع موجزًا مثبت السياق وأرسله للمالك الفعلي.", "Save fields and manual words without automatic extraction, then review the brief's pinned context and submit it to the actual owner.")}</p>
@@ -698,7 +745,17 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
             setChoice(latest.planning.selection.kind === "NONE" ? { kind: "NONE" } : { kind: "APPROVED_CONTEXT", versionId: latest.planning.selection.versionId!, contentHash: latest.planning.selection.contentHash! }); setChoiceDirty(false);
             setPreview(latest.planning.selectedContext); setLatest(null); }}>{copy("استبدل بالنسخة المحفوظة", "Replace with saved version")}</Button></div>
       </CardContent></Card>}
-      <CampaignPlanningManualForm form={form} onChange={update => { setForm(update); setFormDirty(true); setFieldError(undefined); }} disabled={disabled} onSubmit={save} errorField={fieldError} />
+      {displayed && actorReference && fixed.scope && canWrite && <CampaignAgentPanel key={actorReference + ":" + displayed.campaign.id}
+        scope={fixed.scope} campaignId={displayed.campaign.id} actorReference={actorReference} planAuthority={authority} canWrite={canWrite}
+        blocked={protectedDenied || net.busy || pending !== null || requestRecovery.pending || requestRecovery.busy || requestRecovery.dirty || terminal || formDirty || literalDirty || choiceDirty || historical || latest !== null}
+        privacyEpoch={privacyEpoch} onDeny={denyChild} onRecoveryState={receiveAgentRecovery} onCommitted={reconcileAgentReceipt} registerPrivateDenial={registerAgentDenial}
+        onReviewDiscard={() => requestAnimationFrame(() => { if (!agentRecoveryRef.current.denied) manualFormContainer.current?.querySelector<HTMLInputElement>("input")?.focus(); })}
+        generatedProfile={agentBrief ? { briefId: agentBrief.id, briefVersion: agentBrief.version, content: <CampaignBrief
+          title={agentBrief.content.requirements.title} version={agentBrief.version} status={agentBrief.approvedAt ? copy("اعتماد محفوظ", "Approval retained") : copy("غير معتمد", "Unapproved")}
+          rows={Object.entries(agentBrief.content.requirements).filter(([key]) => Object.hasOwn(campaignFieldLabels, key)).map(([key, value]) => ({ key, label: label(key), value: campaignFieldValue(key, value, isAr) }))}>
+          <p className="text-base">{copy("ملف كامل من التفاصيل التي أكّدتها. الاعتماد إجراء منفصل للمالك.", "A complete profile from the details you confirmed. Owner approval is a separate action.")}</p>
+        </CampaignBrief> } : null} />}
+      <div ref={manualFormContainer} className="min-w-0"><CampaignPlanningManualForm form={form} onChange={update => { setForm(update); setFormDirty(true); setFieldError(undefined); }} disabled={disabled} onSubmit={save} errorField={fieldError} /></div>
       <Card><CardHeader><CardTitle>{copy("كلمات يدوية محفوظة", "Saved manual words")}</CardTitle><CardDescription className="text-base">{copy("محادثة أو فقرة حرفية غير معالجة. لا توجد إجابة مساعد أو استخراج مزعوم.", "Literal unprocessed chat or paragraph text. No assistant reply or extraction is claimed.")}</CardDescription></CardHeader>
         <CardContent className="space-y-4"><label htmlFor={fieldIds + "-mode"} className="block space-y-2"><span>{copy("طريقة النص", "Text mode")}</span><select id={fieldIds + "-mode"} aria-label={copy("طريقة النص", "Text mode")} className={selectClass} disabled={disabled} value={literal.mode}
           onChange={event => { setLiteral(previous => ({ ...previous, mode: event.target.value as "CHAT" | "PARAGRAPH" })); setLiteralDirty(true); }}><option value="CHAT">{copy("محادثة يدوية", "Manual chat")}</option><option value="PARAGRAPH">{copy("فقرة", "Paragraph")}</option></select></label>
@@ -727,7 +784,7 @@ export function CampaignPlanningScreen({ scope, campaignId, initialCampaign, ini
             || topBrief.provenance.selectionId !== displayed.planning.selection.id || topBrief.provenance.selectionRevision !== displayed.planning.selection.revision}
             onClick={() => command("SUBMIT_BRIEF", { briefId: topBrief.id, expectedBriefVersion: topBrief.version })}>{copy("أرسل النسخة لمراجعة المالك", "Submit version for owner review")}</Button>
           {actorReference && <ManagedRequestAction source={displayed} actorReference={actorReference}
-            blocked={protectedDenied || net.busy || pending !== null || terminal || formDirty || literalDirty || choiceDirty || historical || briefPosition.after !== null}
+            blocked={protectedDenied || net.busy || pending !== null || agentRecovery.pending || agentRecovery.busy || agentRecovery.dirty || terminal || formDirty || literalDirty || choiceDirty || historical || briefPosition.after !== null}
             onRecoveryState={receiveRequestRecovery} />}
         </CampaignBrief>}
         {displayed.briefs.length > 1 && <details className={briefStyles.history}><summary className="min-h-12 cursor-pointer py-3 text-base font-medium">{copy("سجل النسخ السابقة", "Previous version history")}</summary>

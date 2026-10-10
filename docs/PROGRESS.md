@@ -650,3 +650,104 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Root stages15 exact native/schema/API/test/shared-record paths; unrelated research,
   output/tmp and future recovery preparation remain unstaged. Goal continues through
   mounted interview/provider/media/voice and remaining managed/original MVP phases.
+
+
+## Campaign interview encrypted recovery and retained page — 2026-10-08
+
+- Prerequisites: saved native/API checkpoint11380f6, actual task-local31-migration
+  targets, existing M03 current session/view/plan transaction and central30 fields.
+  Root owns native recovery, migration, browser codecs, transport and parent/page
+  integration. Independent authors supplied native3, HTTP2, crypto4, storage2 and
+  mounted3-journey witnesses; independent server and component reviews are active.
+- Recovery-key, read-only outcome and explicit revision-barrier endpoints use
+  actual native scope/session/producer checks. Migration31 extends the immutable
+  journal action and strict barrier receipt guard, without a key table or provider.
+  Three task targets applied additively; no data reset. Both native lock orders,
+  missing initialization, future horizon, malformed producer joins and exact own
+  barrier replay have actual database witnesses. Root corrected grant-wait denial,
+  absent-positive-revision and case-alias failures, then replay authority/receipt
+  contradictions. Native/API and browser-codec union20/20 passed12.49s; the native
+  service3/3 separately passed20.89s after the union omitted its filename.
+- Actual WebCrypto AES256-GCM round-trips and independent AAD/tag/key comparisons
+  verify bound recovery encryption, fresh nonces, exact original body preservation,
+  tampering/rotation rejection, Unicode wire bounds and synchronous input capture.
+  Key/plaintext remain in memory; Storage contains ciphertext plus minimal metadata.
+  These are real crypto with bounded transport/storage seams, not live providers.
+- First two storage groups passed549ms. Independent review found terminal CONFLICT
+  could regress to persisted UNKNOWN after failed stub writes; actual root witness
+  reproduced UNKNOWN versus CONFLICT in541ms. Matching terminal memory now survives
+  failed persistence. UUID case aliases cannot establish fresh barrier operations.
+  Current storage3/3 passed535ms; separate storage review remains required.
+- An authentic native campaign returned200 in Arabic360px, but the deliberately
+  null interview failed the independent heading assertion. This is actual mounted
+  browser RED. The candidate now mounts within retained Talaqee card composition,
+  uses licensed Studio chat concepts/native primitives and shared Infame motif.
+  Parent aggregates one navigation guard, dirty/pending/busy child state and
+  synchronous privacy-epoch denial. Full browser acceptance is still in progress.
+  Recovery specs disable traces that would otherwise retain authenticated key
+  response bodies; assertions and synthetic-only screenshots remain evidence.
+- Manual interview stores literal sources, independently selected12 preferences,
+  explicit30-field review and a newly generated unapproved profile. Genuine AI,
+  private media/STT/TTS/live voice, entitlements and remaining managed/original MVP
+  work are not claimed complete. OpenAI remains disabled. No external publication,
+  outreach, provider key creation or financial action occurred. Full goal continues.
+
+- Current integration continued on2026-10-10 after fresh port/Git/clock checks;
+  preview3000 and task PG5644 remained live, original Talaqee dirties unchanged.
+  All three31-migration checksums matched. No reset or external action occurred.
+  Independent transport3 initially produced3/3 RECOVERY_UNAVAILABLE RED639ms;
+  implemented fixed paths/strict body preservation/reused recovery codecs then
+  transport+storage6/6 passed831ms. A separate streamed envelope/key-binding
+  regression passed1/1 in447ms. TypeScript and scoped warning-free lint pass.
+- Independent storage review found a second-instance CONFIRMED write could race
+  an older UNKNOWN load. Actual crypto/storage witness accepted the stale result
+  in557ms; exact captured stub/cipher CAS before publishing now rejects it. Three
+  storage groups passed555ms. Independent reviewers confirmed final authority,
+  crypto, terminal phase, capture and CAS behavior without claiming live providers.
+- Actual mounted checks exposed saved preferences leaving the parent form dirty,
+  a concatenated textarea label, partial review blocking edits and restored APPEND
+  words missing from the editor. Corrected after behavioral failures: exact saved
+  preference/current acknowledgment clears its dirty flag, the title label is
+  separate from help/submit, explicit discard clears only unsubmitted review and
+  focuses the original form, and verified restored words refill an empty editor.
+  Parent retains the shared guard and synchronous privacy clearing.
+- Browser95852 passed both-locales encrypted retry and genuine401/403/404 delayed
+  denial journeys. Its two profile failures were a harness copy error: actual
+  profile title/status/30 rows existed. Corrected assertions verify exact actual
+  title, unapproved status and30 displayed rows; two full review/profile/separate
+  owner-approval journeys passed36.8s. No product heading was changed to satisfy
+  the incorrect expected copy. These partitioned results precede final full run.
+- Independently authored cipher-loss extension passed in actual Arabic browser
+  19.4s: UNKNOWN safe stub survives ciphertext loss, authorized read staysUNKNOWN,
+  explicit reviewed barrier advances once, and exact late originalPOST returns409
+  with no journal/source mutation. Root then produced22 actual unapproved brief
+  versions through native Agent/M03 commands. The old confirmed profile outside
+  the first20 page genuinely blocked reconciliation; missing historical display
+  no longer blocks current reads or substitutes the latest profile. A valid long
+  20-brief DTO also exceeded512KiB; bounded parent reconciliation permits2MiB,
+  while Agent payloads retain256KiB and keys8KiB. Final full6 browser run and all
+  four gates follow on frozen source. Remaining AI/media/voice and MVP work continue.
+
+- Final frozen-source browser59164 passed6/6 in1.3m: full manual profile/owner
+  approval, exact encrypted retry, confirmed reads, ciphertext-loss explicit
+  fencing, old receipt after22 genuine brief producers and all three native
+  denial statuses in Arabic360px/English desktop. No page/hydration errors or
+  horizontal overflow; keyboard review focus, source whitespace and reduced
+  motion are asserted. Actual viewport screenshot was visually inspected; the
+  retained shell, semantic colors, readable Arabic profile and exact title/status
+  render correctly. One historical test incorrectly expected raw ID display;
+  technical data attributes now establish exact ID/version without exposing IDs
+  in customer copy. Current domain27/27 across9 files passed32.45s, TypeScript and
+  scoped lint are clear. Independent final runtime/component review is clear.
+  Full npm run check runs before staging/commit; this is manual guidance, not
+  genuine AI/media/voice or launch acceptance. The full goal remains active.
+
+- Final npm run check46327 passed all four gates: TypeScript, warning-free
+  repository ESLint,1129/1129 guarded tests across141 files (314.09s), supported
+  Webpack production build and deployment privacy194 manifests/38800 references/
+  zero private development paths. Independent staged review cleared24 exact
+  paths4503 additions/11 removals; unrelated research/output/tmp remain excluded.
+  Source Tataqee changes are preserved and three31-migration checksums match.
+  This checkpoint makes manual interviews/recovery/profile review available inside
+  the retained page. It does not enable providers, billing, publication or newly
+  qualified commercial authority; full managed/original MVP execution continues.

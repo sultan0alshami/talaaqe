@@ -311,3 +311,7 @@ export async function getCampaignAgentTextSources(actor: OrganizationActor, inpu
     return { asOf, binding: frame.binding, agentId: frame.row.id, sources, nextCursor: more ? sources.at(-1)!.id : null };
   } });
 }
+
+// Internal DB-only recovery composition. Only recovery.ts calls these after the
+// same native scope/session locks; they are not transport or model-tool exports.
+export const campaignAgentRecoveryInternals = Object.freeze({ load, source, replay, retainedLineage, save, stateHash, coverage });
