@@ -187,3 +187,13 @@ groups; campaign_agent_ui independently reviews runtime/transport and owns only
 inactive UI/browser candidates. Source/confirmation actors/dates/pins are minted
 under actual native scope; no provider or owner approval is delegated. Root alone
 runs guarded targets/gates and selectively stages; unrelated research remains.
+
+Admin analytics inventory: prerequisite a3ba144 retained campaign-interview phase
+is committed with all four gates and six mounted cases. Root owns the new pure
+admin/analytics-contracts, native analytics loader, transport/route/SSR, shared
+records and all execution. campaign_agent_ui owns only explicitly activated
+analytics-screen.tsx and analytics-layout.module.css; preparation stays in tmp
+until root-observed RED. schema_tests authors bounded native candidates and
+assigned corrections. schema_review authors the two browser journeys and reviews counts,
+preaggregate managed exclusions, UTC semantics, current authority and staged
+privacy. No overview widening, schema/provider/money or new operational grant.

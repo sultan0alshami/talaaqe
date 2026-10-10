@@ -6,6 +6,13 @@ import { getAdminOverview } from "./overview";
 import { changeAdminUserStatus, getAdminUsers } from "./users";
 import { getAdminCampaigns } from "./campaigns";
 import { getAdminCreators } from "./creators";
+import { getAdminAnalytics } from "./analytics";
+
+export const loadAdminAnalytics = domainHandler(async (request: Request) => {
+  const actor = await requireRole("ADMIN");
+  if (new URL(request.url).search) throw new AdminReadError("VALIDATION", 422);
+  return getAdminAnalytics(actor);
+});
 
 export const loadAdminOverview = domainHandler(async (request: Request) => {
   const actor = await requireRole("ADMIN");

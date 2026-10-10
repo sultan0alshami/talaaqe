@@ -132,6 +132,18 @@ Canonical admin campaigns metadata v1 (2026-10-05): GET `/api/admin/campaigns` a
 
 Budget is exact central Money from current saved `input.fields.budget` only: input must be an object with schemaVersion1, positive safe fieldsRevision<=current Campaign.revision and strict central CampaignDraftFieldsSchema-valid partial fields. Otherwise budget is null and budgetSource UNAVAILABLE; a readable value uses SAVED_INPUT. Never coerce numeric money, assume a currency, use a generated proposal or approved historical brief, or repair private stored content during a read. Conversation/proposals/briefs/evidence/user credentials stay outside this DTO. The access audit `admin.campaigns_accessed` / CampaignList / platform contains only `{asOf,after,returned,nextCursor,scope}` in the same transaction. Temporary or malformed responses retain the old snapshot; HTTP401/403 clears private rows/time before body parsing. Cursor screen keys use distinct namespaces from the default page so a valid literal cursor cannot retain a different snapshot on navigation. The original table has no campaign mutations or cross-role resource links; legacy `/api/admin/projects` remains retired. D047 records this bounded mapping, not full admin or live readiness.
 
+Canonical admin analytics inventory (2026-10-10): `/api/admin/analytics` and SSR
+`/admin/analytics` share the native ADMIN locked snapshot/final actual-clock
+boundary. The strict DTO uses `EARLIER_WORKFLOW_RECORDS`, six stored counters,
+seven central status rows, seven exact UTC dates ending at `asOf`, and an explicit
+UTC window. Every aggregate excludes CampaignPlanningBinding before counting,
+including joined briefs/runs/recommendations/deals. Counts include eligible
+private/test/suspended records; completion labels are not settlement or live
+readiness. No budget, input, messages, snapshots or private source data are read.
+Revenue/subscriptions/growth/latency/acceptance remain unavailable. Only minimized
+`admin.analytics_accessed` audit metadata shares the transaction; failed current
+authorization rolls it back. Native and mounted acceptance precede activation.
+
 ## 4. Provenance and visibility
 
 ```ts

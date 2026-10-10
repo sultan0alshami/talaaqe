@@ -751,3 +751,76 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   This checkpoint makes manual interviews/recovery/profile review available inside
   the retained page. It does not enable providers, billing, publication or newly
   qualified commercial authority; full managed/original MVP execution continues.
+
+
+## Original admin analytics inventory — 2026-10-10
+
+- Prerequisite a3ba144 saves reviewed manual interview/recovery inside retained
+  Talaqee pages after1129/141 all-four gates and6/6 native browser cases. Services
+  and all three31-migration targets remain intact. The original source checkout
+  and unrelated research are preserved; the full goal is active.
+- Bounded approved09-admin-analytics replaces residual legacy Match/Project scans,
+  invented latency/revenue/subscribers/growth and misleading percentage/zero bars.
+  Reuse native ADMIN snapshot/audit/final-clock boundary and original1040px page
+  geometry. Six eligible stored counters/seven statuses/seven UTC dates exclude
+  every M03 binding before each aggregate. Unavailable business metrics remain
+  unavailable. No private JSON hydration, new schema/provider or commercial grant.
+- Root added strict pure DTO/inert native loader and inactive transport export.
+  Independent authors prepare≤3 native groups and≤2 mounted journeys before
+  activation; UI/CSS preparation remains in tmp. Reviewed timestamp-without-zone
+  UTC boundaries, sum/subset/duplicate-group checks and cloned projection time
+  are part of the freeze. TypeScript passes after using existing BigInt constructor
+  style compatible with the retained compiler target; no product behavior yet.
+
+- Independently authored three native/HTTP groups produced actual3/3 RED1.76s:
+  valid native callers returnedCAPABILITY_UNAVAILABLE503. Implemented audited
+  RepeatableRead aggregates exclude every exact planning binding before all six
+  counts and status/date grouping. Native BigInt counts and group keys are checked
+  before zero-fill; projection Date is copied before waits. SQL uses civilUTC
+  date and explicit timestamp boundaries, independent of session-local timezone.
+  Current3/3 passed4.39s, including own/twoCLIENT/managed producers, actual child
+  exclusions, source/legacy poisoning, snapshot changes, count/group fault seams,
+  real revocation wait and final audit-block expiry rollback. Fault seams are
+  labelled after real SQL, not claimed native overflowing data/live downtime.
+- SSR now uses the same native loader and current actor-keyed null screen. The
+  retired analytics leaf narrowly exports the canonical metadata handler; other
+  retired APIs and overview counts remain unchanged. TypeScript/scoped lint pass,
+  current analytics/transport/managed-exclusion union11/11 passed7.66s. Independent
+  browser authors prepare two journeys before UI/CSS activation. Root identified
+  the draft's nonsticky private denial and requested a correction before mounting;
+  denied data must remain cleared until authenticated navigation/remount.
+
+- Independent native source review cleared preaggregate managed exclusion,
+  civilUTC/cloned clock, exact groups/counts and audited real-clock authorization.
+  It found malformed matching asOf/window.endsAt could throw RangeError inside
+  Zod refinement. Actual regression reproduced it4.41s; finite-date guard now
+  rejects normally, with current3/3 passed4.35s. Fractional count/date-group
+  negatives also reject without throwing (3/3 passed4.43s). No test loosening.
+- Independent two-journey browser candidate is adopted. Two initial grep values
+  matched no tests and are not behavioral evidence. Correct actual Arabic360
+  case51526 obtained native ADMIN counts/private API and failed the missing null
+  screen heading. Root then authorized only the worker's retained analytics
+  screen/CSS activation; current/final SSR/API/native ownership remains root.
+  Mounted acceptance, independent final review and all four gates precede commit.
+
+- Worker activated only retained analytics screen/new scoped CSS after actual
+  mounted RED; sticky401/403 denial advances epoch/aborts and clears counts/time
+  before any body, requiring authenticated remount. Current TypeScript/scoped
+  lint pass. Final two journeys23986 passed4/4 in14.1s acrossArabic360/English:
+  actual native count/status/date oracle and private managed canaries, original
+  1040px geometry with responsive stacking, count labels/no invented numbers,
+  actual zero extents, held genuine refresh/duplicate suppression, transient
+  failure retains stale data, actual revocation/role denial with malformed body
+  clears data, late responses cannot restore it. No hydration/page errors or
+  horizontal overflow. No operational/provider/live-metric acceptance inferred.
+  Full gates and independent final/staged review follow before commit.
+
+- Final npm run check7738 passed all four gates: TypeScript, warning-free
+  repository ESLint,1132/1132 guarded tests across142 files (315.55s), supported
+  Webpack production build and deployment privacy194 manifests/39376 references/
+  zero private development paths. Current native3/3 and full browser4/4 are green;
+  independent source and staged review cleared13 exact paths1305+/239-, excluding
+  credentials, artifacts and unrelated research/output/tmp. Authorship record now
+  correctly identifies schema_review as browser author. Root saves this phase;
+  PWA/install and remaining managed/MVP scope continue, with no live traction,
+  provider/billing/publication or complete-goal claim.
