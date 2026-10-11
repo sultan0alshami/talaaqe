@@ -1508,3 +1508,40 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Root saves the consolidated checkpoint; all34 applied checksums/data and the
   original Talaqee source remain preserved. The full goal continues with native
   OWN/CLIENT scope proofs and later permission-safe agent dispatch/UI features.
+
+
+## Native planning OWN/CLIENT scope — 2026-10-11
+
+- Prerequisite15e2933 saved after1160 current all-four gates and independent
+  source/test/index review. Root freezes S1a as only two product paths for
+  actual OWN ownership and one-pass CLIENT plan AND view with opaque active-frame
+  proofs. Exact capture/view/error contracts and thin-only native projections
+  are documented; policy/campaign/source/version preparation stays S1b.
+  Independent three-group native authoring precedes product edits. No permission
+  follows from captured IDs/DTOs, labels, owner arrays or a forged/copied proof.
+- Independent genuine OWN/native-session baseline reached the missing capture
+  export and failed914ms before the two product files changed. Root adopted
+  frozen temporary candidates; all three native groups passed5.41s, covering
+  actual paired CLIENT grants/delegation, OWN ownership, proof isolation, real
+  captured-owner wait/transfer without late User locks, final no-relock rechecks,
+  whole owned-work rollback and actual session expiry. Thin SQL observation
+  excludes private Brand names; fixtures do not establish live customer consent.
+- Current TypeScript/scoped zero-warning lint and diff checks passed. Legacy
+  wrapper bodies remain unchanged; new scope bags use the already-owned S0
+  transaction and private same-frame proofs, with no provider/routes/entitlements.
+  Independent source review and existing-flow compatibility checks follow.
+- Independent source review is clear: frozen candidates exactly match product,
+  one-pass paired CLIENT permission/current delegation and covered owners, OWN
+  ownership, no Org/Brand name hydration, deeply frozen same-frame/tx/actor proof
+  state and original-ID rechecks without new locks. Current native compatibility
+  union passed110/110 across17 files65.34s, including existing organization/context
+  flows and S0/S1a. Root starts all four gates on frozen source; provider/runtime
+  admission, policy/campaign/source checks and live customer consent remain separate.
+- Final frozen source passed all four gates: TypeScript, warning-free ESLint,
+  guarded Vitest1163/154files371.25s and supported Next Webpack production build.
+  Deployment privacy passed196 manifests/39183 references with zero private paths.
+  Independent source and seven-path staged review are clear; actual sources and
+ 291-line native test match frozen reviewed candidates. All34 migration checksums
+  match across preserved dev/test/e2e, and unrelated research/tmp/history remains
+  unstaged. Root saves S1a and continues the full goal with S1b bound campaign/
+  approved-context metadata proofs before source/entitlement/provider integration.

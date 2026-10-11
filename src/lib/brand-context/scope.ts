@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, type PlanningWorkspace } from "@prisma/client";
 import { z } from "zod";
-import { withClientAuthority } from "@/lib/organizations/authority";
+import { withClientAuthority, clientAuthorityInternals, type ClientPlanningIdentityCapture,
+  type ClientPlanningAuthorityProof } from "@/lib/organizations/authority";
+import { readAiPlanningNativeFrame, type AiPlanningNativeFrame } from "@/lib/ai-budget/ledger";
+import type { PlanningCall, PlanningCheckpoint } from "@/lib/campaign-planning/scope";
 import { ClientAuthoritySchema, OrganizationError, OrganizationIdSchema, type ClientAuthorityDTO } from "@/lib/organizations/contracts";
 import { captureOrganizationActor, checkOrganizationActor, lockStoredOrganization, organizationAwait,
   organizationDb, validateClientDelegation, withOrganizationTransaction,
@@ -210,3 +213,111 @@ export async function withContextOwnerReviews<T>(actorInput: OrganizationActor, 
     return action(tx, bindings);
   });
 }
+
+export type BrandContextPlanningCapture = Readonly<{ actor: Readonly<OrganizationActor>; scope: { kind: "OWN_BRAND"; brandId: string };
+  brandOwnerUserId: string; ownerIds: readonly string[] }> | Readonly<{ actor: Readonly<OrganizationActor>;
+  scope: { kind: "CLIENT"; clientId: string }; client: ClientPlanningIdentityCapture; ownerIds: readonly string[] }>;
+export type BrandScopeView = Readonly<{ scope: PlanningScope; brandId: string; organizationId: string | null; clientId: string | null;
+  currentAuthority: Readonly<ClientAuthorityDTO> | null; viewAuthority: Readonly<ClientAuthorityDTO> | null;
+  targetOwnerUserId: string; targetOwnerSessionVersion: number; currentClientRevision: number | null }>;
+declare const brandContextPlanningProofBrand: unique symbol;
+export type BrandContextPlanningProof = Readonly<{ [brandContextPlanningProofBrand]: true }>;
+const scopePlanningActor = z.object({ userId: OrganizationIdSchema, role: z.enum(["BRAND", "CREATOR", "ADMIN"]),
+  sessionId: z.string().regex(/^[A-Za-z0-9_-]{43}$/), sessionVersion: z.number().int().min(1).max(2147483647) }).strict();
+const scopePlanningClientCapture = z.object({ actor: scopePlanningActor, clientId: OrganizationIdSchema, organizationId: OrganizationIdSchema,
+  brandId: OrganizationIdSchema, organizationOwnerUserId: OrganizationIdSchema, brandOwnerUserId: OrganizationIdSchema,
+  ownerIds: z.array(OrganizationIdSchema).max(63) }).strict();
+const brandPlanningCapture = z.union([
+  z.object({ actor: scopePlanningActor, scope: z.object({ kind: z.literal("OWN_BRAND"), brandId: OrganizationIdSchema }).strict(),
+    brandOwnerUserId: OrganizationIdSchema, ownerIds: z.array(OrganizationIdSchema).max(63) }).strict(),
+  z.object({ actor: scopePlanningActor, scope: z.object({ kind: z.literal("CLIENT"), clientId: OrganizationIdSchema }).strict(),
+    client: scopePlanningClientCapture, ownerIds: z.array(OrganizationIdSchema).max(63) }).strict(),
+]).refine(value => value.scope.kind === "OWN_BRAND"
+  ? "brandOwnerUserId" in value && JSON.stringify(value.ownerIds) === JSON.stringify([...new Set([value.actor.userId, value.brandOwnerUserId])].sort())
+  : "client" in value && value.scope.clientId === value.client.clientId && sameScopePlanningActor(value.actor, value.client.actor)
+    && JSON.stringify(value.ownerIds) === JSON.stringify(value.client.ownerIds));
+function freezeScopePlanning<T>(value: T): T {
+  if (value !== null && typeof value === "object") { for (const child of Object.values(value)) freezeScopePlanning(child); Object.freeze(value); }
+  return value;
+}
+function sameScopePlanningActor(left: OrganizationActor, right: OrganizationActor) {
+  return left.userId === right.userId && left.role === right.role && left.sessionId === right.sessionId && left.sessionVersion === right.sessionVersion;
+}
+const scopeProofMissing = (): never => { throw new BrandContextError("SCOPE_PROOF_UNAVAILABLE", 503); };
+type BrandPlanningProofState = { frame: AiPlanningNativeFrame; tx: Prisma.TransactionClient; capture: BrandContextPlanningCapture;
+  checkpoint: PlanningCheckpoint; clientProof: ClientPlanningAuthorityProof | null;
+  brand: { id: string; userId: string }; owner: { id: string; active: boolean; role: string; sessionVersion: number }; view: BrandScopeView };
+const brandPlanningProofs = new WeakMap<object, BrandPlanningProofState>();
+async function captureBrandPlanningIdentity(call: PlanningCall, scopeInput: PlanningScope): Promise<BrandContextPlanningCapture> {
+  const actor = captureOrganizationActor(call.actor), scope = Object.freeze(parseBrandContextInput(PlanningScopeSchema, scopeInput));
+  const options = { client: organizationDb(call.options) }, checkpoint = call.checkpoint;
+  const capturedCall = { ...call, actor, options, checkpoint };
+  if (scope.kind === "CLIENT") {
+    const client = await clientAuthorityInternals.capturePlanningIdentity(capturedCall, scope.clientId);
+    return freezeScopePlanning({ actor, scope, client, ownerIds: [...client.ownerIds] });
+  }
+  await checkOrganizationActor(actor, options, checkpoint);
+  const brand = await organizationAwait(checkpoint, () => options.client.brand.findUnique({ where: { id: scope.brandId }, select: { id: true, userId: true } }));
+  if (!brand) return missing();
+  return freezeScopePlanning({ actor, scope, brandOwnerUserId: brand.userId, ownerIds: [...new Set([actor.userId, brand.userId])].sort() });
+}
+async function bindBrandPlanningInFrame(frame: AiPlanningNativeFrame, input: BrandContextPlanningCapture,
+  checkpoint: PlanningCheckpoint): Promise<BrandContextPlanningProof> {
+  const parsed = brandPlanningCapture.safeParse(input), capturedCheckpoint = checkpoint;
+  const base = await readAiPlanningNativeFrame(frame);
+  if (!parsed.success || !sameScopePlanningActor(parsed.data.actor, base.actor) || base.actor.role !== "BRAND") return scopeProofMissing();
+  const capture: BrandContextPlanningCapture = freezeScopePlanning(parsed.data);
+  if (capture.ownerIds.some(id => !base.ownerIds.includes(id))) return retry();
+  let clientProof: ClientPlanningAuthorityProof | null = null, brand: { id: string; userId: string },
+    owner: { id: string; active: boolean; role: string; sessionVersion: number }, view: BrandScopeView;
+  if (capture.scope.kind === "CLIENT" && "client" in capture) {
+    clientProof = await clientAuthorityInternals.bindPlanningInFrame(frame, capture.client, capturedCheckpoint);
+    const client = await clientAuthorityInternals.readPlanningProof(frame, clientProof);
+    brand = { id: client.brandId, userId: client.targetOwnerUserId };
+    owner = { id: client.targetOwnerUserId, active: true, role: "BRAND", sessionVersion: client.targetOwnerSessionVersion };
+    view = freezeScopePlanning({ scope: capture.scope, brandId: client.brandId, organizationId: client.organizationId, clientId: client.clientId,
+      currentAuthority: client.planAuthority, viewAuthority: client.viewAuthority, targetOwnerUserId: client.targetOwnerUserId,
+      targetOwnerSessionVersion: client.targetOwnerSessionVersion, currentClientRevision: client.currentClientRevision });
+  } else if (capture.scope.kind === "OWN_BRAND" && "brandOwnerUserId" in capture) {
+    const brandId = capture.scope.brandId;
+    await lockOrganizationRows(base.tx, "Brand", [brandId], true, capturedCheckpoint);
+    const current = await organizationAwait(capturedCheckpoint, () => base.tx.brand.findUnique({ where: { id: brandId }, select: { id: true, userId: true } }));
+    if (!current) return missing();
+    if (!base.ownerIds.includes(current.userId) || current.userId !== capture.brandOwnerUserId) return retry();
+    if (current.userId !== base.actor.userId) return missing();
+    const currentOwner = await organizationAwait(capturedCheckpoint, () => base.tx.user.findUnique({ where: { id: current.userId },
+      select: { id: true, active: true, role: true, sessionVersion: true } }));
+    if (!currentOwner?.active || currentOwner.role !== "BRAND") return missing();
+    brand = current; owner = currentOwner;
+    view = freezeScopePlanning({ scope: capture.scope, brandId: current.id, organizationId: null, clientId: null,
+      currentAuthority: null, viewAuthority: null, targetOwnerUserId: currentOwner.id, targetOwnerSessionVersion: currentOwner.sessionVersion,
+      currentClientRevision: null });
+  } else return scopeProofMissing();
+  await base.assertCurrent();
+  const proof = Object.freeze({}) as BrandContextPlanningProof;
+  brandPlanningProofs.set(proof, { frame, tx: base.tx, capture, checkpoint: capturedCheckpoint, clientProof,
+    brand: freezeScopePlanning(brand), owner: freezeScopePlanning(owner), view });
+  return proof;
+}
+async function brandPlanningProofState(frame: AiPlanningNativeFrame, proof: BrandContextPlanningProof) {
+  const base = await readAiPlanningNativeFrame(frame);
+  const state = proof !== null && typeof proof === "object" ? brandPlanningProofs.get(proof) : undefined;
+  if (!state || state.frame !== frame || state.tx !== base.tx || !sameScopePlanningActor(state.capture.actor, base.actor)) return scopeProofMissing();
+  return { base, state };
+}
+async function recheckBrandPlanningProof(frame: AiPlanningNativeFrame, proof: BrandContextPlanningProof): Promise<void> {
+  const { base, state } = await brandPlanningProofState(frame, proof);
+  if (state.clientProof) await clientAuthorityInternals.recheckPlanningProof(frame, state.clientProof);
+  else {
+    const brand = await organizationAwait(state.checkpoint, () => base.tx.brand.findUnique({ where: { id: state.brand.id }, select: { id: true, userId: true } }));
+    const owner = await organizationAwait(state.checkpoint, () => base.tx.user.findUnique({ where: { id: state.owner.id }, select: { id: true, active: true, role: true, sessionVersion: true } }));
+    if (JSON.stringify(brand) !== JSON.stringify(state.brand) || JSON.stringify(owner) !== JSON.stringify(state.owner)) return retry();
+  }
+  await base.assertCurrent();
+}
+async function readBrandPlanningProof(frame: AiPlanningNativeFrame, proof: BrandContextPlanningProof): Promise<BrandScopeView> {
+  await recheckBrandPlanningProof(frame, proof);
+  return (await brandPlanningProofState(frame, proof)).state.view;
+}
+export const brandContextScopeInternals = Object.freeze({ capturePlanningIdentity: captureBrandPlanningIdentity,
+  bindPlanningInFrame: bindBrandPlanningInFrame, readPlanningProof: readBrandPlanningProof, recheckPlanningProof: recheckBrandPlanningProof });

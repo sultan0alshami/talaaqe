@@ -297,3 +297,12 @@ planning_admission_seam independently reviews source/core/locks/escrow/drain and
 staged changes. Inventory is coverage only; no domain permission/provider route.
 Native identity prerequisite and this frame are consolidated into one checkpoint
 only after current integrated all-four gates; unrelated progress stays unstaged.
+
+Native S1a planning scope: prerequisite15e2933 passed all four gates. Root owns
+organizations/authority.ts and brand-context/scope.ts plus shared docs/execution.
+schema_review independently authors only tmp/planning-native-scope.test.ts.draft
+until root adoption as tests/planning/native-scope.test.ts; no DB/run/product edit.
+campaign_agent_ui independently reviews new tests/proof privacy; planning_admission_seam
+reviews native core/exact coverage/lifetime/lock order and staged source read-only.
+Pair CLIENT plan+view in one pass; OWN actual ownership; thin identity projections
+and opaque same-frame proofs only. Policy/campaign/source/version work is S1b.

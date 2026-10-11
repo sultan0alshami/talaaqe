@@ -829,3 +829,21 @@ and successful COMMIT; retained replay cannot mint another. Callback/expiry erro
 invalidate the frame and rollback its writes while prior maintenance remains.
 Unawaited core/query work is invalidated and drained before rollback, preventing
 late writes or orphan reservations. No external invocation happens in this owner.
+
+### Native OWN and CLIENT planning scope proofs
+
+New internal authority bags capture thin native IDs, then bind actual ownership
+or paired CLIENT plan AND view inside the S0-owned transaction. CLIENT locks
+Organization→Membership→Client→Grant→Brand once, verifies current effective
+delegation and both covered active owners, and reads only thin identities/status.
+OWN requires actual current Brand ownership. Captured IDs and arrays confer no
+permission; no company name or customer/context/campaign body is hydrated here.
+
+Issuer-private empty-object proofs bind exact active frame, checked transaction,
+actor tuple and current rows. Deep-frozen views expose only declared scope/paired
+authority/target-owner metadata. Copies, other frames and closed leases cannot
+read them. Reads/final rechecks query original held IDs without new locks and
+reject row/owner/session/revision drift. They preserve native expiry/revocation
+priority and rollback whole tentative work on denial. Existing public wrappers
+remain unchanged. Policy/campaign/source preparation, entitlement and genuine
+dispatch are separate; no provider, route or permission is activated by this slice.
