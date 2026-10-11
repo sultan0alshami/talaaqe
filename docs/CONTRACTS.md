@@ -847,3 +847,22 @@ reject row/owner/session/revision drift. They preserve native expiry/revocation
 priority and rollback whole tentative work on denial. Existing public wrappers
 remain unchanged. Policy/campaign/source preparation, entitlement and genuine
 dispatch are separate; no provider, route or permission is activated by this slice.
+
+### Native bound campaign metadata proofs
+
+The fixed planning scope bag accepts only one or two existing bound campaigns in
+one current OWN/CLIENT workspace. It requires genuine S0 and S1a proofs, actual
+logical policy-reviewer coverage including physically owner-locked reviewers,
+and original captured Workspace/Context/Campaign/Binding/State/Selection/Version/
+Submission identities. No missing workspace creation or legacy binding occurs.
+
+Selected metadata is reloaded after its locks and verifies approved decision,
+actor/time/input/hash/source relationships. Current context identity/archive is
+pinned; unapproved parent draft revisions do not invalidate immutable approved
+inputs. Every metadata array uses explicit JavaScript key ordering. Frozen views
+contain scope/source metadata only, with ISO dates and no bodies/maps/dependencies.
+Private proofs bind exact active frame, Brand proof, checked transaction and actor;
+no legacy transaction cache is reused. Final reads/rechecks query original held
+IDs without new locks and recheck scope and current reviewer inventory. Native
+frame/auth failures precede deferred malformed-input validation. Source hydration,
+entitlement/attempt/result admission and provider dispatch remain separate work.

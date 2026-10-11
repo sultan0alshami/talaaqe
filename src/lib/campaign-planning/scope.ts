@@ -1,17 +1,20 @@
 // Identities only until current native scope/target binding; no journals or TX nesting.
 import { Prisma, type PlanningWorkspace } from "@prisma/client";
 import { z } from "zod";
+import { readAiPlanningNativeFrame, type AiPlanningNativeFrame } from "@/lib/ai-budget/ledger";
+import { CampaignStatusSchema, UtcDateTimeSchema } from "@/lib/contracts/vocabulary";
+import { checkedJson } from "@/lib/onboarding/drafts";
 import { captureOrganizationActor, checkOrganizationActor, lockStoredOrganization, organizationAwait,
   organizationDb, validateClientDelegation, withOrganizationTransaction,
   type OrganizationActor, type OrganizationOptions } from "@/lib/organizations/context";
 import { lockOrganizationRows } from "@/lib/organizations/service";
-import { OrganizationError, OrganizationIdSchema } from "@/lib/organizations/contracts";
+import { OrganizationError, OrganizationIdSchema, OrganizationRevisionSchema } from "@/lib/organizations/contracts";
 import { createEvidenceReceiptReader, type EvidenceReceiptReader } from "@/lib/evidence/receipt-reader";
 import type { EvidenceActorLocks } from "@/lib/evidence/readiness";
 import type { CampaignCoreBrand } from "@/lib/campaigns/core";
 import { PlanningScopeSchema, type PlanningScope } from "@/lib/brand-context/contracts";
-import { contextParentBindingSelect, lockPlanningRows, resolvePlanningWorkspace, withBrandContextScope,
-  type BrandContextScopeContext } from "@/lib/brand-context/scope";
+import { contextParentBindingSelect, lockPlanningRows, resolvePlanningWorkspace, withBrandContextScope, brandContextScopeInternals,
+  type BrandContextScopeContext, type BrandContextPlanningProof, type BrandScopeView } from "@/lib/brand-context/scope";
 import { CampaignPlanningError, PlanningContextChoiceSchema, parsePlanning } from "./contracts";
 
 export type PlanningCheckpoint = () => void;
@@ -372,3 +375,203 @@ export async function withCampaignOwnerReviewScope<T>(call: PlanningCall, captur
         selections: new Map(selections.map(row => [row.id, row])), evidenceActors, capturedContextIds });
     });
 }
+
+// Fixed current-selection metadata lane. It does not consult the legacy prepare
+// cache, create a workspace, hydrate source bodies or authorize later dispatch.
+const nativeId = OrganizationIdSchema, nativeRevision = OrganizationRevisionSchema;
+const nativeHash = z.string().regex(/^[a-f0-9]{64}$/);
+const nativeActor = z.object({ userId: nativeId, role: z.enum(["BRAND", "CREATOR", "ADMIN"]),
+  sessionId: z.string().regex(/^[A-Za-z0-9_-]{43}$/), sessionVersion: z.number().int().min(1).max(2147483647) }).strict();
+const nativeWorkspace = z.object({ id: nativeId, scope: z.enum(["OWN_BRAND", "CLIENT"]), brandId: nativeId,
+  organizationId: nativeId.nullable(), clientId: nativeId.nullable() }).strict();
+const nativeCampaign = z.object({ id: nativeId, brandId: nativeId, revision: nativeRevision, status: CampaignStatusSchema,
+  currentBriefVersion: nativeRevision.nullable(), updatedAt: UtcDateTimeSchema }).strict();
+const nativeBinding = z.object({ campaignId: nativeId, workspaceId: nativeId, brandId: nativeId }).strict();
+const nativeState = z.object({ campaignId: nativeId, workspaceId: nativeId, revision: nativeRevision,
+  selectionId: nativeId, selectionRevision: nativeRevision }).strict();
+const nativeContext = z.object({ id: nativeId, workspaceId: nativeId, archived: z.boolean() }).strict();
+const nativeSelection = z.object({ id: nativeId, campaignId: nativeId, workspaceId: nativeId, revision: nativeRevision,
+  contextVersionId: nativeId.nullable(), contentHash: nativeHash.nullable() }).strict();
+const nativeVersion = z.object({ id: nativeId, contextId: nativeId, workspaceId: nativeId, submissionId: nativeId,
+  version: nativeRevision, inputRevision: nativeRevision, contentHash: nativeHash, approvedByUserId: nativeId, approvedAt: UtcDateTimeSchema }).strict();
+const nativeSubmission = z.object({ id: nativeId, contextId: nativeId, workspaceId: nativeId, inputRevision: nativeRevision,
+  contentHash: nativeHash, state: z.literal("APPROVED"), decidedByUserId: nativeId, decidedAt: UtcDateTimeSchema }).strict();
+const nativeIds = (maximum: number) => z.array(nativeId).max(maximum)
+  .refine(ids => ids.every((id, index) => index === 0 || ids[index - 1]! < id));
+const nativeOrdered = <T extends z.ZodType>(schema: T, maximum: number, key: "id" | "campaignId") => z.array(schema).max(maximum)
+  .refine(rows => rows.every((row, index) => index === 0 || String((rows[index - 1] as Record<string, unknown>)[key]) < String((row as Record<string, unknown>)[key])));
+const nativeCaptureBody = z.object({ actor: nativeActor, scope: PlanningScopeSchema, campaignIds: nativeIds(2).min(1), workspace: nativeWorkspace,
+  campaigns: nativeOrdered(nativeCampaign, 2, "id"), bindings: nativeOrdered(nativeBinding, 2, "campaignId"), states: nativeOrdered(nativeState, 2, "campaignId"),
+  contextIds: nativeIds(4), contexts: nativeOrdered(nativeContext, 4, "id"), selections: nativeOrdered(nativeSelection, 2, "id"),
+  versions: nativeOrdered(nativeVersion, 4, "id"), submissions: nativeOrdered(nativeSubmission, 4, "id"), reviewerIds: nativeIds(2412) }).strict();
+function sameNativeMetadata(left: unknown, right: unknown) { return JSON.stringify(left) === JSON.stringify(right); }
+function nativeReachedIds(values: readonly string[]) { return [...new Set(values)].sort(); }
+function sortNativeMetadata<T extends object>(rows: readonly T[], key: keyof T): T[] {
+  return [...rows].sort((left, right) => String(left[key]) < String(right[key]) ? -1 : String(left[key]) > String(right[key]) ? 1 : 0);
+}
+function nativeRelationships(value: z.infer<typeof nativeCaptureBody>) {
+  const w = value.workspace;
+  if (!planningWorkspaceMatches(w, value.scope) || !sameNativeMetadata(value.campaignIds, value.campaigns.map(row => row.id))
+    || !sameNativeMetadata(value.campaignIds, value.bindings.map(row => row.campaignId))
+    || !sameNativeMetadata(value.campaignIds, value.states.map(row => row.campaignId))) return false;
+  for (const campaign of value.campaigns) {
+    const binding = value.bindings.find(row => row.campaignId === campaign.id), state = value.states.find(row => row.campaignId === campaign.id);
+    const selected = state && value.selections.find(row => row.id === state.selectionId);
+    if (campaign.brandId !== w.brandId || !binding || binding.workspaceId !== w.id || binding.brandId !== w.brandId
+      || !state || state.workspaceId !== w.id || !selected || selected.campaignId !== campaign.id || selected.workspaceId !== w.id
+      || selected.revision !== state.selectionRevision || (selected.contextVersionId === null) !== (selected.contentHash === null)) return false;
+  }
+  if (!sameNativeMetadata(nativeReachedIds(value.states.map(row => row.selectionId)), value.selections.map(row => row.id))
+    || !sameNativeMetadata(nativeReachedIds(value.selections.flatMap(row => row.contextVersionId ? [row.contextVersionId] : [])), value.versions.map(row => row.id))
+    || !sameNativeMetadata(nativeReachedIds(value.versions.map(row => row.contextId)), value.contextIds)
+    || !sameNativeMetadata(value.contextIds, value.contexts.map(row => row.id))
+    || !sameNativeMetadata(nativeReachedIds(value.versions.map(row => row.submissionId)), value.submissions.map(row => row.id))) return false;
+  for (const version of value.versions) {
+    const context = value.contexts.find(row => row.id === version.contextId), submission = value.submissions.find(row => row.id === version.submissionId);
+    if (!context || context.workspaceId !== w.id || version.workspaceId !== w.id || !submission || submission.contextId !== context.id
+      || submission.workspaceId !== w.id || submission.inputRevision !== version.inputRevision || submission.contentHash !== version.contentHash
+      || submission.decidedByUserId !== version.approvedByUserId || submission.decidedAt !== version.approvedAt) return false;
+  }
+  return value.selections.every(row => row.contextVersionId === null || value.versions.some(version => version.id === row.contextVersionId && version.contentHash === row.contentHash));
+}
+const nativeCaptureSchema = z.unknown().superRefine((value, ctx) => {
+  try { checkedJson(value, 524288); } catch { ctx.addIssue({ code: "custom", message: "Bounded planning metadata required" }); }
+}).pipe(nativeCaptureBody.refine(nativeRelationships, "Exact current source relationships required"));
+type NativeReadonly<T> = T extends readonly (infer U)[] ? readonly NativeReadonly<U>[] : T extends object ? { readonly [K in keyof T]: NativeReadonly<T[K]> } : T;
+export type PlanningNativeScopeCapture = NativeReadonly<z.infer<typeof nativeCaptureSchema>>;
+type PlanningNativeRows = Omit<z.infer<typeof nativeCaptureBody>, "actor" | "scope" | "campaignIds" | "contextIds" | "reviewerIds">;
+export type PlanningScopeView = NativeReadonly<BrandScopeView & PlanningNativeRows & { policyReviewerIds: readonly string[] }>;
+declare const planningBoundScopeBrand: unique symbol;
+export type PlanningBoundScopeProof = Readonly<{ [planningBoundScopeBrand]: true }>;
+function freezeNativeMetadata<T>(value: T): NativeReadonly<T> {
+  if (value !== null && typeof value === "object") { for (const child of Object.values(value)) freezeNativeMetadata(child); Object.freeze(value); }
+  return value as NativeReadonly<T>;
+}
+function sameNativeActor(left: OrganizationActor, right: OrganizationActor) {
+  return left.userId === right.userId && left.role === right.role && left.sessionId === right.sessionId && left.sessionVersion === right.sessionVersion;
+}
+const nativeScopeUnavailable = (): never => { throw new CampaignPlanningError("SCOPE_PROOF_UNAVAILABLE", 503); };
+const nativeContextSelect = { id: true, workspaceId: true, archived: true } as const;
+const nativeBindingSelect = { campaignId: true, workspaceId: true, brandId: true } as const;
+const nativeSelectionSelect = { id: true, campaignId: true, workspaceId: true, revision: true, contextVersionId: true, contentHash: true } as const;
+const nativeSubmissionSelect = { id: true, contextId: true, workspaceId: true, inputRevision: true, contentHash: true,
+  state: true, decidedByUserId: true, decidedAt: true } as const;
+type NativeMetadataDb = Prisma.TransactionClient | ReturnType<typeof organizationDb>;
+function nativeIso(date: Date) { if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return planningRetry(); return date.toISOString(); }
+function encodeNativeCampaign<T extends { updatedAt: Date }>(row: T) { return { ...row, updatedAt: nativeIso(row.updatedAt) }; }
+function encodeNativeVersion<T extends { approvedAt: Date }>(row: T) { return { ...row, approvedAt: nativeIso(row.approvedAt) }; }
+function encodeNativeSubmission<T extends { decidedAt: Date | null }>(row: T) { return { ...row, decidedAt: row.decidedAt ? nativeIso(row.decidedAt) : null }; }
+async function readNativeRows(db: NativeMetadataDb, capture: PlanningNativeScopeCapture, checkpoint: PlanningCheckpoint): Promise<PlanningNativeRows> {
+  const workspace = await organizationAwait(checkpoint, () => db.planningWorkspace.findUnique({ where: { id: capture.workspace.id }, select: workspaceIdentitySelect }));
+  if (!workspace) return planningMissing();
+  const contexts = capture.contextIds.length ? await organizationAwait(checkpoint, () => db.brandContext.findMany({ where: { id: { in: [...capture.contextIds] } },
+    select: nativeContextSelect, orderBy: { id: "asc" }, take: capture.contextIds.length })) : [];
+  const campaigns = await organizationAwait(checkpoint, () => db.campaign.findMany({ where: { id: { in: [...capture.campaignIds] } },
+    select: planningCampaignBindingSelect, orderBy: { id: "asc" }, take: capture.campaignIds.length }));
+  const bindings = await organizationAwait(checkpoint, () => db.campaignPlanningBinding.findMany({ where: { campaignId: { in: [...capture.campaignIds] } },
+    select: nativeBindingSelect, orderBy: { campaignId: "asc" }, take: capture.campaignIds.length }));
+  const states = await organizationAwait(checkpoint, () => db.campaignPlanningState.findMany({ where: { campaignId: { in: [...capture.campaignIds] } },
+    select: planningStateBindingSelect, orderBy: { campaignId: "asc" }, take: capture.campaignIds.length }));
+  const selections = await organizationAwait(checkpoint, () => db.campaignContextSelection.findMany({ where: { id: { in: capture.selections.map(row => row.id) } },
+    select: nativeSelectionSelect, orderBy: { id: "asc" }, take: capture.selections.length }));
+  const versions = capture.versions.length ? await organizationAwait(checkpoint, () => db.brandContextVersion.findMany({ where: { id: { in: capture.versions.map(row => row.id) } },
+    select: planningVersionBindingSelect, orderBy: { id: "asc" }, take: capture.versions.length })) : [];
+  const submissions = capture.submissions.length ? await organizationAwait(checkpoint, () => db.brandContextSubmission.findMany({ where: { id: { in: capture.submissions.map(row => row.id) } },
+    select: nativeSubmissionSelect, orderBy: { id: "asc" }, take: capture.submissions.length })) : [];
+  if (campaigns.length !== capture.campaignIds.length || bindings.length !== capture.campaignIds.length
+    || campaigns.some(row => row.brandId !== workspace.brandId) || bindings.some(row => row.workspaceId !== workspace.id || row.brandId !== workspace.brandId)) return planningMissing();
+  const parsed = nativeCaptureSchema.safeParse({ ...capture, workspace, contexts: sortNativeMetadata(contexts, "id"),
+    campaigns: sortNativeMetadata(campaigns.map(encodeNativeCampaign), "id"), bindings: sortNativeMetadata(bindings, "campaignId"),
+    states: sortNativeMetadata(states, "campaignId"), selections: sortNativeMetadata(selections, "id"),
+    versions: sortNativeMetadata(versions.map(encodeNativeVersion), "id"), submissions: sortNativeMetadata(submissions.map(encodeNativeSubmission), "id") });
+  if (!parsed.success) return planningRetry();
+  const { actor, scope, campaignIds, contextIds, reviewerIds, ...rows } = parsed.data;
+  void actor; void scope; void campaignIds; void contextIds; void reviewerIds; return rows;
+}
+async function captureNativePlanningIdentity(call: PlanningCall, scopeInput: PlanningScope, idsInput: readonly string[]): Promise<PlanningNativeScopeCapture> {
+  const actor = captureOrganizationActor(call.actor), scope = Object.freeze(parsePlanning(PlanningScopeSchema, scopeInput));
+  const campaignIds = parsePlanning(nativeIds(2).min(1), [...idsInput].sort()), options = { client: organizationDb(call.options) }, checkpoint = call.checkpoint;
+  const copiedCall = { ...call, actor, options, checkpoint };
+  await checkOrganizationActor(actor, options, checkpoint);
+  const captured = await capturePlanningScope(copiedCall, scope, { campaignIds, includePolicies: true });
+  const bound = await organizationAwait(checkpoint, () => options.client.campaignPlanningBinding.findMany({ where: { campaignId: { in: campaignIds } },
+    select: { ...nativeBindingSelect, workspace: { select: workspaceIdentitySelect } }, orderBy: { campaignId: "asc" }, take: campaignIds.length }));
+  if (bound.length !== campaignIds.length || !bound.length || bound.some(row => row.workspaceId !== bound[0]!.workspaceId
+    || !planningWorkspaceMatches(row.workspace, scope) || row.brandId !== row.workspace.brandId)) return planningMissing();
+  const db = options.client, workspace = bound[0]!.workspace;
+  const contexts = captured.contextIds.length ? await organizationAwait(checkpoint, () => db.brandContext.findMany({ where: { id: { in: [...captured.contextIds] } },
+    select: nativeContextSelect, orderBy: { id: "asc" }, take: captured.contextIds.length })) : [];
+  const campaigns = await organizationAwait(checkpoint, () => db.campaign.findMany({ where: { id: { in: campaignIds } }, select: planningCampaignBindingSelect, orderBy: { id: "asc" }, take: campaignIds.length }));
+  const states = await organizationAwait(checkpoint, () => db.campaignPlanningState.findMany({ where: { campaignId: { in: campaignIds } }, select: planningStateBindingSelect, orderBy: { campaignId: "asc" }, take: campaignIds.length }));
+  const submissions = captured.versions.length ? await organizationAwait(checkpoint, () => db.brandContextSubmission.findMany({ where: { id: { in: captured.versions.map(row => row.submissionId) } },
+    select: nativeSubmissionSelect, orderBy: { id: "asc" }, take: captured.versions.length })) : [];
+  const input = { actor, scope, campaignIds, workspace, campaigns: sortNativeMetadata(campaigns.map(encodeNativeCampaign), "id"),
+    bindings: sortNativeMetadata(bound.map(({ campaignId, workspaceId, brandId }) => ({ campaignId, workspaceId, brandId })), "campaignId"),
+    states: sortNativeMetadata(states, "campaignId"), contextIds: [...captured.contextIds].sort(), contexts: sortNativeMetadata(contexts, "id"),
+    selections: sortNativeMetadata(captured.selections.map(({ id, campaignId, workspaceId, revision, contextVersionId, contentHash }) => ({ id, campaignId, workspaceId, revision, contextVersionId, contentHash })), "id"),
+    versions: sortNativeMetadata(captured.versions.map(encodeNativeVersion), "id"),
+    submissions: sortNativeMetadata(submissions.map(encodeNativeSubmission), "id"), reviewerIds: [...captured.reviewerIds].sort() };
+  const parsed = nativeCaptureSchema.safeParse(input); if (!parsed.success) return planningRetry();
+  return freezeNativeMetadata(parsed.data);
+}
+type NativePlanningProofState = { frame: AiPlanningNativeFrame; tx: Prisma.TransactionClient; brandProof: BrandContextPlanningProof;
+  capture: PlanningNativeScopeCapture; checkpoint: PlanningCheckpoint; rows: PlanningNativeRows; view: PlanningScopeView };
+const nativePlanningProofs = new WeakMap<object, NativePlanningProofState>();
+function nativeBrandMatches(capture: PlanningNativeScopeCapture, brand: BrandScopeView) {
+  const workspace = capture.workspace;
+  return sameNativeMetadata(capture.scope, brand.scope) && workspace.scope === brand.scope.kind && workspace.brandId === brand.brandId
+    && workspace.organizationId === brand.organizationId && workspace.clientId === brand.clientId;
+}
+async function prepareNativePlanningInFrame(frame: AiPlanningNativeFrame, brandProof: BrandContextPlanningProof, call: PlanningCall,
+  input: PlanningNativeScopeCapture): Promise<PlanningBoundScopeProof> {
+  const parsed = nativeCaptureSchema.safeParse(input), copiedActor = nativeActor.safeParse(call.actor), checkpoint = call.checkpoint;
+  const base = await readAiPlanningNativeFrame(frame), brand = await brandContextScopeInternals.readPlanningProof(frame, brandProof);
+  if (!parsed.success || !copiedActor.success) throw new CampaignPlanningError("VALIDATION", 422);
+  const capture = freezeNativeMetadata(parsed.data);
+  if (!sameNativeActor(copiedActor.data, base.actor) || !sameNativeActor(capture.actor, base.actor) || !nativeBrandMatches(capture, brand)) return nativeScopeUnavailable();
+  if (capture.reviewerIds.some(id => !base.ownerIds.includes(id) && !base.reviewerIds.includes(id))) return planningRetry();
+  const evidenceActors: EvidenceActorLocks = { ownerIds: new Set(base.ownerIds), reviewerIds: new Set(capture.reviewerIds),
+    creatorOwners: new Map(), brandOwners: new Map([[brand.brandId, brand.targetOwnerUserId]]) };
+  await assertPlanningPolicyCoverage(base.tx, evidenceActors, checkpoint);
+  await lockPlanningRows(base.tx, "PlanningWorkspace", [capture.workspace.id], true, checkpoint);
+  const currentWorkspace = await organizationAwait(checkpoint, () => base.tx.planningWorkspace.findUnique({ where: { id: capture.workspace.id }, select: workspaceIdentitySelect }));
+  if (!currentWorkspace || !sameNativeMetadata(currentWorkspace, capture.workspace)) return planningMissing();
+  await lockPlanningRows(base.tx, "BrandContext", capture.contextIds, true, checkpoint);
+  await lockCampaignPlanningRows(base.tx, "Campaign", capture.campaignIds, true, checkpoint);
+  await lockCampaignPlanningRows(base.tx, "CampaignPlanningBinding", capture.campaignIds, true, checkpoint);
+  await lockCampaignPlanningRows(base.tx, "CampaignPlanningState", capture.campaignIds, true, checkpoint);
+  await lockCampaignPlanningRows(base.tx, "CampaignContextSelection", capture.selections.map(row => row.id), true, checkpoint);
+  await lockPlanningRows(base.tx, "BrandContextVersion", capture.versions.map(row => row.id), false, checkpoint);
+  await lockPlanningRows(base.tx, "BrandContextSubmission", capture.submissions.map(row => row.id), false, checkpoint);
+  const rows = await readNativeRows(base.tx, capture, checkpoint);
+  const { actor: capturedActor, scope, campaignIds, contextIds, reviewerIds, ...capturedRows } = capture;
+  void capturedActor; void scope; void campaignIds; void contextIds; void reviewerIds;
+  if (!sameNativeMetadata(rows, capturedRows)) return planningRetry();
+  await brandContextScopeInternals.recheckPlanningProof(frame, brandProof);
+  await assertPlanningPolicyCoverage(base.tx, evidenceActors, checkpoint); await base.assertCurrent();
+  const proof = Object.freeze({}) as PlanningBoundScopeProof;
+  nativePlanningProofs.set(proof, { frame, tx: base.tx, brandProof, capture, checkpoint, rows,
+    view: freezeNativeMetadata({ ...brand, ...rows, policyReviewerIds: [...capture.reviewerIds] }) });
+  return proof;
+}
+async function nativePlanningProofState(frame: AiPlanningNativeFrame, proof: PlanningBoundScopeProof) {
+  const base = await readAiPlanningNativeFrame(frame);
+  const state = proof !== null && typeof proof === "object" ? nativePlanningProofs.get(proof) : undefined;
+  if (!state || state.frame !== frame || state.tx !== base.tx || !sameNativeActor(state.capture.actor, base.actor)) return nativeScopeUnavailable();
+  await brandContextScopeInternals.recheckPlanningProof(frame, state.brandProof); return { base, state };
+}
+async function recheckNativePlanningProof(frame: AiPlanningNativeFrame, proof: PlanningBoundScopeProof): Promise<void> {
+  const { base, state } = await nativePlanningProofState(frame, proof);
+  const actors: EvidenceActorLocks = { ownerIds: new Set(base.ownerIds), reviewerIds: new Set(state.capture.reviewerIds),
+    creatorOwners: new Map(), brandOwners: new Map([[state.view.brandId, state.view.targetOwnerUserId]]) };
+  await assertPlanningPolicyCoverage(base.tx, actors, state.checkpoint);
+  const rows = await readNativeRows(base.tx, state.capture, state.checkpoint);
+  if (!sameNativeMetadata(rows, state.rows)) return planningRetry();
+  await brandContextScopeInternals.recheckPlanningProof(frame, state.brandProof); await base.assertCurrent();
+}
+async function readNativePlanningProof(frame: AiPlanningNativeFrame, proof: PlanningBoundScopeProof): Promise<PlanningScopeView> {
+  await recheckNativePlanningProof(frame, proof);
+  return (await nativePlanningProofState(frame, proof)).state.view;
+}
+export const planningScopeInternals = Object.freeze({ capturePlanningIdentity: captureNativePlanningIdentity,
+  preparePlanningInFrame: prepareNativePlanningInFrame, readPlanningProof: readNativePlanningProof, recheckPlanningProof: recheckNativePlanningProof });

@@ -1545,3 +1545,43 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   match across preserved dev/test/e2e, and unrelated research/tmp/history remains
   unstaged. Root saves S1a and continues the full goal with S1b bound campaign/
   approved-context metadata proofs before source/entitlement/provider integration.
+
+
+## Native bound campaign metadata proof — 2026-10-11
+
+- Prerequisite56fd9fd saved after1163 current all-four gates and seven-path review.
+  Root freezes S1b as one product file for existing-bound campaign/workspace,
+  current selection, mandatory logical policy reviewers and immutable approved
+  Version/Submission metadata. No bodies, missing-workspace creation or unbound
+  legacy admission. Native S0/S1a failures precede deferred input validation.
+  Independent bounded native tests precede product adoption; temporary code
+  draft and reviewer ownership remain separate, and public wrappers stay intact.
+- Independent genuine OWN saved campaign/approved-context baseline reached the
+  missing capture export and failed1.23s before product edits. Source review
+  identified reliance on default PostgreSQL collation, which could disagree
+  with JS validation order;
+  worker explicitly normalizes every captured/read metadata array by its declared
+  key. Corrected candidate otherwise passed independent metadata/privacy/lock/
+  source/proof/cache review and preserves all legacy bodies/closures.
+- Root adoption first passed two groups and exposed a native23514 fixture edit:
+  SUBMIT had advanced the parent revision separately, so the material draft edit
+  needed inputRevision=NEW parent revision. Author corrected only that owned
+  update; immutable approved Version/Submission stayed untouched. All three native
+  groups passed6.27s. Three readonly Prisma query inputs were copied without
+  changing values/assertions; current TSC and warning-free scoped lint passed.
+- Current compatibility union passed37/37 across12 campaign/context/S1 files
+  in67.16s. Native cases cover immutable Version wait/reload, selection drift
+  without replacement locks, logical reviewers despite physical owner overlap,
+  current reviewer change rollback, approved pins across unapproved draft editing,
+  no-lock final checks and actual expiry/malformed-input priority. No source bodies,
+  provider/legal readiness or new workspace/permission are claimed. Root starts
+  all four gates on the frozen source before saving this metadata-only checkpoint.
+- Final frozen source passed all four gates: TypeScript, warning-free ESLint,
+  guarded Vitest1166/155files398.09s and supported Next Webpack production build.
+  Deployment privacy passed196 manifests/39183 references with zero private paths.
+  Independent corrected source and six-path index reviews are clear; source/test/
+  plan match reviewed current files, and no unrelated research/tmp is staged.
+  Native tests prove metadata/locks/source pins/policy coverage/lifetime only;
+  source-body resolution, atomic entitlements/attempts and real provider/voice/
+  billing readiness remain separate. Root saves S1b and continues the full goal
+  through agent integration and the free portfolio editing customer journey.

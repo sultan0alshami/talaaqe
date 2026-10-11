@@ -306,3 +306,12 @@ campaign_agent_ui independently reviews new tests/proof privacy; planning_admiss
 reviews native core/exact coverage/lifetime/lock order and staged source read-only.
 Pair CLIENT plan+view in one pass; OWN actual ownership; thin identity projections
 and opaque same-frame proofs only. Policy/campaign/source/version work is S1b.
+
+Native S1b bound campaign scope: prerequisite56fd9fd passed all four gates. Root
+owns campaign-planning/scope.ts, shared docs/adoption and all executions.
+campaign_agent_ui owns only tmp/planning-native-campaign-scope.ts.draft; schema_review
+independently owns only tmp/planning-native-campaign-scope.test.ts.draft before
+adoption as tests/planning/native-campaign-scope.test.ts. planning_admission_seam
+reviews metadata/policy/lock/source/lifetime/index read-only. Existing bound-only
+current selections and immutable approved metadata; no new workspace/legacy
+admission, source-body/provider/routes/pools or mutable shared maps. Preserve work.
