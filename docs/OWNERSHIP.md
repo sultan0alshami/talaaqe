@@ -259,3 +259,13 @@ schema_review independently reviews freeze/SQL/test/staged source without edits;
 planning_admission_seam supplies bounded existing-code scouts. No Attempt/Result,
 provider dispatch, native-authority bypass or trial/purchase activation in this
 sub-slice. Preserve others' work and all history; native baseline precedes edits.
+
+Planning AI output contracts: prerequisitea8e519a passed all four gates. Root owns
+new planning/output-contracts.ts, immutable source/fingerprint/request/enriched
+declarations and shared records/execution. campaign_agent_ui owns only its two
+pure groups under tests/planning/output-contracts.test.ts after ignored-draft
+baseline adoption. schema_review independently reviews strict boundaries, source
+epochs, byte/JSON failure paths and staged source; planning_admission_seam scouts
+exact existing provenance/SDK/UI contracts read-only. No providers, native
+authority, successful result storage, dispatcher or UI activation is inferred
+from pure validation. Preserve existing work/source/history and OpenAI disablement.

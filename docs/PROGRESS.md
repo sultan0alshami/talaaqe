@@ -1305,3 +1305,46 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   preview remains HTTP200; original source/work/history are preserved. No success,
   Attempt/Result, dispatcher, voice/provider or provisioning activation is claimed.
   Full goal stays active and continues with source-bound planning output contracts.
+
+
+## Planning AI source-bound output contracts — 2026-10-11
+
+- Prerequisitea8e519a saved after all four gates,1150 tests and33 matching task
+  migrations. Root continues the active goal; the independent source/shape freeze
+  separates provider text/proposals/artifact narratives from customer facts and
+  native approval. Pure validation must never claim authority, entailment,
+  provider readiness, actual invocation or successful attachment.
+- Independent first group observed actual missing-module RED609ms before root
+  implemented output-contracts.ts. Current first group passed664ms; current two
+  groups passed795ms, with TSC/scoped warning-free lint. All30 field/value members
+  reuse central validators/transforms; exact original text/null language, native
+  source refs, complete confirmed customer BRIEF values, copied target/fingerprint
+  capture and strict contextual request/retained declarations are covered.
+- Independent review clarified exact wire/enriched shapes, source/artifact echoes
+  without server-identity minting, confirmation for BRIEF refinement and exclusion
+  of Pool serialization epochs. Source scout confirmed approved Version/Submission
+  survives unapproved parent edits; fingerprint pins only immutable selected
+  versionInputRevision/version/hash plus selection epochs, not mutable draft
+  revisions. Archive eligibility remains native/action-specific.
+- Root and independent author are hardening bounded plain JSON and nested body
+  limits: reject holes/accessors/nonindex array properties without executing
+  getters, preserve each64KiB ordinary wire within256KiB combined provider data,
+  and prevent512KiB enrichment from bypassing those bounds. Additional current
+  failure witnesses/source review/full gates are pending; no native Result,
+  dispatcher, model, provider/media/voice or purchase/trial activation is added.
+- Final independent source review is clear. Latest frozen two-group suite passed
+ 818ms (204/133ms), TSC/scoped warning-free lint and diff hygiene passed. New
+  meaningful cases reject subclass/custom-array executable methods with zero
+  calls, malformed nested safeParse without throwing, oversize ordinary bodies
+  even in aggregate-valid refinement/enrichment, and nested enriched BRIEF scope/
+  snapshot mismatches. Positive body/source/transforms and original customer
+  fields remain intact. Root is starting all four gates on frozen source; no
+  native schema, provider call, role authority or UI activation accompanies it.
+- All four gates passed: TypeScript, warning-free ESLint, guarded Vitest1152/
+ 150files in363.78s and actual Next Webpack production build. Deployment privacy
+  passed196 manifests/38989 references with zero private development paths.
+  Independent source/test and staged review are clear for6 owned paths. Source
+  history, original-language customer fields and all33 prior migrations remain
+  preserved. These are pure source-bound declarations, not native successful
+  result storage/provider acceptance. Full goal remains active; claimed attempt/
+  result storage, atomic native admission and genuine dispatch are next.

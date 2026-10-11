@@ -411,6 +411,21 @@ pointers fail closed. All identities/history are retained. No route, dispatcher,
 purchase, trial provisioning or real native-authority grant follows from these
 rows. See09-planning-execution-storage for the remaining result/admission contract.
 
+Planning output declarations v1 distinguish source proposals, unverified
+recommendations and original provider narratives. Every proposed field/value
+reuses the central thirty-field validator; complete enriched BRIEF fields retain
+the exact declared customer confirmation pins. Five strict wire kinds have
+64KiB ordinary,256KiB combined and512KiB enriched bounds, with per-artifact
+limits preserved inside nesting. Safe plain JSON rejects unsafe prototypes,
+accessors, sparse/decorated arrays and nonfinite/undefined values before parsing.
+Copied contextual validators bind declared operation/source/authority/snapshot/
+artifact pins, excluding unrelated pool/counter and mutable unapproved context
+draft epochs. Only immutable approved source versions enter equality. Hashes,
+provider labels and schema success establish structure, never native authority,
+entailment, customer action or genuine provider execution/attachment. Separate
+native admission, pricing/usage, privacy and provider readiness remain required.
+See09-planning-output-contracts; no provider or purchase is enabled by it.
+
 Reach taxonomy `infame-reach-v2` is per dated platform/account observation: Nano1,000–<10,000, Micro10,000–<100,000, Mid100,000–<500,000, Macro500,000–<1,000,000, Mega>=1,000,000. Unknown/sub1,000 remain unclassified; no follower sums, fame/quality inference or A/B/C grading. Preserve v1 four-band historical classifications and matching strategy snapshots; integration requires a new version. Rate evidence retains original source follower bounds, platform/format/unit/rights/date/currency and source class; asking, vendor estimate, agreed and achieved prices are distinct, never an unexplained Saudi average.
 
 Implementation approval authorizes local reversible code, migrations on guarded Infame targets and tests. Merchant/recurring, tax/legal/licence, funded refund/liability, private storage/retention, email/phone, actual provider/voice and deployment evidence remain launch dependencies. Do not advertise gated features as usable, infer real publication/outreach/contracts/funds from fixtures or create source-era demo fallbacks.
