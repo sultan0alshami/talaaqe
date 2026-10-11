@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Prisma, type AiReservation, type PrismaClient } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "../prisma";
 import {
   AiActorSchema, AiBudgetCapsSchema, AiLedgerMetadataSchema, AiStatusSchema, NoCallSchema, QuarantineSchema,
@@ -30,6 +31,40 @@ async function authenticateActor(client: Pick<Transaction, "user" | "authSession
 }
 type Options = { client?: PrismaClient; now?: () => Date; caps?: AiBudgetCaps };
 type Transaction = Prisma.TransactionClient;
+declare const planningFrameBrand: unique symbol;
+export type AiPlanningNativeFrame = Readonly<{ [planningFrameBrand]: true }>;
+type ExecutionClaim = { reservationId: string; executionToken: string; expiresAt: string };
+type PlanningInventory = { ownerIds: readonly string[]; reviewerIds: readonly string[] };
+type PlanningFrameState = {
+  issuer: object; active: boolean; tx: Transaction; actor: Readonly<AiActor>;
+  ownerIds: readonly string[]; reviewerIds: readonly string[];
+  assertCurrent: () => Promise<void>; pending: ExecutionClaim | null; busy: boolean;
+  inFlight: Set<Promise<unknown>>;
+  queryFailure: unknown;
+};
+const planningFrames = new WeakMap<object, PlanningFrameState>();
+function trackPlanningWork<T>(state: PlanningFrameState, work: Promise<T>): Promise<T> {
+  state.inFlight.add(work);
+  // The original promise remains observable to its caller; this handler only
+  // tracks ownership and prevents forgotten work becoming an unhandled leak.
+  void work.then(() => state.inFlight.delete(work), () => state.inFlight.delete(work));
+  return work;
+}
+async function drainPlanningWork(state: PlanningFrameState) {
+  while (state.inFlight.size) await Promise.allSettled([...state.inFlight]);
+}
+function planningFrameState(input: unknown, issuer?: object): PlanningFrameState {
+  const state = input !== null && typeof input === "object" ? planningFrames.get(input) : undefined;
+  if (!state?.active || issuer && state.issuer !== issuer) throw new AiBudgetError("PLANNING_FRAME_UNAVAILABLE", 503);
+  return state;
+}
+export async function readAiPlanningNativeFrame(input: unknown) {
+  const state = planningFrameState(input);
+  await state.assertCurrent();
+  planningFrameState(input);
+  return Object.freeze({ tx: state.tx, actor: state.actor, ownerIds: state.ownerIds,
+    reviewerIds: state.reviewerIds, assertCurrent: state.assertCurrent });
+}
 function nativeConflict(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034"
     || error.code === "P2010" && ["40001", "40P01"].includes(String(error.meta?.code)));
@@ -117,18 +152,20 @@ function enforce(summary: Awaited<ReturnType<typeof accounting>>, amount: bigint
 // Only read()'s DTO and reservationDto may cross the owner transport boundary.
 export function createAiBudgetLedger(options: Options = {}) {
   const client = options.client ?? prisma, clock = options.now ?? (() => new Date());
+  const planningIssuer = Object.freeze({});
   const caps = AiBudgetCapsSchema.parse(options.caps ?? readAiBudgetCaps());
   const maintenance = async () => client.$transaction(async tx => {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(${AI_BUDGET_LOCK[0]}::int,${AI_BUDGET_LOCK[1]}::int)::text`;
     await quarantineExpired(tx, trustedTime(clock));
   }, { maxWait: 10000, timeout: 15000 });
-  async function beginActor(input: unknown, admin = false) {
+  async function beginActor(input: unknown, admin = false, requiredRole?: "BRAND") {
     const actor = captureActor(input);
     let maintenanceFailed = false, maintenanceError: unknown;
     // Timeout quarantine is trusted system maintenance. Its locks are released
     // before interactive Users; a denial never refunds an uncertain execution.
     try { await maintenance(); } catch (error) { maintenanceFailed = true; maintenanceError = error; }
     await authenticateActor(client, actor, admin);
+    if (requiredRole && actor.role !== requiredRole) throw new AiBudgetError("FORBIDDEN", 403);
     if (maintenanceFailed) throw maintenanceError;
     return actor;
   }
@@ -251,27 +288,154 @@ export function createAiBudgetLedger(options: Options = {}) {
     return { reservation: reservationDto(updated), replayed: false };
   }
 
+  async function reserveCore(tx: Transaction, now: Date, actor: Readonly<AiActor>, command: ReturnType<typeof ReserveAiSchema.parse>) {
+    const requestHash = digest(command);
+    const existing = await tx.aiReservation.findUnique({ where: { userId_operationKey: { userId: actor.userId, operationKey: command.operationKey } } });
+    if (existing) {
+      const data = metadata(existing);
+      if (existing.purpose !== command.purpose || existing.payloadHash !== command.payloadHash || data.requestHash !== requestHash) throw new AiBudgetError("REPLAY_CONFLICT");
+      return { reservation: reservationDto(existing), replayed: true };
+    }
+    const duplicate = await tx.aiReservation.findFirst({ where: { userId: actor.userId, purpose: command.purpose, payloadHash: command.payloadHash, status: { in: ["RESERVED", "RUNNING", "UNKNOWN"] } } });
+    if (duplicate) throw new AiBudgetError(duplicate.status === "UNKNOWN" ? "RECONCILIATION_REQUIRED" : "PAYLOAD_ALREADY_PENDING");
+    enforce(await accounting(tx, now, actor.userId, caps), BigInt(command.reservedMicros));
+    const result: AiLedgerMetadata = {
+      schemaVersion: 1, actorRole: actor.role, actorSessionVersion: actor.sessionVersion, requestHash, pricing: command.pricing, context: command.context, executionTimeoutMs: command.executionTimeoutMs,
+      executionTokenHash: null, claimedAt: null, deadlineAt: null, quarantineReason: null, settlementHash: null, usage: null, settlementPricing: null, estimatedActualMicros: null, noCallReason: null, overrun: false, overrunResolved: false, reconciliation: null,
+    };
+    const row = await tx.aiReservation.create({ data: { userId: actor.userId, operationKey: command.operationKey, payloadHash: command.payloadHash, purpose: command.purpose, status: "RESERVED", reservedMicros: BigInt(command.reservedMicros), createdAt: now, result: json(result) } });
+    return { reservation: reservationDto(row), replayed: false };
+  }
+  async function claimCore(tx: Transaction, now: Date, actor: Readonly<AiActor>, reservationId: string): Promise<ExecutionClaim> {
+    const { row, data } = await getReservation(tx, reservationId, actor.userId);
+    if (data.executionTokenHash) throw new AiBudgetError("EXECUTION_ALREADY_CLAIMED");
+    if (row.status !== "RESERVED") throw new AiBudgetError("INVALID_TRANSITION");
+    if (actor.role !== data.actorRole || actor.sessionVersion !== data.actorSessionVersion) throw new AiBudgetError("FORBIDDEN");
+    enforce(await accounting(tx, now, actor.userId, caps));
+    const executionToken = randomBytes(32).toString("base64url"), expiresAt = new Date(now.getTime() + data.executionTimeoutMs).toISOString();
+    await tx.aiReservation.update({ where: { id: row.id }, data: { status: "RUNNING", result: json({ ...data, executionTokenHash: tokenHash(row.id, executionToken), claimedAt: now.toISOString(), deadlineAt: expiresAt }) } });
+    return { reservationId: row.id, executionToken, expiresAt };
+  }
+
+  async function planningActorTransaction<T>(actorInput: unknown, captureInventory: () => Promise<PlanningInventory>,
+    work: (frame: AiPlanningNativeFrame) => Promise<T>) {
+    // Callback identities are copied now; they are trusted server configuration.
+    const inventoryCallback = captureInventory, callback = work;
+    const actor = await beginActor(actorInput, false, "BRAND");
+    if (typeof inventoryCallback !== "function" || typeof callback !== "function") throw new AiBudgetError("INVALID_PLANNING_CONFIGURATION");
+    const inventory = z.object({ ownerIds: AiActorSchema.shape.userId.array().max(63),
+      reviewerIds: AiActorSchema.shape.userId.array().max(2412) }).strict().parse(await inventoryCallback());
+    const ownerIds = Object.freeze([...new Set([actor.userId, ...inventory.ownerIds])].sort());
+    const ownerSet = new Set(ownerIds);
+    const reviewerIds = Object.freeze([...new Set(inventory.reviewerIds)].filter(id => !ownerSet.has(id)).sort());
+    let issued: PlanningFrameState | undefined;
+    try {
+      const outcome = await client.$transaction(async raw => {
+        await raw.$queryRaw`SELECT pg_advisory_xact_lock(${AI_BUDGET_LOCK[0]}::int,${AI_BUDGET_LOCK[1]}::int)::text`;
+        const owners = await raw.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(ownerIds)}) ORDER BY id COLLATE "C" FOR UPDATE`);
+        const reviewers = reviewerIds.length ? await raw.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "User" WHERE id IN (${Prisma.join(reviewerIds)}) ORDER BY id COLLATE "C" FOR SHARE`) : [];
+        await raw.$queryRaw`SELECT id FROM "AuthSession" WHERE id=${actor.sessionId} FOR SHARE`;
+        await authenticateActor(raw, actor);
+        if (owners.length !== ownerIds.length || reviewers.length !== reviewerIds.length) throw new AiBudgetError("RETRY_REQUIRED", 503);
+        const state: PlanningFrameState = { issuer: planningIssuer, active: true, tx: raw, actor, ownerIds, reviewerIds,
+          pending: null, busy: false, inFlight: new Set(), queryFailure: null, assertCurrent: async () => {
+            if (!state.active) throw new AiBudgetError("PLANNING_FRAME_UNAVAILABLE", 503);
+            await authenticateActor(raw, actor);
+            if (!state.active) throw new AiBudgetError("PLANNING_FRAME_UNAVAILABLE", 503);
+          } };
+        const invoke = (operation: (...args: unknown[]) => unknown, receiver: object, args: unknown[]) => trackPlanningWork(state, (async () => {
+          try {
+            await state.assertCurrent();
+            const value = await operation.apply(receiver, args);
+            await state.assertCurrent();
+            return value;
+          } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && state.queryFailure === null) state.queryFailure = error;
+            throw error;
+          }
+        })());
+        const delegates = new Map<PropertyKey, object>();
+        state.tx = new Proxy(raw, { get(target, key, receiver) {
+          const value: unknown = Reflect.get(target, key, receiver);
+          if (typeof value === "function") return (...args: unknown[]) => invoke(value as (...args: unknown[]) => unknown, target, args);
+          if (value && typeof value === "object") {
+            let delegate = delegates.get(key);
+            if (!delegate) {
+              delegate = new Proxy(value, { get(model, method, modelReceiver) {
+                const member: unknown = Reflect.get(model, method, modelReceiver);
+                return typeof member === "function" ? (...args: unknown[]) => invoke(member as (...args: unknown[]) => unknown, model, args) : member;
+              } });
+              delegates.set(key, delegate);
+            }
+            return delegate;
+          }
+          return value;
+        } });
+        const frame = Object.freeze({}) as AiPlanningNativeFrame;
+        planningFrames.set(frame, state); issued = state;
+        await raw.$executeRaw`SAVEPOINT ai_budget_command`;
+        try {
+          const value = await callback(frame);
+          if (state.queryFailure !== null) throw state.queryFailure;
+          if (state.busy || state.inFlight.size) throw new AiBudgetError("PLANNING_FRAME_UNSETTLED", 503);
+          state.active = false;
+          await quarantineExpired(raw, trustedTime(clock));
+          await authenticateActor(raw, actor);
+          if (state.pending) {
+            const { row, data } = await getReservation(raw, state.pending.reservationId, actor.userId);
+            verifyExecution(row, data, state.pending.executionToken);
+            if (row.status !== "RUNNING" || new Date(data.deadlineAt!) <= trustedTime(clock)) throw new AiBudgetError("RECONCILIATION_REQUIRED");
+          }
+          await authenticateActor(raw, actor);
+          return { ok: true as const, value, executionClaim: state.pending ? Object.freeze({ ...state.pending }) : null };
+        } catch (error) {
+          state.active = false; state.pending = null;
+          await drainPlanningWork(state);
+          const originalFailure = state.queryFailure ?? error;
+          if (nativeConflict(originalFailure)) throw originalFailure;
+          await raw.$executeRaw`ROLLBACK TO SAVEPOINT ai_budget_command`;
+          let failure = originalFailure;
+          try { await quarantineExpired(raw, trustedTime(clock)); }
+          catch (maintenanceError) { if (nativeConflict(maintenanceError)) throw maintenanceError; failure = maintenanceError; }
+          try { await authenticateActor(raw, actor); }
+          catch (authError) { if (nativeConflict(authError)) throw authError; failure = authError; }
+          return { ok: false as const, error: failure };
+        }
+      }, { maxWait: 10000, timeout: 15000 });
+      if (!outcome.ok) throw outcome.error;
+      return { value: outcome.value, executionClaim: outcome.executionClaim };
+    } catch (error) {
+      await authenticateActor(client, actor);
+      if (nativeConflict(error)) throw new AiBudgetError("RETRY_REQUIRED", 503);
+      throw error;
+    } finally { if (issued) { issued.active = false; issued.pending = null; } }
+  }
+
   return {
+    withPlanningActorTransaction: planningActorTransaction,
+    reserveAndClaimInFrame(frame: AiPlanningNativeFrame, input: unknown) {
+      let state: PlanningFrameState;
+      try { state = planningFrameState(frame, planningIssuer); }
+      catch (error) { return Promise.reject(error); }
+      const capturedCommand = ReserveAiSchema.safeParse(input);
+      const alreadyBusy = state.busy;
+      if (!alreadyBusy) state.busy = true;
+      return trackPlanningWork(state, (async () => { try {
+        await state.assertCurrent();
+        if (!capturedCommand.success) throw capturedCommand.error;
+        if (alreadyBusy || state.pending) throw new AiBudgetError("PLANNING_CLAIM_ALREADY_PENDING", 409);
+        const now = trustedTime(clock);
+        const reserved = await reserveCore(state.tx, now, state.actor, capturedCommand.data);
+        if (reserved.reservation.status !== "RESERVED") return { ...reserved, claimPending: false };
+        state.pending = await claimCore(state.tx, trustedTime(clock), state.actor, reserved.reservation.id);
+        await state.assertCurrent();
+        return { ...reserved, reservation: { ...reserved.reservation, status: "RUNNING" as const }, claimPending: true };
+      } finally { if (!alreadyBusy) state.busy = false; } })());
+    },
     async reserve(actorInput: unknown, input: unknown) {
       const actor = await beginActor(actorInput);
-      const command = ReserveAiSchema.parse(input), requestHash = digest(command);
-      return actorTransaction(actor, false, null, async (tx, now) => {
-        const existing = await tx.aiReservation.findUnique({ where: { userId_operationKey: { userId: actor.userId, operationKey: command.operationKey } } });
-        if (existing) {
-          const data = metadata(existing);
-          if (existing.purpose !== command.purpose || existing.payloadHash !== command.payloadHash || data.requestHash !== requestHash) throw new AiBudgetError("REPLAY_CONFLICT");
-          return { reservation: reservationDto(existing), replayed: true };
-        }
-        const duplicate = await tx.aiReservation.findFirst({ where: { userId: actor.userId, purpose: command.purpose, payloadHash: command.payloadHash, status: { in: ["RESERVED", "RUNNING", "UNKNOWN"] } } });
-        if (duplicate) throw new AiBudgetError(duplicate.status === "UNKNOWN" ? "RECONCILIATION_REQUIRED" : "PAYLOAD_ALREADY_PENDING");
-        enforce(await accounting(tx, now, actor.userId, caps), BigInt(command.reservedMicros));
-        const result: AiLedgerMetadata = {
-          schemaVersion: 1, actorRole: actor.role, actorSessionVersion: actor.sessionVersion, requestHash, pricing: command.pricing, context: command.context, executionTimeoutMs: command.executionTimeoutMs,
-          executionTokenHash: null, claimedAt: null, deadlineAt: null, quarantineReason: null, settlementHash: null, usage: null, settlementPricing: null, estimatedActualMicros: null, noCallReason: null, overrun: false, overrunResolved: false, reconciliation: null,
-        };
-        const row = await tx.aiReservation.create({ data: { userId: actor.userId, operationKey: command.operationKey, payloadHash: command.payloadHash, purpose: command.purpose, status: "RESERVED", reservedMicros: BigInt(command.reservedMicros), createdAt: now, result: json(result) } });
-        return { reservation: reservationDto(row), replayed: false };
-      });
+      const command = ReserveAiSchema.parse(input);
+      return actorTransaction(actor, false, null, (tx, now) => reserveCore(tx, now, actor, command));
     },
     async read(actorInput: unknown) {
       const actor = await beginActor(actorInput);
@@ -283,16 +447,7 @@ export function createAiBudgetLedger(options: Options = {}) {
     },
     async claim(actorInput: unknown, reservationId: string) {
       const actor = await beginActor(actorInput);
-      return actorTransaction(actor, false, null, async (tx, now) => {
-        const { row, data } = await getReservation(tx, reservationId, actor.userId);
-        if (data.executionTokenHash) throw new AiBudgetError("EXECUTION_ALREADY_CLAIMED");
-        if (row.status !== "RESERVED") throw new AiBudgetError("INVALID_TRANSITION");
-        if (actor.role !== data.actorRole || actor.sessionVersion !== data.actorSessionVersion) throw new AiBudgetError("FORBIDDEN");
-        enforce(await accounting(tx, now, actor.userId, caps));
-        const executionToken = randomBytes(32).toString("base64url"), expiresAt = new Date(now.getTime() + data.executionTimeoutMs).toISOString();
-        await tx.aiReservation.update({ where: { id: row.id }, data: { status: "RUNNING", result: json({ ...data, executionTokenHash: tokenHash(row.id, executionToken), claimedAt: now.toISOString(), deadlineAt: expiresAt }) } });
-        return { reservationId: row.id, executionToken, expiresAt };
-      });
+      return actorTransaction(actor, false, null, (tx, now) => claimCore(tx, now, actor, reservationId));
     },
     async releaseUnclaimed(actorInput: unknown, reservationId: string) {
       const actor = await beginActor(actorInput);

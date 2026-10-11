@@ -43,11 +43,18 @@ it("requires current ADMIN identity and private responses before listing or chan
 it("returns validated minimal original-name rows and rejects duplicated or unsupported queries", async () => {
   const f = await setup();
   await prisma.user.update({ where: { id: f.target.userId }, data: { name: "الاسم الأصلي", nameEn: "Never substitute this legacy translation" } });
-  const response = await invokeList(list());
+  const predecessor = await prisma.user.findFirst({ where: { id: { lt: f.target.userId } }, orderBy: { id: "desc" }, select: { id: true } });
+  const expectedPage = await prisma.user.findMany({ where: predecessor ? { id: { gt: predecessor.id } } : undefined,
+    orderBy: { id: "asc" }, take: 31, select: { id: true } });
+  const suffix = predecessor ? "?after=" + encodeURIComponent(predecessor.id) : "";
+  const response = await invokeList(list(suffix));
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   const body = await response.json();
   expect(AdminUsersSchema.safeParse(body.data).success).toBe(true);
+  expect(body.data.users[0]?.id).toBe(f.target.userId);
+  expect(body.data.users.map((row: { id: string }) => row.id)).toEqual(expectedPage.slice(0, 30).map(row => row.id));
+  expect(body.data.nextCursor).toBe(expectedPage.length > 30 ? expectedPage[29]!.id : null);
   expect(body.data.users.find((row: { id: string }) => row.id === f.target.userId).name).toBe("الاسم الأصلي");
   expect(JSON.stringify(body).includes(session!.sessionId)).toBe(false);
   expect(JSON.stringify(body).includes("Never substitute this legacy translation")).toBe(false);

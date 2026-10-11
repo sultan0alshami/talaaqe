@@ -802,3 +802,30 @@ See plans/09-planning-attempt-results.md for exact bounds, locks and branches.
 Storage labels/hashes establish no genuine invocation, active permission, plan
 provisioning or provider readiness. Native atomic admission, response provenance,
 current authorization/time checks and genuine dispatch remain separate work.
+
+### AI ledger native User identity
+
+Actual actor userId and retained reconciliation adminUserId use the existing
+printable ASCII1..200 native User grammar. They are not accounting resource IDs;
+no alias/truncation is introduced. Every reservation, operation, pricing, context,
+review and audit identifier keeps its narrower opaque grammar. Request payloads,
+hashes and retained metadata version are unchanged. Actual active/role/session/
+version/owner/revocation and real-clock expiry checks remain authoritative.
+
+### Native planning accounting frame
+
+The trusted ledger owns one fixed-BRAND native transaction, captures bounded
+owner/reviewer lock inventory and authenticates before its server callback.
+Actor is always an owner; every requested User must actually be locked. Inventory
+grants no campaign, client or subscription permission. Domain binders remain
+separate and must recheck current plan/view and captured coverage independently.
+
+An opaque issuer-owned frame exposes checked transaction access with current
+native authentication around awaits. Copies, wrong issuers and closed handles
+fail. Private reserve/claim cores preserve old hashes/caps/replay behavior; one
+new claim is permitted per frame, including simultaneous core calls. Core replies
+contain no execution credential. Owner escrow releases it only after final checks
+and successful COMMIT; retained replay cannot mint another. Callback/expiry errors
+invalidate the frame and rollback its writes while prior maintenance remains.
+Unawaited core/query work is invalidated and drained before rollback, preventing
+late writes or orphan reservations. No external invocation happens in this owner.

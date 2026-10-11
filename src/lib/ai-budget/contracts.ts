@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OrganizationIdSchema as NativeUserIdSchema } from "@/lib/organizations/contracts";
 
 export const MAX_LEDGER_INTEGER = BigInt("9223372036854775807");
 export const MicrosSchema = z.string().regex(/^(0|[1-9][0-9]{0,18})$/).refine(value => BigInt(value) <= MAX_LEDGER_INTEGER, "Exceeds PostgreSQL signed BigInt");
@@ -10,7 +11,7 @@ const IdentifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/
 const DateStringSchema = z.iso.datetime({ offset: true }).max(40);
 export const AiPurposeSchema = z.enum(["ONBOARDING_VOICE", "TRANSCRIPTION", "SPEECH", "FACT_EXTRACTION", "PORTFOLIO", "CAMPAIGN_CHAT", "CAMPAIGN_EXTRACTION", "BRIEF", "MATCH_EXPLANATION", "CONTENT_THEME", "SCREENSHOT_EXTRACTION"]);
 export const AiStatusSchema = z.enum(["RESERVED", "RUNNING", "UNKNOWN", "SETTLED", "RELEASED"]);
-export const AiActorSchema = z.object({ userId: IdentifierSchema, role: z.enum(["BRAND", "CREATOR", "ADMIN"]), sessionVersion: z.number().int().min(1).max(2147483647), sessionId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
+export const AiActorSchema = z.object({ userId: NativeUserIdSchema, role: z.enum(["BRAND", "CREATOR", "ADMIN"]), sessionVersion: z.number().int().min(1).max(2147483647), sessionId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
 export type AiActor = z.infer<typeof AiActorSchema>;
 export const AiBudgetCapsSchema = z.object({ userDailyMicros: MicrosSchema, platformDailyMicros: MicrosSchema }).strict();
 export type AiBudgetCaps = z.infer<typeof AiBudgetCapsSchema>;
@@ -34,7 +35,7 @@ export const ReconcileSchema = z.object({
   resolution: z.discriminatedUnion("kind", [z.object({ kind: z.literal("NO_CHARGE") }).strict(), SettlementSchema.omit({ reservationId: true }).extend({ kind: z.literal("CHARGE") }).strict()]),
 }).strict();
 export const ResolveOverrunSchema = z.object({ reservationId: IdentifierSchema, expectedActualMicros: MicrosSchema, reviewReference: IdentifierSchema }).strict();
-const ReconciliationSchema = z.object({ adminUserId: IdentifierSchema, reviewReference: IdentifierSchema, auditId: IdentifierSchema, resolvedAt: DateStringSchema, kind: z.enum(["NO_CHARGE", "CHARGE", "OVERRUN_ACCEPTED"]) }).strict();
+const ReconciliationSchema = z.object({ adminUserId: NativeUserIdSchema, reviewReference: IdentifierSchema, auditId: IdentifierSchema, resolvedAt: DateStringSchema, kind: z.enum(["NO_CHARGE", "CHARGE", "OVERRUN_ACCEPTED"]) }).strict();
 export const AiLedgerMetadataSchema = z.object({
   schemaVersion: z.literal(1), actorRole: AiActorSchema.shape.role, actorSessionVersion: AiActorSchema.shape.sessionVersion,
   requestHash: z.string().regex(/^[a-f0-9]{64}$/), pricing: AiPricingSchema, context: AiContextSchema, executionTimeoutMs: ReserveAiSchema.shape.executionTimeoutMs,

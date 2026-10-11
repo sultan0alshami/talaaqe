@@ -281,3 +281,19 @@ specialist was bound to another workspace and produced no file; root reassigned
 the draft to a default worker scoped to this isolated Infame checkout. Preserve
 all other work/history and keep providers/provisioning/native auth composition
 separate from structural native storage. Native baseline precedes product changes.
+
+Native AI User identity prerequisite: root owns only ai-budget/contracts.ts and
+shared docs/execution; schema_review independently authored the two native groups
+under tmp before adoption as tests/planning/native-actor-identity.test.ts.
+campaign_agent_ui independently reviews source/tests without edits or execution.
+Widen only native actor and reconciliation User IDs; all opaque IDs/hashes and
+auth predicates remain. No migration/provider/permission activation accompanies it.
+
+Native planning ledger frame: root owns ai-budget/ledger.ts and shared docs/runs.
+schema_review independently authored three native groups before product adoption
+as tests/planning/native-ledger-frame.test.ts; campaign_agent_ui reviews test
+oracles and independently owns only the temporary admin pagination correction.
+planning_admission_seam independently reviews source/core/locks/escrow/drain and
+staged changes. Inventory is coverage only; no domain permission/provider route.
+Native identity prerequisite and this frame are consolidated into one checkpoint
+only after current integrated all-four gates; unrelated progress stays unstaged.

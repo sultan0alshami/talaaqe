@@ -1423,3 +1423,88 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   branches, atomic concurrent admission and genuine provider/usage acceptance
   remain required before activation. Root saves this checkpoint and continues
   the full goal with exact native User identity and ledger-owned admission.
+
+
+## AI ledger native User identity — 2026-10-11
+
+- Prerequisite51a2eb5 saved after current all-four gates1155/151 and34 matching
+  task migrations. Independent two-group native identity draft and read-only
+  corrective review preceded product changes. Root adopted the frozen test;
+  actual200-character User/native-session reserve failed UNAUTHENTICATED918ms,
+  identifying the narrow accounting grammar as the mismatch.
+- Root changed only actor userId and reconciliation adminUserId to central native
+  printable ASCII1..200. Both native groups passed1.17s: actual BRAND reserve/
+  claim, ADMIN reconciliation and CREATOR read/auth preserve literal identities,
+  original parsed-command hash/pricing/context and secret-free projections.
+  Native201/unsafe/forged/inactive/expired/version/role denials and unchanged
+  narrow accounting IDs remain covered. All owned fixture reservations resolve
+  through actual ledger APIs before cleanup; no provider call/migration/permission
+  activation occurred. Independent final source review and full gates follow.
+- Independent six-path source review is clear. The first full run passed TSC,
+  warning-free ESLint and1157/152 guarded tests396.74s, but Next's later type
+  check included newly written unadopted S0 drafts in tmp. Root corrected its
+  draft handling by renaming only those two files to .ts.draft; no source/config
+  or compiler guard was weakened. Current all-four gates are being repeated
+  before commit. Future drafts stay outside TypeScript inputs until adoption.
+- Repeat gate passed1156 tests and failed one pre-existing admin User transport
+  oracle385.37s: line51 assumed a new random fixture ID appears on the first30
+  sorted rows. Preserved retained task history makes that assumption invalid;
+  current production pagination is correct. A bounded real-cursor test correction
+  is being independently prepared without resets or reader changes. Coordinator
+  consolidates the reviewed identity prerequisite and S0 frame into one final
+  integrated checkpoint; no partial gate is called complete.
+
+## Native planning accounting frame — 2026-10-11
+
+- Independent three-group native draft was frozen before product changes.
+  The first valid genuine BRAND/native session reached the absent method and
+  failed864ms. Root adopted its reviewed temporary implementation, extracting
+  private reserve/claim cores without changing old public hashes/caps/status.
+- Independent source review caught early interactive maintenance reservation
+  locks and unfinished-work lifetime hazards. Root removed pre-work maintenance
+  from the interactive lane and tracks core/query promises, invalidating and
+  draining before rollback; busy guards fence simultaneous cores. All three native
+  groups passed5.23s, including real global/User/reviewer/Session/reservation
+  waits, unchanged capture, commit-only escrow, exact replay/no second credential,
+  callback/expiry rollback, durable prior maintenance and unawaited DML teardown.
+- TypeScript and scoped zero-warning lint passed after removing one unused time
+  variable. Frames grant native accounting/auth only; campaign/client view+plan,
+  entitlement/snapshot admission and provider dispatch are still required. Root
+  is completing independent source/corrective reviews and the final integrated
+  gates. No provider calls, migration, external publication or permissions seeded.
+- Independent pagination correction changes only the witnessed original-name
+  admin test: a real exclusive predecessor cursor reaches the owned fixture,
+  verifies exact returned IDs/nextCursor and retains all original/schema/privacy/
+  strict-query assertions. The six transport cases passed2.03s. Root initially
+  adopted its replacement fragment as a file and corrected that loader-only
+  error immediately, preserving original imports/setup/all other cases.
+- Current affected union passed36/36 across seven files27.83s, exercising old
+  accounting APIs plus both new native identity/frame groups and admin transport.
+  Root starts final integrated all-four gates on frozen source; no fixture
+  provider or storage label is represented as live execution/domain authority.
+- Integrated source passed all four gates: TypeScript, warning-free ESLint,
+  guarded Vitest1160/153files380.45s and supported Next Webpack production build.
+  Privacy passed196 manifests/38989 references with zero private development
+  paths. Final independent source review identified one remaining role/error
+  precedence case when standalone accounting maintenance fails; root is adding
+  its native failure witness and preserving original SQL conflict classification
+  before saving the final corrected checkpoint. Current gates are scoped to the
+  source before those corrections, not future native/domain/provider acceptance.
+- Independent added witnesses produced two meaningful native failures1.92s:
+  genuine non-BRAND returned metadata400 rather than403, and a caught PG40001
+  was masked by later aborted-transaction work. Root checks fixed BRAND after
+  actual native auth but before maintenance errors, and retains the first native
+  query failure for correct conflict503/rollback. Old generic actor methods retain
+  their policy. All three frame groups passed5.16s; current TSC/zero-warning lint
+  passed. The owned RUNNING metadata corruption is restored in finally before
+  real no-call terminalization; no native guard, secret or retained history bypass.
+- Final corrected integrated source passed all four gates: TypeScript, warning-
+  free ESLint, guarded Vitest1160/153files369.15s and supported Next Webpack
+  production build. Privacy passed196 manifests/38989 references, zero private
+  paths. Independent corrective source/test and ten-path index reviews are clear.
+  Native identity/accounting-frame tests establish auth, ordered locks, single
+  claim/commit-only escrow and rollback/error handling; they establish no campaign
+  view/plan, entitlement admission, actual provider/voice or paid readiness.
+  Root saves the consolidated checkpoint; all34 applied checksums/data and the
+  original Talaqee source remain preserved. The full goal continues with native
+  OWN/CLIENT scope proofs and later permission-safe agent dispatch/UI features.
