@@ -238,3 +238,14 @@ lock inventory, actual auth clock, savepoint/quarantine/commit outcomes and exac
 trusted-token settlement afterlogout. No dispatcher, provider, subscription,
 schema/shared-auth/UI activation; plan09-ai-ledger-native-session freezes scope.
 Agents are not alone and preserve original/other work/data.
+
+Planning AI principal/cycle storage: prerequisite679e59b passed all four gates.
+Root owns the five additive native records, membership composite identity,
+planning contracts, migration and all records/database/check execution.
+campaign_agent_ui independently authors only tests/planning/principal-storage.test.ts
+as at most three native groups; no mutable execution. schema_review independently
+reviews freeze/schema/contracts/SQL/staged source. planning_admission_seam scouts
+native composition and installed Anthropic APIs read-only. All work preserves
+other changes and the read-only Talaqee source. Plan09-planning-storage freezes
+immutable subjects/history, lifetime trial fences and concurrent exact cycles;
+no entitlement provisioning, provider, purchase or domain authority activation.

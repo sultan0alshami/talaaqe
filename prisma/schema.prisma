@@ -523,6 +523,7 @@ model OrganizationMembership {
   updatedAt      DateTime @updatedAt
   @@unique([organizationId, userId])
   @@unique([id, organizationId])
+  @@unique([id, organizationId, userId], map: "OrganizationMembership_planning_seat_identity")
   @@index([userId, state])
 }
 
@@ -1998,4 +1999,107 @@ model CampaignAgentCommand {
 
   @@unique([actorUserId, operationKey])
   @@index([agentId, id])
+}
+
+// Retained planning entitlement records. SQL supplies restrictive native subject,
+// membership and historical-subscriber FKs, partial uniques and transition guards.
+// Storage does not activate subscriptions, trials, providers or spending.
+model PlanningAiPool {
+  id             String @id
+  scope          String
+  brandId        String?
+  organizationId String?
+  state          String @default("ACTIVE")
+  revision       Int @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamp(3)
+  updatedAt      DateTime @db.Timestamp(3)
+
+  @@unique([id, organizationId])
+  // SQL-only subject partial uniques.
+}
+
+model PlanningAiEnrollment {
+  id                   String @id
+  poolId               String
+  acceptingOwnerUserId String
+  subscriberUserId     String
+  kind                 String
+  planId               String
+  policyVersion        String
+  priceVersion         String?
+  netAmountMinor       BigInt?
+  currency             String?
+  state                String @default("ACTIVE")
+  revision             Int @default(1)
+  acceptanceReference  String
+  acceptanceHash       String
+  acceptedAt           DateTime @db.Timestamp(3)
+  createdAt            DateTime @default(now()) @db.Timestamp(3)
+  updatedAt            DateTime @db.Timestamp(3)
+
+  @@unique([id, poolId])
+  @@unique([id, poolId, subscriberUserId])
+  @@index([acceptingOwnerUserId])
+  @@index([subscriberUserId])
+  @@index([poolId, id])
+  // SQL-only one-active enrollment per pool.
+}
+
+model PlanningAiSeat {
+  id             String @id
+  poolId         String
+  userId         String
+  organizationId String?
+  membershipId   String?
+  state          String @default("ACTIVE")
+  revision       Int @default(1)
+  createdAt      DateTime @default(now()) @db.Timestamp(3)
+  updatedAt      DateTime @db.Timestamp(3)
+
+  @@unique([poolId, userId])
+  @@index([userId, state])
+  @@index([membershipId, organizationId, userId])
+  @@index([poolId, organizationId])
+}
+
+model PlanningAiTrialClaim {
+  id                 String @id
+  poolId             String @unique
+  enrollmentId       String @unique
+  ownerUserId        String @unique
+  readinessReference String
+  consentHash        String
+  claimedAt          DateTime @db.Timestamp(3)
+
+  @@unique([id, enrollmentId, poolId])
+}
+
+model PlanningAiCycle {
+  id             String @id
+  poolId         String
+  enrollmentId   String
+  trialClaimId   String? @unique
+  source         String
+  sourceEventId  String
+  subscriptionId String?
+  planId         String
+  policyVersion  String
+  priceVersion   String?
+  netAmountMinor BigInt?
+  currency       String?
+  allowance      Int
+  held           Int @default(0)
+  consumed       Int @default(0)
+  state          String @default("ACTIVE")
+  revision       Int @default(1)
+  startsAt       DateTime @db.Timestamp(3)
+  endsAt         DateTime @db.Timestamp(3)
+  createdAt      DateTime @default(now()) @db.Timestamp(3)
+  updatedAt      DateTime @db.Timestamp(3)
+
+  @@unique([source, sourceEventId])
+  @@unique([id, poolId])
+  @@index([enrollmentId, poolId])
+  @@index([poolId, state, startsAt, endsAt])
+  // SQL-only merchant subscription-period uniqueness.
 }

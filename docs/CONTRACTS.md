@@ -384,6 +384,20 @@ Economics compare exact VAT-exclusive revenue and all direct costs with30% targe
 
 Optional pooled organization/agency AI plans: SAR99/299/999 EX-VAT,3/15/75 sessions per billing cycle, one free trial session without monthly rollover. Session includes at most ten successful chat turns and one brief, strategy, ideas pack and combined refinement. Existing five-question brief clarification maximum remains independent. Reserve entitlement and trusted spend before invocation; consume a session once the first validated output is persisted. Each turn/artifact has its own payload-bound operation identity; identical retries resume without repeat consumption/invocation. Unknown execution remains held for reconciliation. Manual edits/matching are free and saved work survives expiry. Operational staff AI is separately authorized/attributed campaign cost. Anthropic quality and full-session cost evidence precede billing; disabled providers/global spend caps override a paid subscription. OpenAI remains disabled.
 
+Planning principal storage v1 (2026-10-11) adds five retained records without a
+provisioning method: exact OWN_BRAND Brand / CLIENT Organization pool, immutable
+accepted owner/subscriber and commercial enrollment, explicit native-bound seat,
+lifetime verified-owner plus pool trial fences, and exact nonoverlapping cycle.
+All five reject deletion; closure/void and consumption are irreversible under
+their native revision rules. Cycle insertion advances the pool version so older
+RR snapshots fail rather than admit overlapping periods. Central SAR plan terms
+and3/15/75 or trial1 allowances are pinned to the exact enrollment/claim. Native
+IDs retain their200-character grammar; opaque references reject URLs. These rows
+grant no billing/client permission, provider readiness or paid access. Native
+session/view+plan/seat authority, actual merchant/provider evidence and atomic
+session/operation/attempt/result admission remain required. No default trial
+duration/grace, rollover or synthetic seed is added. See09-planning-storage.
+
 Reach taxonomy `infame-reach-v2` is per dated platform/account observation: Nano1,000–<10,000, Micro10,000–<100,000, Mid100,000–<500,000, Macro500,000–<1,000,000, Mega>=1,000,000. Unknown/sub1,000 remain unclassified; no follower sums, fame/quality inference or A/B/C grading. Preserve v1 four-band historical classifications and matching strategy snapshots; integration requires a new version. Rate evidence retains original source follower bounds, platform/format/unit/rights/date/currency and source class; asking, vendor estimate, agreed and achieved prices are distinct, never an unexplained Saudi average.
 
 Implementation approval authorizes local reversible code, migrations on guarded Infame targets and tests. Merchant/recurring, tax/legal/licence, funded refund/liability, private storage/retention, email/phone, actual provider/voice and deployment evidence remain launch dependencies. Do not advertise gated features as usable, infer real publication/outreach/contracts/funds from fixtures or create source-era demo fallbacks.

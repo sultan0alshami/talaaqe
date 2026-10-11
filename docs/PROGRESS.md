@@ -1179,3 +1179,66 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   remain; no dispatcher/provider/billing/voice capability is activated. Original
   source/work, unrelated research and isolated task data remain preserved. Full
   goal stays active; pooled planning admission/provider work remains next.
+
+
+## Planning AI principal and cycle storage — 2026-10-11
+
+- Native ledger679e59b is saved after all four gates; current task/source state
+  reconciled without reset. Source scouts found no existing pool/cycle entitlement
+  and confirmed exact OWN Brand / CLIENT Organization subjects, independent
+  view+plan and explicit membership/grants. Broad native200-character IDs are
+  retained rather than truncated into the narrower accounting grammar.
+- Root froze09-planning-admission and bounded09-planning-storage. Independent
+  author owns three native groups; reviewer clarified retained DELETE fences,
+  exact same-pool subscriber/claim/accepted terms, opaque non-URL references and
+  both old/resulting zero counters before voiding. Root's additive declarations
+  and un-applied SQL implement five records; native RED/migrations are pending.
+- Cycle insertion advances its locked pool revision before overlap validation;
+  READ COMMITTED writers serialize, while stale RR/Serializable writers must
+  fail with a native conflict. Labels/readiness references remain inert storage,
+  never customer authority or provider/merchant acceptance. First success must
+  attach a genuinely validated output, not merely record a billed response.
+  Trial duration and consumed-session continuation receive explicit policy before
+  activation; no guessed period, rollover, purchase or provider call is added.
+- Prisma declarations validate with a nonconnecting placeholder URL; TypeScript,
+  scoped warning-free lint and diff hygiene passed. An initial bare validate
+  lacked DATABASE_URL; the scoped nonconnecting validation corrected that setup
+  without reading, copying or exposing existing credentials. Existing Prisma6
+  deprecation/update notices do not trigger an unplanned dependency upgrade.
+  Full goal remains active; genuine pooled admission/provider/chat work follows.
+- Root observed independent first-group missing-table RED348ms, then deployed
+  the reviewed additive migration to test/dev/E2E sequentially. All32 applied
+  migration checksums match on all three task targets. No reset or seed occurred.
+  Prisma generation initially hit the owned preview's Windows DLL lock; root
+  verified its exact parent/child identity, restarted only that preview, generated
+  the client successfully and verified the main website HTTP200. Original source
+  HEAD and its four preexisting changes remain exactly preserved.
+- Native first-group execution exposed fixture-only assumptions: an initial
+ 53-character Brand slug exceeded inherited50, and existing membership identity
+  guard/restrictive FK use native23514/23001 rather than the anticipated23503.
+  Independent author corrects only those exact fixtures/code expectations while
+  keeping the witnessed native rejections and all subject/history assertions.
+  Remaining trial/concurrent cycle groups and complete gate are pending.
+- Corrected first group passed103ms; current first+trial group union passed566ms.
+  Independent review then strengthened membership mutation with its valid next
+  revision and added bound-membership restrictive deletion, preserving native
+  rejection. All three final groups passed1.14s (111/87/406ms), including real RC
+  two-writer overlap, exact blocked backend observations, old RR40001/P2034,
+  half-open adjacency, original/resulting zero void rules, native budget bounds,
+  immutable pricing/source/revision history and strict pure/SQL input parity.
+  TSC, scoped warning-free lint and diff hygiene passed on the frozen file.
+- Groups1/2 roll back all fixtures; group3 retains one tagged test-only User/Brand/
+  pool/enrollment and three synthetic future cycles, all ACTIVE with held=consumed
+  zero. Counter/void witnesses roll back normally, never disable a native guard.
+  No trial records commit and no row claims genuine merchant/provider acceptance.
+  Full four gates and final independent review are next; next execution-record
+  freeze preparation remains outside this checkpoint's product changes.
+- All four gates passed: TypeScript, warning-free ESLint, guarded Vitest1148/
+ 148files in349.67s and actual Next Webpack production build. Deployment privacy
+  passed196 manifests/38989 references with zero private development paths.
+  Independent final source/test and staged review are clear for exactly9 owned
+  paths. Existing migrations/source/work remain preserved with32 matching applied
+  migrations on all three targets. This is inert retained principal/cycle storage;
+  no route, purchase/trial provisioning, dispatcher/provider/voice or new domain
+  authority is enabled. Full goal remains active; execution/session admission
+  and genuine campaign-agent output follow through their reviewed slices.
