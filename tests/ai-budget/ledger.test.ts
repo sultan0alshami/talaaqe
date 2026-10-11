@@ -1,14 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { openSession, resolveSession } from "@/lib/identity";
 import { AI_BUDGET_LOCK, createAiBudgetLedger } from "@/lib/ai-budget/ledger";
-import { AiPurposeSchema } from "@/lib/ai-budget/contracts";
+import { AiPurposeSchema, type AiActor } from "@/lib/ai-budget/contracts";
 
 // Synthetic billing records only, on the guarded disposable PostgreSQL target.
 // No model calls, real prices, transcripts, keys or audio enter these fixtures.
 const users: string[] = [];
 const clients: PrismaClient[] = [];
+const sessionTokens = new Map<string, string>();
 const day = new Date("2091-04-07T23:59:00.000Z");
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const pricing = { version: "synthetic-v1", modelId: "synthetic-model", asOf: "2091-04-01", currency: "USD", prices: [{ unit: "INPUT_TOKENS", quantity: "1000000", priceMicros: "2000000" }] };
@@ -16,9 +19,24 @@ const usage = [{ unit: "INPUT_TOKENS", quantity: "100" }];
 const caps = { userDailyMicros: "1000", platformDailyMicros: "2000" };
 async function actor(role: "BRAND" | "CREATOR" | "ADMIN" = "BRAND") {
   const userId = randomUUID(); users.push(userId);
-  await prisma.user.create({ data: { id: userId, name: "Synthetic AI ledger actor", email: `${userId}@example.invalid`, passwordHash: "not-a-login-hash", role, isTest: true, emailVerifiedAt: day } });
-  const session = await prisma.authSession.create({ data: { id: randomUUID(), userId, version: 1, expiresAt: new Date("2092-01-01T00:00:00.000Z") } });
-  return { userId, role, sessionVersion: 1, sessionId: session.id };
+  const user = await prisma.user.create({ data: { id: userId, name: "Synthetic AI ledger actor", email: `${userId}@example.invalid`, passwordHash: "not-a-login-hash", role, isTest: true, emailVerifiedAt: day } });
+  const token = await openSession(user.id, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Owned native AI ledger session failed to resolve");
+  sessionTokens.set(userId, token);
+  const captured: AiActor = { userId: session.userId, role: session.role, sessionVersion: session.sessionVersion, sessionId: session.sessionId };
+  return Object.freeze(captured);
+}
+const delay = (milliseconds: number) => new Promise<void>(resolve => setTimeout(resolve, milliseconds));
+async function blockedByUser(blockerPid: number) {
+  const deadline = performance.now() + 4000;
+  while (performance.now() < deadline) {
+    const rows = await prisma.$queryRaw<Array<{ pid: number }>>`SELECT pid FROM pg_stat_activity
+      WHERE datname=current_database() AND wait_event_type='Lock'
+        AND ${blockerPid}=ANY(pg_blocking_pids(pid)) AND query LIKE '%"User"%FOR UPDATE%' ORDER BY pid`;
+    if (rows.length) return rows[0]!.pid;
+    await delay(10);
+  }
+  throw new Error("AI ledger operation did not reach its required owned User-row wait");
 }
 function command(overrides: Record<string, unknown> = {}) {
   return { operationKey: randomUUID(), purpose: "BRIEF", payloadHash: hash(randomUUID()), reservedMicros: "600", pricing, context: { resourceType: "CAMPAIGN", resourceId: "synthetic-campaign", sourceRevision: 1 }, executionTimeoutMs: 60000, ...overrides };
@@ -39,6 +57,7 @@ afterEach(async () => {
   await prisma.adminAudit.deleteMany({ where: { resourceType: "AI_RESERVATION", resourceId: { in: reservations.map(row => row.id) } } });
   await prisma.aiReservation.deleteMany({ where: { userId: { in: ids } } });
   await prisma.user.deleteMany({ where: { id: { in: ids } } });
+  for (const id of ids) sessionTokens.delete(id);
   await Promise.all(clients.splice(0).map(client => client.$disconnect()));
 });
 
@@ -63,21 +82,23 @@ describe("durable, provider-neutral AI ledger on guarded PostgreSQL", () => {
   });
   it("acquires the global transaction lock before waiting for the current User row", async () => {
     const owner = await actor(), waiter = await separateLedger(), probe = new PrismaClient(); clients.push(probe);
-    let release!: () => void, locked!: () => void;
-    const held = new Promise<void>(resolve => { locked = resolve; });
+    let release!: () => void, locked!: (pid: number) => void;
+    const held = new Promise<number>(resolve => { locked = resolve; });
     const unblock = new Promise<void>(resolve => { release = resolve; });
-    const blocker = prisma.$transaction(async tx => { await tx.$queryRaw`SELECT id FROM "User" WHERE id=${owner.userId} FOR UPDATE`; locked(); await unblock; }, { timeout: 10000 });
-    await held;
+    const blocker = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${owner.userId} FOR UPDATE`;
+      const rows = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid()::int AS pid`;
+      locked(rows[0]!.pid); await unblock;
+    }, { timeout: 10000 });
+    const blockerPid = await held;
     const reservation = waiter.reserve(owner, command());
     void reservation.catch(() => {}); // Observe a regression rejection while probing the separate connection.
     try {
-      let acquired = true;
-      for (let i = 0; i < 80 && acquired; i++) {
-        const result = await probe.$transaction(tx => tx.$queryRaw<{ acquired: boolean }[]>`SELECT pg_try_advisory_xact_lock(${AI_BUDGET_LOCK[0]}::int,${AI_BUDGET_LOCK[1]}::int) AS acquired`);
-        acquired = result[0].acquired;
-        if (acquired) await new Promise(resolve => setTimeout(resolve, 10));
-      }
-      expect(acquired).toBe(false);
+      // Ignore a preceding maintenance transaction. Observe this command's
+      // exact User-row blocker before proving its global lock is already held.
+      expect(await blockedByUser(blockerPid)).toBeGreaterThan(0);
+      const result = await probe.$transaction(tx => tx.$queryRaw<{ acquired: boolean }[]>`SELECT pg_try_advisory_xact_lock(${AI_BUDGET_LOCK[0]}::int,${AI_BUDGET_LOCK[1]}::int) AS acquired`);
+      expect(result[0]!.acquired).toBe(false);
     } finally { release(); await blocker; }
     await reservation;
   });
@@ -102,38 +123,43 @@ describe("durable, provider-neutral AI ledger on guarded PostgreSQL", () => {
     const owner = await actor(), input = command();
     const reserved = await ledger().reserve(owner, input);
     await prisma.user.update({ where: { id: owner.userId }, data: { sessionVersion: 2 } });
-    await expect(ledger().claim(owner, reserved.reservation.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(ledger().reserve(owner, input)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ledger().claim(owner, reserved.reservation.id)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
+    await expect(ledger().reserve(owner, input)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await prisma.user.update({ where: { id: owner.userId }, data: { sessionVersion: 1, role: "CREATOR" } });
-    await expect(ledger().read(owner)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ledger().read(owner)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await prisma.user.update({ where: { id: owner.userId }, data: { role: "BRAND", active: false } });
-    await expect(ledger().releaseUnclaimed(owner, reserved.reservation.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ledger().releaseUnclaimed(owner, reserved.reservation.id)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await prisma.user.update({ where: { id: owner.userId }, data: { active: true } });
-    await prisma.authSession.update({ where: { id: owner.sessionId }, data: { revokedAt: day } });
-    await expect(ledger().read(owner)).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await prisma.authSession.update({ where: { id: owner.sessionId }, data: { revokedAt: null, expiresAt: day } });
-    await expect(ledger().reserve(owner, command())).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await prisma.authSession.update({ where: { id: owner.sessionId }, data: { revokedAt: new Date() } });
+    await expect(ledger().read(owner)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
+    await prisma.authSession.update({ where: { id: owner.sessionId }, data: { revokedAt: null, expiresAt: new Date(Date.now() - 1) } });
+    await expect(ledger().reserve(owner, command())).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
   });
   it("checks session expiry after waiting for the User lock instead of using an earlier timestamp", async () => {
-    const owner = await actor(); let clock = day;
-    const service = await separateLedger(() => clock);
-    let release!: () => void, locked!: () => void;
-    const held = new Promise<void>(resolve => { locked = resolve; }), unblock = new Promise<void>(resolve => { release = resolve; });
-    const blocker = prisma.$transaction(async tx => { await tx.$queryRaw`SELECT id FROM "User" WHERE id=${owner.userId} FOR UPDATE`; locked(); await unblock; }, { timeout: 10000 });
-    await held;
+    const owner = await actor(), service = await separateLedger(() => day);
+    const expiresAt = new Date(Date.now() + 5000);
+    await prisma.authSession.update({ where: { id: owner.sessionId }, data: { expiresAt } });
+    const token = sessionTokens.get(owner.userId);
+    if (!token) throw new Error("Owned native expiry session is unavailable");
+    expect(await resolveSession(token) !== null).toBe(true);
+    let release!: () => void, locked!: (pid: number) => void;
+    const held = new Promise<number>(resolve => { locked = resolve; }), unblock = new Promise<void>(resolve => { release = resolve; });
+    const blocker = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${owner.userId} FOR UPDATE`;
+      const rows = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid()::int AS pid`;
+      locked(rows[0]!.pid); await unblock;
+    }, { timeout: 10000 });
+    const blockerPid = await held;
     const pending = service.reserve(owner, command()); void pending.catch(() => {});
     try {
-      // A second connection confirms the worker has acquired the advisory lock
-      // and is blocked by the already-held User row before the clock advances.
-      let waiting = false;
-      for (let i = 0; i < 80 && !waiting; i++) {
-        const result = await prisma.$queryRaw<{ waiting: boolean }[]>`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%"User"%FOR UPDATE%') AS waiting`;
-        waiting = result[0].waiting;
-        if (!waiting) await new Promise(resolve => setTimeout(resolve, 10));
-      }
-      expect(waiting).toBe(true); clock = new Date("2092-01-01T00:00:00.000Z");
+      // The exact owned blocker proves this command has reached its User wait,
+      // even when separate timeout maintenance first waits on the global lock.
+      expect(await blockedByUser(blockerPid)).toBeGreaterThan(0);
+      expect(Date.now() < expiresAt.getTime()).toBe(true);
+      await delay(Math.max(0, expiresAt.getTime() - Date.now() + 40));
+      expect(await resolveSession(token) === null).toBe(true);
     } finally { release(); await blocker; }
-    await expect(pending).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(pending).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     expect(await prisma.aiReservation.count({ where: { userId: owner.userId } })).toBe(0);
   });
   it("keeps pending and uncertain reservations across midnight and rejects a new-key rebill", async () => {
@@ -180,7 +206,7 @@ describe("durable, provider-neutral AI ledger on guarded PostgreSQL", () => {
     await prisma.user.update({ where: { id: owner.userId }, data: { active: false, sessionVersion: 2 } });
     const results = await Promise.all([run.service.settle(run.execution.executionToken, settlement), second.settle(run.execution.executionToken, settlement)]);
     expect(results.filter(row => row.replayed)).toHaveLength(1);
-    await expect(run.service.read(owner)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(run.service.read(owner)).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await expect(run.service.settle(run.execution.executionToken, { ...settlement, actualMicros: "201" })).rejects.toMatchObject({ code: "SETTLEMENT_CONFLICT" });
     expect((await prisma.aiReservation.findUniqueOrThrow({ where: { id: run.execution.reservationId } })).actualMicros).toBe(BigInt(200));
   });
@@ -200,10 +226,10 @@ describe("durable, provider-neutral AI ledger on guarded PostgreSQL", () => {
     expect((await run.service.read(owner)).user.usedMicros).toBe("1200");
     expect((await run.service.read(other)).blocked).toBe(true);
     await expect(run.service.reserve(other, command({ reservedMicros: "1" }))).rejects.toMatchObject({ code: "OVERRUN_REVIEW_REQUIRED" });
-    await expect(run.service.resolveOverrun(owner, { reservationId: run.execution.reservationId, expectedActualMicros: "1200", reviewReference: "synthetic-review" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(run.service.resolveOverrun(owner, { reservationId: run.execution.reservationId, expectedActualMicros: "1200", reviewReference: "synthetic-review" })).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
     await expect(run.service.resolveOverrun(admin, { reservationId: run.execution.reservationId, expectedActualMicros: "1199", reviewReference: "synthetic-review" })).rejects.toMatchObject({ code: "STALE_RECONCILIATION" });
     await prisma.user.update({ where: { id: admin.userId }, data: { active: false } });
-    await expect(run.service.resolveOverrun(admin, { reservationId: run.execution.reservationId, expectedActualMicros: "1200", reviewReference: "synthetic-review" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(run.service.resolveOverrun(admin, { reservationId: run.execution.reservationId, expectedActualMicros: "1200", reviewReference: "synthetic-review" })).rejects.toMatchObject({ code: "UNAUTHENTICATED", status: 401 });
     await prisma.user.update({ where: { id: admin.userId }, data: { active: true } });
     await run.service.resolveOverrun(admin, { reservationId: run.execution.reservationId, expectedActualMicros: "1200", reviewReference: "synthetic-review" });
     expect((await run.service.read(owner)).user.usedMicros).toBe("1200");

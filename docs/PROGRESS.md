@@ -1111,3 +1111,71 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   mutation, managed permission, provider activation or external publication was
   added. Source history and existing data/work are preserved; full goal remains
   active, with the AI-ledger native-session prerequisite next.
+
+
+## AI spending native sessions — 2026-10-11
+
+- Prerequisite2eb14b7 saved after all four gates and12 mounted admin regressions;
+  current original Talaqee/data isolation remain preserved with31 matching
+  migrations on all three targets. The next user-requested campaign agent slice
+  requires real spending/session admission before provider dispatch or pooled
+  entitlements; no provider/registration/key/money action is authorized here.
+- Source scout confirmed six actor methods use an unlocked Session, injected
+  accounting clock for expiry and no final checks after reservation/audit waits;
+  three parse commands before auth. Generic session-id grammar rejects genuine
+  native leading '-'/'_' ids while UUID/simulated2091 fixtures are not native
+  acceptance. No application dispatcher uses this factory yet.
+- Root froze09-ai-ledger-native-session; independent<=3 native groups remain an
+  ignored draft before RED. Real native prefix fixtures use bounded producer
+  calls, never random/JWT/auth mocks. Review clarified actual maintenance lock
+  release before interactive complete User locks, final auth after all waits,
+  invalidated savepoint lock assumptions and no uncertain-COMMIT retry. Trusted
+  token settlement remains separate afterlogout; hashes/accounting/quarantine
+  semantics remain. No product source changes or new capability activation yet.
+- Original independent author hit an actual model usage limit after saving a
+  complete25,851-byte/three-group draft. Independent reviewer revalidated it and
+  clarified trusted standalone timeout maintenance persists even for an inactive
+  native-shaped actor, while native401/403 takes priority over maintenance errors.
+  This does not grant interactive authority. Root adopted the existing authored
+  file; no reset, provider invocation or synthetic JWT/session replacement.
+- Root selected only the first baseline group against unchanged ledger. Genuine
+  owned signing/fixtures/TSC succeeded; all six missing-actor calls returned
+  OTHER_ERROR/status0 instead of the frozen UNAUTHENTICATED401 (RED932ms). Other
+  two groups were not executed in that selection. Root implemented native43
+  session grammar, copied actor/dependencies, real-clock auth-before-parsing,
+  standalone committed maintenance, complete sorted ADMIN subject/actor Users
+  then exact Session/row locks and guarded awaited/final checks. Savepoint rollback
+  invalidates the guard; fresh auth precedes safe error/conflict return. Exact
+  token server lanes/hashes/accounting remain unchanged.
+- All three current native groups passed11.74s. Initial proxy-map TSC issue was
+  corrected using a capturedDelegate const; TSC passed and scoped warning-free
+  lint passed after one prefer-const-only test cleanup. The old three-file budget
+  regression then exposed19 fixture failures because two files still fabricate
+  UUID AuthSessions; three config cases passed. Independently assigned stable
+  native-session plumbing preserves all spending/claims/SQL/concurrency tests and
+  separates actual expiry from2091 accounting. No UUID compatibility bypass or
+  business clock authentication is restored. Source review/regression/gates remain.
+- Independent source review found a same-id DELETE/reinsert target-owner race
+  and a post-rollback maintenance conflict potentially masked by aborted auth
+  queries. Its bounded replacement witness stays within native group2. Root
+  observed actualACCEPTED200 vs required safeRETRY_REQUIRED503 (RED1.47s), then
+  locked the target after Session, rechecked its thin owner/absence plus real auth
+  before hydration and rejected changed/absent inventory without late User locks.
+  Recognized native conflicts now rethrow immediately from both rollback catches.
+  Native three-group suite then passed12.05s; TSC/scoped warning-free lint passed.
+- Independent worker changed only two existing fixture files to stable real
+  openSession/resolveSession tuples, actual expiry and exact native User blocker
+  observations;2091 remains accounting/pricing time only. Initial current union
+  passed25/4files in19.40s. After the final absent-target closure, unchanged strict
+  four-file union passed25/25 in19.74s. README now truthfully documents no product
+  dispatcher, native auth/lock/maintenance semantics and preserved token lane.
+  Root started the complete four gates on frozen product source; no HTTP/UI,
+  provider, subscription or schema activation is part of this checkpoint.
+- All four gates passed: TypeScript, warning-free ESLint, guarded Vitest1145/
+ 147files in355.26s and actual Next Webpack production build. Deployment privacy
+  passed196 manifests/38989 references with zero private development paths.
+  Independent staged review is clear for exactly9 owned paths. Exact token-only
+  settlement afterlogout, costs/hashes/UNKNOWN and legacy accounting invariants
+  remain; no dispatcher/provider/billing/voice capability is activated. Original
+  source/work, unrelated research and isolated task data remain preserved. Full
+  goal stays active; pooled planning admission/provider work remains next.

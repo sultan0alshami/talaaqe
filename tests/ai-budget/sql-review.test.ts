@@ -1,14 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { openSession, resolveSession } from "@/lib/identity";
 import { createAiBudgetLedger } from "@/lib/ai-budget/ledger";
+import type { AiActor } from "@/lib/ai-budget/contracts";
 const users: string[] = [];
 const pricing = { version: "sql-fixture-v1", modelId: "synthetic-no-provider", asOf: "2026-10-04", currency: "USD", prices: [{ unit: "REQUESTS", quantity: "1", priceMicros: "10" }] };
 async function fixture() {
   const userId = randomUUID(); users.push(userId);
-  await prisma.user.create({ data: { id: userId, role: "CREATOR", active: true, isTest: true, name: "SQL budget fixture", email: `${userId}@example.invalid`, passwordHash: "no-login" } });
-  const session = await prisma.authSession.create({ data: { id: randomUUID(), userId, version: 1, expiresAt: new Date(Date.now() + 60000) } });
-  const actor = { userId, role: "CREATOR", sessionVersion: 1, sessionId: session.id };
+  const user = await prisma.user.create({ data: { id: userId, role: "CREATOR", active: true, isTest: true, name: "SQL budget fixture", email: `${userId}@example.invalid`, passwordHash: "no-login" } });
+  const token = await openSession(user.id, user.sessionVersion, user.passwordHash), session = await resolveSession(token);
+  if (!session) throw new Error("Owned native SQL budget session failed to resolve");
+  const actor: AiActor = Object.freeze({ userId: session.userId, role: session.role, sessionVersion: session.sessionVersion, sessionId: session.sessionId });
   const ledger = createAiBudgetLedger({ caps: { userDailyMicros: "10000", platformDailyMicros: "100000" } });
   const reserved = await ledger.reserve(actor, { operationKey: randomUUID(), payloadHash: "b".repeat(64), purpose: "BRIEF", reservedMicros: "100", pricing,
     context: { resourceType: "SYSTEM", resourceId: "sql-fixture", sourceRevision: 1 }, executionTimeoutMs: 60000 });

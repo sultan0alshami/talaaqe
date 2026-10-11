@@ -228,3 +228,13 @@ and one scoped module. schema_review independently reviews contracts/source/scop
 without edits. Preserve all other work. No taxonomy mutation, managed-scope access,
 schema/provider/dependency/shared-auth widening; plan07 freezes byte paging and
 exact catalog/assignment semantics.
+
+AI spending native-session prerequisite:2eb14b7 passed all four gates and12 admin
+browser regressions. Root owns ai-budget contracts/ledger/new narrow helpers and
+all records/execution. schema_tests owns only ignored ai-ledger-native-session
+test draft until adoption as at most three native groups, then separately assigned
+stable real-session fixture updates. schema_review independently reviews full
+lock inventory, actual auth clock, savepoint/quarantine/commit outcomes and exact
+trusted-token settlement afterlogout. No dispatcher, provider, subscription,
+schema/shared-auth/UI activation; plan09-ai-ledger-native-session freezes scope.
+Agents are not alone and preserve original/other work/data.

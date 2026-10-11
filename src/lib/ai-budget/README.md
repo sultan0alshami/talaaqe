@@ -1,15 +1,30 @@
 # Trusted AI spend ledger
 
 `createAiBudgetLedger()` is a server-only capability boundary, not a browser API.
-Every billed purpose in `docs/CONTRACTS.md` uses `reserve`, then `claim` before one
-external invocation. The invocation happens **outside** the transaction. Never put
+The trusted orchestrator must compose `reserve`, then `claim` before one
+external invocation. No application provider dispatcher currently composes this
+factory; ledger tests do not establish working AI features or subscriptions.
+The invocation happens **outside** the transaction. Never put
 provider calls, callbacks or browser-chosen configuration inside this ledger.
 
-The caller passes an authenticated current Session subset. Reserve, claim, owner
-read/cancel and admin reconciliation recheck the active database role, session
-version, live session owner, revocation and expiry. Every operation acquires the
-same PostgreSQL transaction advisory lock before locking any User. Independent
-connections therefore share the user and platform caps across all purposes.
+The caller passes a strict native Session subset with its actual43-character
+base64url session identifier. Reserve, claim, owner read/cancel and ADMIN review
+authenticate before business parsing, then recheck active User/role/version and
+the exact locked Session owner/version/revocation/real expiry after waits and
+before returning DTOs, tokens or replay. Accounting clocks cannot extend auth.
+The global advisory lock precedes complete sorted affected Users, exact Session
+and reservation locks; ADMIN subjects are recaptured under the reservation lock.
+Do not compose this factory inside a prelocked campaign/owner transaction.
+Independent connections share user/platform caps across all billed purposes.
+
+Fixed timeout maintenance owns a separate global transaction and commits/releases
+its reservation locks before interactive Users. A syntactically native tuple may
+trigger that trusted system step even when its actor is already inactive; it
+grants no permission. Native auth denial wins over poisoned maintenance errors,
+while an authorized actor receives the safe maintenance failure. Command writes
+roll back separately; uncertain billing quarantine remains durable. Native
+conflicts are not hidden by queries against aborted transactions, and uncertain
+COMMIT outcomes are never automatically retried.
 
 Configure `AI_USER_DAILY_CAP_MICROS` and `AI_PLATFORM_DAILY_CAP_MICROS` as canonical
 nonnegative integer strings in USD millionths. Preview/production require both.
