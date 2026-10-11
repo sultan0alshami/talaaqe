@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { countryLabel } from "@/lib/contracts/country-labels";
 import { TIMEZONE_SUGGESTIONS } from "@/lib/contracts/timezone-suggestions";
 import { COUNTRY_CODES, PLATFORM_FORMATS, PlatformSchema, ProfileStateSchema, type Platform, type DealFormat, OwnershipStatusSchema, UtcDateTimeSchema, CountryCodeSchema } from "@/lib/contracts/vocabulary";
@@ -19,6 +20,7 @@ import type { OwnerProfileDTO, PortfolioContent } from "@/lib/onboarding/profile
 import { PublicationReadinessPanel } from "./readiness-panel";
 import { PortfolioContentSchema } from "@/lib/onboarding/portfolio-contract";
 import { readCampaignAgentResponse } from "@/lib/campaign-agent/browser-transport";
+import { PortfolioContentEditor } from "./portfolio-content-editor";
 
 // The SSR mount supplies only the nonsecret actor reference. Native sessions
 // remain server-side; child and parent denials clear the same private boundary.
@@ -91,6 +93,9 @@ const selectClass = "h-12 w-full min-w-0 rounded-md border border-input bg-backg
 const platforms = PlatformSchema.options;
 const jsonObject = (value: unknown): Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 type Rate = { platform: Platform; format: DealFormat; currencyCode: string; decimal: string };
+const copyPortfolioContent = (content: PortfolioContent): PortfolioContent => ({ title: content.title,
+  bio: content.bio, sections: content.sections.map(section => ({ heading: section.heading, text: section.text })),
+  method: "APPROVED_FACT_TEMPLATE" });
 export function OnboardingScreen(props: OnboardingProps) {
   return <OnboardingSessionScreen key={props.actorReference + ":" + props.initialOwner.role} {...props} />;
 }
@@ -114,7 +119,13 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
   const [sourceHandles, setSourceHandles] = useState<Record<string, string>>(Object.fromEntries(Object.entries(initialDraft?.input.sources ?? {}).map(([key, mapping]) => [key, mapping.identity.normalizedHandle ?? ""])));
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({}), [consented, setConsented] = useState<Record<string, boolean>>({});
   const [primaryKey, setPrimaryKey] = useState<string>(typeof initialDraft?.input.answers.primarySourceKey === "string" ? initialDraft.input.answers.primarySourceKey : "");
-  const [portfolio, setPortfolio] = useState(initialOwner.portfolio), [portfolioBio, setPortfolioBio] = useState(initialOwner.portfolio?.content.bio ?? ""), [publishConsent, setPublishConsent] = useState(false);
+  const [portfolio, setPortfolio] = useState(initialOwner.portfolio), [publishConsent, setPublishConsent] = useState(false);
+  const [portfolioContent, setPortfolioContent] = useState<PortfolioContent | null>(() => initialOwner.portfolio ? copyPortfolioContent(initialOwner.portfolio.content) : null);
+  const portfolioRef = useRef(initialOwner.portfolio), portfolioContentRef = useRef(portfolioContent);
+  const portfolioDirty = useRef(false);
+  const [portfolioIsDirty, setPortfolioIsDirty] = useState(false);
+  const [discardDialog, setDiscardDialog] = useState(false);
+  const generateButton = useRef<HTMLButtonElement>(null);
   const [visibleAccounts, setVisibleAccounts] = useState<string[]>(initialOwner.accounts.some((a) => a.publicVisible) ? initialOwner.accounts.filter((a) => a.publicVisible).map((a) => a.id) : profile.primaryAccountId ? [profile.primaryAccountId] : []);
   const [privateDenied, setPrivateDenied] = useState(false);
   const [reading, setReading] = useState(false);
@@ -132,7 +143,7 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
     const lifetime = { mounted, epoch, active, mutex, packet };
     mounted.current = true;
     const preventLoss = (event: BeforeUnloadEvent) => {
-      if (!packet.current && !mutex.current) return;
+      if (!packet.current && !mutex.current && !portfolioDirty.current) return;
       event.preventDefault(); event.returnValue = "";
     };
     window.addEventListener("beforeunload", preventLoss);
@@ -151,7 +162,9 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
     if (flight) { clearTimeout(flight.timer); flight.controller.abort(); }
     active.current = null; mutex.current = false; packet.current = null; boundDraftId.current = null;
     setPrivateDenied(true); setPending(null); setBusy(false); setReading(false); setNotice("");
-    setDraft(null); setOwner(null); setPortfolio(null); setPortfolioBio("");
+    portfolioRef.current = null; portfolioContentRef.current = null; portfolioDirty.current = false;
+    setDiscardDialog(false); setPortfolioContent(null); setPortfolioIsDirty(false);
+    setDraft(null); setOwner(null); setPortfolio(null);
     setName(""); setHandle(""); setBio(""); setCountry(""); setCityLabel(""); setTimeZone("");
     setLanguages(""); setCurrency(""); setNiches([]); setMinimum(""); setAvailable("UNKNOWN");
     setStartsAt(""); setEndsAt(""); setTravel(false); setRatesVisibility("PRIVATE"); setRates([]);
@@ -168,6 +181,24 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
   }
   function keepPending(value: CapturedMutation | null) {
     packet.current = value; setPending(value);
+  }
+  function acceptPortfolio(next: PortfolioDTO | null) {
+    const previous = portfolioRef.current;
+    const retainEdits = next !== null && previous !== null && next.version === previous.version &&
+      next.approvedAt === null && previous.approvedAt === null && portfolioDirty.current;
+    portfolioRef.current = next; setPortfolio(next);
+    if (retainEdits) return;
+    const content = next ? copyPortfolioContent(next.content) : null;
+    portfolioContentRef.current = content; portfolioDirty.current = false;
+    setPortfolioContent(content); setPortfolioIsDirty(false); setDiscardDialog(false);
+  }
+  function changePortfolioContent(content: PortfolioContent) {
+    if (denial.current || mutex.current || packet.current || !portfolioRef.current || portfolioRef.current.approvedAt) return false;
+    const captured = copyPortfolioContent(content);
+    portfolioContentRef.current = captured;
+    portfolioDirty.current = JSON.stringify(captured) !== JSON.stringify(portfolioRef.current.content);
+    setPortfolioContent(captured); setPortfolioIsDirty(portfolioDirty.current);
+    return true;
   }
   function message(code: string) {
     const messages: Record<string, [string, string]> = {
@@ -263,8 +294,7 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
         !data.draft || data.draft.revision < confirmed.confirmedRevision)) {
       throw new OnboardingUiError("INVALID_RESPONSE");
     }
-    currentFlight(); setDraft(data.draft); setOwner(data.owner); setPortfolio(data.owner.portfolio);
-    setPortfolioBio(data.owner.portfolio?.content.bio ?? "");
+    currentFlight(); setDraft(data.draft); setOwner(data.owner); acceptPortfolio(data.owner.portfolio);
     if (hydrateForm) syncForm(data);
     // Current state alone cannot prove an UNKNOWN operation-key outcome.
     if (packet.current?.phase === "CONFIRMED") keepPending(null);
@@ -279,8 +309,7 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
       if (!data.draft) throw new OnboardingUiError("INVALID_RESPONSE");
       boundDraftId.current = data.draft.id;
       keepPending({ ...captured, draftId: data.draft.id, phase: "CONFIRMED", confirmedRevision: data.draft.revision });
-      setDraft(data.draft); setOwner(data.owner); setPortfolio(data.owner.portfolio);
-      setPortfolioBio(data.owner.portfolio?.content.bio ?? "");
+      setDraft(data.draft); setOwner(data.owner); acceptPortfolio(data.owner.portfolio);
       return data;
     }
     const parsed = commandResultSchema.safeParse(value);
@@ -295,7 +324,7 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
     // Record known confirmation before a following awaited read can fail.
     keepPending({ ...captured, phase: "CONFIRMED", confirmedRevision: data.draft.revision });
     setDraft(data.draft);
-    if (data.portfolio) { setPortfolio(data.portfolio); setPortfolioBio(data.portfolio.content.bio); }
+    if (data.portfolio) acceptPortfolio(data.portfolio);
     return data;
   }
   async function run(operation: () => Promise<void>, recovery = false) {
@@ -386,6 +415,23 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
       setNotice(copy("تأكد الحساب المقصود وحُفظت موافقتك. إثبات الملكية والبيانات خطوة مستقلة.", "The intended account and consent are saved. Ownership and data verification are separate steps."));
     });
   }
+  function generatePortfolio(discardEdits = false) {
+    if (denial.current || mutex.current || packet.current) return;
+    if (portfolioDirty.current && portfolioRef.current?.approvedAt === null && !discardEdits) {
+      setDiscardDialog(true); return;
+    }
+    setDiscardDialog(false);
+    // Keep local words until the new version is confirmed. A failed request
+    // retains those words and the existing exact-key recovery packet.
+    void run(async () => { await command(draft ?? await initialize(), "PROFILE", "GENERATE_PORTFOLIO", {}); });
+  }
+  function approvePortfolio() {
+    const currentPortfolio = portfolioRef.current, currentContent = portfolioContentRef.current;
+    if (denial.current || mutex.current || packet.current || !draft || !currentPortfolio ||
+        currentPortfolio.approvedAt || !currentContent || !PortfolioContentSchema.safeParse(currentContent).success) return;
+    const content = copyPortfolioContent(currentContent), portfolioVersion = currentPortfolio.version;
+    void run(async () => { await command(draft, "PROFILE", "APPROVE_PORTFOLIO", { portfolioVersion, content }); });
+  }
   if (privateDenied || !owner || fixedActor !== actorReference) {
     return <section className={`${styles.page} space-y-[22px]`} data-onboarding-session="denied">
       <h1 ref={heading} tabIndex={-1} className="text-3xl font-semibold">
@@ -431,7 +477,7 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
       </CardContent>
     </Card>}
     {error && <div role="alert" className="rounded-lg border border-destructive p-4" data-onboarding-error><p>{error}</p>
-      {!pending && <Button type="button" variant="outline" className="mt-3" disabled={busy}
+      {!pending && step !== 4 && <Button type="button" variant="outline" className="mt-3" disabled={busy}
         onClick={() => void run(async () => { await readSnapshot(true); })}>
         <RefreshCw aria-hidden="true" />{copy("حمّل المسودة الحالية", "Reload current draft")}
       </Button>}
@@ -456,7 +502,38 @@ function OnboardingSessionScreen({ actorReference, initialDraft, initialOwner }:
     <fieldset disabled={controlsBlocked} className="min-w-0 space-y-[22px]">
     {step === 4 && <PublicationReadinessPanel role={owner.role} onDeny={clearPrivate} portfolioVersion={portfolio?.version}
       visibleAccountIds={creator ? visibleAccounts : undefined} refreshKey={draft?.revision} onGoToStep={setStep} />}
-    {step === 4 && <Card><CardHeader><CardTitle>{steps[4]}</CardTitle><CardDescription>{copy("أنشئ ملفًا قابلًا للتعديل من بياناتك المحفوظة، ثم راجعه قبل المشاركة.", "Create an editable portfolio from your saved information, then review it before sharing.")}</CardDescription></CardHeader><CardContent className="space-y-5"><Button variant="outline" size="lg" disabled={busy} onClick={() => run(async () => { await command(draft ?? await initialize(), "PROFILE", "GENERATE_PORTFOLIO", {}); })}>{portfolio ? copy("أنشئ نسخة جديدة", "Create new version") : copy("جهّز مسودة الملف", "Prepare portfolio draft")}</Button>{portfolio && <><p>{copy("نسخة", "Version")} {portfolio.version} · {portfolio.approvedAt ? copy("معتمدة", "Approved") : copy("بانتظار مراجعتك", "Awaiting your review")}</p><h2 className="text-2xl font-semibold">{portfolio.content.title}</h2><label className="block space-y-2"><span>{copy("نبذة الملف", "Portfolio overview")}</span><Textarea aria-label={copy("نبذة الملف", "Portfolio overview")} rows={6} className="text-base" value={portfolioBio} maxLength={1000} disabled={!!portfolio.approvedAt} onChange={(event) => setPortfolioBio(event.target.value)} /></label><Button disabled={busy || !!portfolio.approvedAt} onClick={() => run(async () => { const content: PortfolioContent = { ...portfolio.content, bio: portfolioBio }; await command(draft!, "PROFILE", "APPROVE_PORTFOLIO", { portfolioVersion: portfolio.version, content }); })}>{copy("راجعته وأعتمد هذه النسخة", "I've reviewed and approve this version")}</Button>{creator && <fieldset className="space-y-2"><legend className="font-semibold">{copy("الحسابات التي توافق على إظهارها", "Accounts you consent to show")}</legend>{owner.accounts.map((account) => <label key={account.id} className="flex min-h-12 items-center gap-3"><input type="checkbox" className="size-5 shrink-0" disabled={account.ownershipStatus !== "VERIFIED"} checked={visibleAccounts.includes(account.id)} onChange={(event) => setVisibleAccounts(event.target.checked ? [...visibleAccounts, account.id] : visibleAccounts.filter((id) => id !== account.id))} /><span dir="ltr">{account.platform} @{account.handle}</span>{account.ownershipStatus !== "VERIFIED" && <span>{copy("بانتظار إثبات الملكية", "Awaiting ownership evidence")}</span>}</label>)}<p className="text-muted-foreground">{copy("إثبات الحساب الإضافي لا يجعله ظاهرًا تلقائيًا. اختر ما تريد مشاركته.", "Proving an extra account does not publish it automatically. Select what you want to share.")}</p></fieldset>}<label className="flex min-h-12 items-center gap-3"><input type="checkbox" className="size-5 shrink-0" checked={publishConsent} onChange={(event) => setPublishConsent(event.target.checked)} />{copy("أوافق على نشر الأقسام الظاهرة للعموم بعد استيفاء الإثباتات المطلوبة", "I consent to publishing the visible sections after required evidence is accepted")}</label><div className="flex flex-wrap gap-3"><Button size="lg" disabled={busy || !portfolio.approvedAt || !publishConsent} onClick={() => run(async () => { await command(draft!, "PROFILE", "PUBLISH", { consent: publishConsent, portfolioVersion: portfolio.version, ...(creator ? { visibleAccountIds: visibleAccounts } : {}) }); const data = await readSnapshot(); setOwner(data.owner); setNotice(copy("تم نشر ملفك.", "Your profile is published.")); })}>{copy("انشر الملف", "Publish profile")}</Button><Button size="lg" variant="outline" disabled={busy} onClick={() => run(async () => { await command(draft!, "PROFILE", "HIDE", {}); const data = await readSnapshot(); setOwner(data.owner); setNotice(copy("تم إخفاء ملفك.", "Your profile is hidden.")); })}>{copy("أخفِ الملف", "Hide profile")}</Button>{owner.profile.state === "PUBLISHED" && <Button asChild variant="outline" size="lg"><Link href={creator ? `/@${owner.profile.handle}` : `/brands/${owner.profile.handle}`}>{copy("افتح الملف العام", "Open public profile")}</Link></Button>}</div></>}</CardContent></Card>}
+    {step === 4 && <Card><CardHeader><CardTitle>{steps[4]}</CardTitle><CardDescription>{copy("أنشئ ملفًا قابلًا للتعديل من بياناتك المحفوظة، ثم راجعه قبل المشاركة.", "Create an editable portfolio from your saved information, then review it before sharing.")}</CardDescription></CardHeader><CardContent className="space-y-5">
+      <Button ref={generateButton} type="button" variant="outline" size="lg" disabled={busy} onClick={() => generatePortfolio()}>{portfolio ? copy("أنشئ نسخة جديدة", "Create new version") : copy("جهّز مسودة الملف", "Prepare portfolio draft")}</Button>
+      {portfolio && portfolioContent && <>
+        <p>{copy("نسخة", "Version")} {portfolio.version} · {portfolio.approvedAt ? copy("معتمدة", "Approved") : copy("بانتظار مراجعتك", "Awaiting your review")}</p>
+        <PortfolioContentEditor key={portfolio.version + ":" + (portfolio.approvedAt ?? "DRAFT")}
+          content={portfolioContent} onChange={changePortfolioContent} disabled={controlsBlocked || reading}
+          readOnly={portfolio.approvedAt !== null} dirty={portfolioIsDirty} />
+        <Button type="button" disabled={busy || !!portfolio.approvedAt || !PortfolioContentSchema.safeParse(portfolioContent).success}
+          onClick={approvePortfolio}>{copy("راجعته وأعتمد هذه النسخة", "I've reviewed and approve this version")}</Button>
+        {creator && <fieldset className="space-y-2"><legend className="font-semibold">{copy("الحسابات التي توافق على إظهارها", "Accounts you consent to show")}</legend>{owner.accounts.map((account) => <label key={account.id} className="flex min-h-12 items-center gap-3"><input type="checkbox" className="size-5 shrink-0" disabled={account.ownershipStatus !== "VERIFIED"} checked={visibleAccounts.includes(account.id)} onChange={(event) => setVisibleAccounts(event.target.checked ? [...visibleAccounts, account.id] : visibleAccounts.filter((id) => id !== account.id))} /><span dir="ltr">{account.platform} @{account.handle}</span>{account.ownershipStatus !== "VERIFIED" && <span>{copy("بانتظار إثبات الملكية", "Awaiting ownership evidence")}</span>}</label>)}<p className="text-muted-foreground">{copy("إثبات الحساب الإضافي لا يجعله ظاهرًا تلقائيًا. اختر ما تريد مشاركته.", "Proving an extra account does not publish it automatically. Select what you want to share.")}</p></fieldset>}
+        <label className="flex min-h-12 items-center gap-3"><input type="checkbox" className="size-5 shrink-0" checked={publishConsent} onChange={(event) => setPublishConsent(event.target.checked)} />{copy("أوافق على نشر الأقسام الظاهرة للعموم بعد استيفاء الإثباتات المطلوبة", "I consent to publishing the visible sections after required evidence is accepted")}</label>
+        <div className="flex flex-wrap gap-3"><Button size="lg" disabled={busy || !portfolio.approvedAt || !publishConsent} onClick={() => run(async () => { await command(draft!, "PROFILE", "PUBLISH", { consent: publishConsent, portfolioVersion: portfolio.version, ...(creator ? { visibleAccountIds: visibleAccounts } : {}) }); const data = await readSnapshot(); setOwner(data.owner); setNotice(copy("تم نشر ملفك.", "Your profile is published.")); })}>{copy("انشر الملف", "Publish profile")}</Button><Button size="lg" variant="outline" disabled={busy} onClick={() => run(async () => { await command(draft!, "PROFILE", "HIDE", {}); const data = await readSnapshot(); setOwner(data.owner); setNotice(copy("تم إخفاء ملفك.", "Your profile is hidden.")); })}>{copy("أخفِ الملف", "Hide profile")}</Button>{owner.profile.state === "PUBLISHED" && <Button asChild variant="outline" size="lg"><Link href={creator ? `/@${owner.profile.handle}` : `/brands/${owner.profile.handle}`}>{copy("افتح الملف العام", "Open public profile")}</Link></Button>}</div>
+      </>}
+    </CardContent></Card>}
     </fieldset>
+    {step === 4 && <div className="flex flex-wrap gap-3"><Button type="button" variant="outline" size="lg" className="min-h-11" disabled={busy || reading}
+      data-portfolio-read-current onClick={() => void run(async () => { setReading(true); await readSnapshot(true); }, true)}>
+      <RefreshCw aria-hidden="true" />{copy("حمّل المسودة الحالية", "Reload current draft")}
+    </Button></div>}
+    <Dialog open={discardDialog} onOpenChange={setDiscardDialog}>
+      <DialogContent data-portfolio-discard-dialog onCloseAutoFocus={(event) => {
+        event.preventDefault(); if (!denial.current) generateButton.current?.focus();
+      }}>
+        <DialogHeader><DialogTitle>{copy("تعديلات غير محفوظة", "Unsaved edits")}</DialogTitle>
+          <DialogDescription>{copy("إنشاء نسخة جديدة يستبدل تعديلات هذه النسخة بعد تأكيد إنشاء النسخة الجديدة. اعتماد الملف ونشره خطوتان منفصلتان.",
+            "Creating a new version replaces this version’s edits after the new version is confirmed. Approval and publication are separate steps.")}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-3">
+          <Button type="button" variant="outline" className="min-h-11" data-portfolio-keep-editing onClick={() => setDiscardDialog(false)}>{copy("تابع التحرير", "Keep editing")}</Button>
+          <Button type="button" className="min-h-11" disabled={busy || pending !== null} data-portfolio-discard-regenerate onClick={() => generatePortfolio(true)}>{copy("تجاهل التعديلات وأنشئ نسخة جديدة", "Discard edits and create new version")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </section>;
 }

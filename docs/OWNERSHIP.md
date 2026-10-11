@@ -315,3 +315,17 @@ adoption as tests/planning/native-campaign-scope.test.ts. planning_admission_sea
 reviews metadata/policy/lock/source/lifetime/index read-only. Existing bound-only
 current selections and immutable approved metadata; no new workspace/legacy
 admission, source-body/provider/routes/pools or mutable shared maps. Preserve work.
+
+M11a portfolio content editor: prerequisite native approval/session/version/
+publication contracts are already implemented; d0bde86 preserves current gates.
+Root owns two product TSX paths, new portfolio-content-editor and existing
+onboarding-screen, shared docs/adoption and all browser/test/build execution.
+campaign_agent_ui drafts only the two assigned tmp .tsx.draft candidates;
+schema_review independently authors only tmp/portfolio-content-editor.spec.mts.draft
+before root adoption as e2e/portfolio-content-editor.spec.mts. planning_admission_seam
+reviews source/recovery/accessibility/visual geometry independently without edits.
+Existing full APPROVE_PORTFOLIO command and captured recovery remain; no backend,
+schema/API/provider/publication change. Keep Talaqee cards and Infame identity.
+The browser author additionally owns only the existing onboarding-native-session
+currentRead helper to select mutually exclusive recovery/error/portfolio controls;
+root retains all execution and no existing privacy/replay assertion is changed.

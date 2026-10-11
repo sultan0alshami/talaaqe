@@ -1585,3 +1585,55 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   source-body resolution, atomic entitlements/attempts and real provider/voice/
   billing readiness remain separate. Root saves S1b and continues the full goal
   through agent integration and the free portfolio editing customer journey.
+
+
+## Full portfolio content editor — 2026-10-11
+
+- Read-only source reuse confirmed existing native APPROVE_PORTFOLIO accepts
+  title/bio/up to20 heading/text sections with current session/draft/version,
+  generated-source and immutable approval checks. The owner profile already
+  renders sections; current step4 edits only bio. Root freezes two TSX paths
+  for full original-content editing within the retained Talaqee/Infame cards,
+  with exact captured request recovery, approved readonly versions and separate
+  publication consent. No schema/API/provider changes are needed.
+- Independent two-group native-cookie browser draft precedes product adoption;
+  worker candidates remain .tsx.draft outside compiler inputs. Root read installed
+  Next client-boundary/accessibility guides and React best-practices skill for
+  stable controls/focus, bounded client-only UI and private recovery behavior.
+  Portfolio readonly refresh reuses actualGET and preserves same-version edits;
+  current denial must clear all protected editor content before body parsing.
+- Independent Arabic360 native-cookie baseline generated a real private portfolio
+  through the existing API, then failed because the requested title editor was
+  absent. Root adopted frozen two-TSX candidates after independent source review.
+  First four browser cases exposed controlled textarea content affecting label
+  lookup. Root added explicit localized bio/section-text aria labels, preserving
+  visible copy and all request/limit/focus semantics. Arabic happy flow passed
+ 10.9s; the full two-locale four-case union passed15.7s, including actual native
+  full-content approval, exact lost-receipt replay and401 clearance before parsing.
+- Current TSC and zero-warning scoped lint passed; independent corrective source
+  review is clear. Native screenshots/long heading/whole-editor rectangle checks
+  were added to the same two browser groups with synthetic-only content. Root
+  runs the eight-case old-onboarding/new-editor union before visual review and
+  final all-four gates. Backend/schema/providers/publication policy remain intact.
+- The eight-case compatibility run passed all four new editor cases (including
+  synthetic visual exports/long text/geometry) and both original recovery cases;
+  two original denial cases failed because their helper matched both read-only
+  refresh controls. The author corrected only that helper with mutually exclusive
+  recovery/error/portfolio selection, keeping native403/delayed-read and every
+  privacy/replay assertion. Root reruns the same eight cases on current source.
+  Independent source and both synthetic visual reviews found no concrete blocker.
+- The first corrected eight-case union passed26.7s. Independent helper review
+  caught the portfolio-step error container lacking its usual read button; the
+  author tightened only the mutually exclusive fallback to the actual button
+  and portfolio control. All existing native assertions/routes remain intact.
+- All four npm run check gates passed: TypeScript, zero-warning ESLint, guarded
+  Vitest1166/155files390.07s and supported Next Webpack production build. Privacy
+  passed196 manifests/39183 references with zero private development paths;
+  all three task targets retain34 applied matching migration checksums. Root runs
+  final helper-specific native browser/type/lint verification before staging.
+- Final corrected source passed the same eight native browser cases33.0s, current
+  TypeScript and zero-warning scoped ESLint. Independent final helper/source and
+  both Arabic360/Englishdesktop visual reviews are clear. Full content editing,
+  preserved exact approval retries and private denial behavior are established;
+  authentic work CRUD/public Arabic media-kit export and genuinely enabled
+  AI/media/voice remain later goal work. Root stages only the seven owned paths.

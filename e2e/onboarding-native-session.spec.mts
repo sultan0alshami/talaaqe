@@ -85,8 +85,17 @@ async function fixture(role: "BRAND" | "CREATOR", english: boolean, large = fals
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 const save = (page: Page, copy: Copy) => page.getByRole("button", { name: copy("احفظ المسودة الخاصة", "Save private draft"), exact: true });
 const nameInput = (page: Page, f: Fixture, copy: Copy) => page.getByLabel(f.role === "CREATOR" ? copy("اسمك الظاهر", "Display name") : copy("اسم الشركة", "Company name"), { exact: true });
-const currentRead = (page: Page, copy: Copy) => page.getByRole("button", { name: copy("حمّل الحالة دون إعادة التغيير", "Read current state without resending"), exact: true })
-  .or(page.getByRole("button", { name: copy("حمّل المسودة الحالية", "Reload current draft"), exact: true }));
+const currentRead = (page: Page, copy: Copy) => {
+  const fallback = { name: copy("حمّل المسودة الحالية", "Reload current draft"), exact: true };
+  const withoutRecovery = 'body:not(:has([data-onboarding-read-recovery]))';
+  // Recovery owns reconciliation while present; otherwise prefer the existing
+  // error read, then the portfolio refresh. The branches are mutually exclusive.
+  return page.getByRole("button", { name: copy("حمّل الحالة دون إعادة التغيير", "Read current state without resending"), exact: true })
+    .and(page.locator("[data-onboarding-read-recovery]"))
+    .or(page.locator(withoutRecovery).locator("[data-onboarding-error]").getByRole("button", fallback))
+    .or(page.locator(withoutRecovery + ':not(:has([data-onboarding-error] button))').getByRole("button", fallback)
+      .and(page.locator("[data-portfolio-read-current]")));
+};
 function latch() { let release!: () => void; return { promise: new Promise<void>(resolve => { release = resolve; }), release: () => release() }; }
 function failure(status = 503, code = "RETRY_REQUIRED") { const requestId = key(); return { status, headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", "X-Request-Id": requestId },
   body: JSON.stringify({ error: { code, message: code, requestId, retryable: status === 503 || status === 429 }, requestId }) }; }
