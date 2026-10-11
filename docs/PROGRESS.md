@@ -1348,3 +1348,78 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   preserved. These are pure source-bound declarations, not native successful
   result storage/provider acceptance. Full goal remains active; claimed attempt/
   result storage, atomic native admission and genuine dispatch are next.
+
+
+## Planning AI claimed attempts and results — 2026-10-11
+
+- Prerequisite74d12d1 saved with all four gates/1152 tests and33 matching task
+  migrations. Independent preparation froze two retained records and the exact
+  reservation/claim/request/pricing/fingerprint pins; native metadata is not
+  provider/auth/review provenance. Root continues the full active goal.
+- Independent first group observed actual missingPlanningAiAttempt RED945ms
+  before all product changes. Its real native auth/manual-agent/reserve/claim
+  producers stay outside the aggregate rollback and do not invoke providers.
+  Root added two model declarations and pure closed evidence/reason/hash helpers;
+  nonconnecting Prisma validation, TSC and scoped warning-free lint passed.
+  Native SQL remains an independently drafted temporary candidate, unapplied.
+- Freeze review clarified flat execution plus billing evidence and immutable
+  reviewed execution audit distinct from billing reconciliation. ATTACHED requires
+  a response basis; pre-call/no-call cannot manufacture output. outputHash binds
+  exact complete provider text UTF8 bytes; separate wireHash binds reconstructed
+  normalized wire and contentHash binds retained enrichment. Incomplete transport
+  remains UNKNOWN and rejected output retains no raw body.
+- Native success must permit later OPEN inclusion slots in consumed sessions,
+  preserve the first result once, reconcile both counters and reject release
+  while any sibling RUNNING/UNKNOWN remains. Result auto-completion validates
+  local parents before final per-result/deferred coherence so immediate/bulk
+  statements do not reject still-queued sibling completion. No role/provider/
+  billing authority or actual SDK acceptance is inferred from these declarations.
+- Initial guarded test application failed before commit. PostgreSQL diagnostic
+  identified SQLSTATE42601 at position16531; the explicit transaction rolled
+  back and both new tables remain absent. All33 applied checksums still match
+  across dev/test/e2e. Only the test target has a failed Prisma migration marker;
+  root is correcting the unreleased SQL and will resolve that marker as rolled
+  back only after checking the rollback, without resets or data rewrites.
+- The independent SQL author corrected two scalar CASE expressions inside IF
+  conditions. The corrected statement suite succeeded in a guarded diagnostic
+  transaction that intentionally rolled back. Root verified absent new tables
+  and33 unchanged applied checksums before marking only the failed test marker
+  rolled back; migration34 then applied successfully on test/dev/e2e, unchanged
+  thereafter. Independent three-group native suite passed2.31s with actual
+  auth/manual-agent/ledger producers and synthetic provider declarations.
+- Root regenerated Prisma6.19.3 after stopping only the verified Infame preview
+  processes, then restarted Next16.3.8 on3000. All34 applied migration checksums
+  match across the three preserved targets. Pure Session/Operation schemas are
+  being aligned with the new native success branches through an independent
+  failure witness; full gates and final source review are still pending.
+- Independent schema witness used actual bulk-success rows and failed1.50s
+  because the v1 generic declaration rejected CONSUMED/non-null first result.
+  Root aligned Session/Operation declarations with migration34 and exact iff
+  success/pointer coherence. All three native groups then passed2.28s, retaining
+  HELD/RELEASED/OPEN positives and every inconsistent pointer/state rejection.
+- Current frozen source passed all four gates: TypeScript, warning-free ESLint,
+  guarded Vitest1155/151files366.11s and supported Next Webpack production build.
+  Deployment privacy passed196 manifests/38989 references with zero private
+  development paths. Independent source review is clear but identified a native
+  BRIEF coverage gap: actual ATTACHED fixtures currently use REPLY only. Root is
+  adding a real complete-field/manual-confirmation BRIEF positive and wrong-pin
+  failure witness before final acceptance. Sequential partial-unique fixtures do
+  not prove atomic concurrent admission or a no-second-token dispatcher guarantee.
+- Independent BRIEF addition preserves all three groups and the same pool/session/
+  claim footprint. Its actual complete CREATE and manual CONFIRM_FIELDS producer
+  supplies the scoped retained batch/hash and30 value pins; the third attempt now
+  uses exact BRIEF purpose. Root adopted the frozen candidate and the enriched
+  native BRIEF group passed2.43s, including wrong batch/hash, rewritten customer
+  budget with recomputed contentHash and isolated native value-pin rejection.
+  Two bulk REPLY successes and all14 inclusion slots remain covered. No provider
+  call occurred. Independent corrective review and final current gates follow.
+- Final current source passed all four gates: TypeScript, warning-free ESLint,
+  guarded Vitest1155/151files426.64s and supported Next Webpack production build.
+  Deployment privacy passed196 manifests/38989 references with zero private paths.
+  Independent BRIEF corrective and ten-path staged reviews are clear; all34
+  applied migration checksums match on preserved dev/test/e2e. Evidence covers
+  native REPLY/BRIEF storage and sequential fences; same-session simultaneous
+  first-success ordering, positive execution-review producer, other artifact
+  branches, atomic concurrent admission and genuine provider/usage acceptance
+  remain required before activation. Root saves this checkpoint and continues
+  the full goal with exact native User identity and ledger-owned admission.

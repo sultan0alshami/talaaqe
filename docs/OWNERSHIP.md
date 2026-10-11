@@ -269,3 +269,15 @@ epochs, byte/JSON failure paths and staged source; planning_admission_seam scout
 exact existing provenance/SDK/UI contracts read-only. No providers, native
 authority, successful result storage, dispatcher or UI activation is inferred
 from pure validation. Preserve existing work/source/history and OpenAI disablement.
+
+Planning AI Attempt/Result storage: prerequisite74d12d1 passed all four gates.
+Root owns schema/model declarations, evidence/wire hash helpers, migration
+adoption and all execution. campaign_agent_ui owns its ignored three-group native
+draft until adoption as tests/planning/attempt-results-storage.test.ts.
+attempt_result_sql_infame owns ONLY the temporary SQL draft and notes; it cannot
+edit product/schema or run databases. schema_review independently reviews freeze,
+SQL/hash/coherence/concurrency/privacy and staged source without edits. The first
+specialist was bound to another workspace and produced no file; root reassigned
+the draft to a default worker scoped to this isolated Infame checkout. Preserve
+all other work/history and keep providers/provisioning/native auth composition
+separate from structural native storage. Native baseline precedes product changes.

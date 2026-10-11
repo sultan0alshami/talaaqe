@@ -35,6 +35,9 @@ function bounded<T extends z.ZodType>(schema: T, limit: number) {
     if (!plain(value, limit)) ctx.addIssue({ code: "custom", message: "Expected bounded plain JSON" });
   }).pipe(schema);
 }
+// Shared pure guard for the native planning declaration modules; no permission
+// or provider capability is granted by constructing or passing this validator.
+export const planningPlainJsonSchema = bounded;
 function digest(value: unknown) { try { return canonicalHash(value); } catch { return null; } }
 const equal = (a: unknown, b: unknown) => digest(a) !== null && digest(a) === digest(b);
 const text = (maximum: number) => OriginalTextSchema.extend({ text: z.string().min(1).max(maximum)

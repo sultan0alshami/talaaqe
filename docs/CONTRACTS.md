@@ -780,3 +780,25 @@ standard request-ID envelopes and private/no-store. Source pages cap20 rows/2621
 bytes without text truncation. SQL source count64 rejects RR insertion; service
 commands remain Serializable. No provider, media upload, voice, subscription spend
 or campaign approval is enabled by this manual interview foundation.
+
+### Claimed planning attempts and retained results
+
+Migration34 binds immutable planning attempts to exact native session/operation/
+seat and RUNNING ledger claim, request, pricing and current declared fingerprint.
+One unresolved attempt fences each inclusion across seats. Results are immutable;
+all dispositions require separate terminal execution and actual resolved billing.
+Billing reconciliation alone cannot prove execution or create successful content.
+The execution-review audit has its own retained closed snapshot and identity.
+
+ATTACHED requires strict source-bound output and complete copied customer fields
+for BRIEF, settles its attempt/operation and consumes the pooled session once.
+The first result pointer stays retained; later included slots use that consumed
+session. Immediate and deferred checks cover local parents, bulk completion and
+exact cycle counters. Explicit release rejects unresolved siblings or success.
+Rejected output retains hashes/accounting metadata only, never the raw body.
+Raw outputHash, normalized wireHash and enriched contentHash are distinct.
+
+See plans/09-planning-attempt-results.md for exact bounds, locks and branches.
+Storage labels/hashes establish no genuine invocation, active permission, plan
+provisioning or provider readiness. Native atomic admission, response provenance,
+current authorization/time checks and genuine dispatch remain separate work.

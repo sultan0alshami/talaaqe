@@ -2106,7 +2106,7 @@ model PlanningAiCycle {
   // SQL-only merchant subscription-period uniqueness.
 }
 
-// v1 holds only: success pointers/states stay blocked until Attempt/Result storage.
+// Retained session allowance and first-success identity, guarded by native SQL.
 // SQL pins native parents and maintains exact cycle counters with deferred checks.
 model PlanningAiSession {
   id                    String @id
@@ -2150,5 +2150,77 @@ model PlanningAiOperation {
   updatedAt          DateTime @db.Timestamp(3)
 
   @@unique([sessionId, kind, ordinal])
+  @@unique([id, sessionId])
   @@index([sessionId, id])
+}
+
+// Native constraints bind exact immutable ledger and declared scope metadata.
+// Rows/hashes are not permission or proof of genuine provider execution.
+model PlanningAiAttempt {
+  id                       String @id
+  operationId              String
+  sessionId                String
+  poolId                   String
+  seatId                   String
+  actorUserId              String
+  actorRole                String
+  actorSessionVersion      Int
+  operationKey             String @db.Uuid
+  sequence                 Int
+  request                  Json @db.JsonB
+  requestHash              String
+  scopeFingerprint         Json @db.JsonB
+  scopeFingerprintHash     String
+  payloadHash              String
+  ledgerRequestHash        String
+  pricingHash              String
+  reservationId            String @unique
+  ledgerOperationKey       String
+  ledgerPurpose            String
+  pricing                  Json @db.JsonB
+  reservedMicros           BigInt
+  executionTimeoutMs       Int
+  executionTokenHash       String
+  claimedAt                DateTime @db.Timestamp(3)
+  deadlineAt               DateTime @db.Timestamp(3)
+  registryVersion          String
+  state                    String
+  knownFailureEvidenceJson Json? @db.JsonB
+  executionEvidenceJson    Json? @db.JsonB
+  providerRequestId        String?
+  revision                 Int @default(1)
+  createdAt                DateTime @default(now()) @db.Timestamp(3)
+  updatedAt                DateTime @db.Timestamp(3)
+
+  @@unique([actorUserId, operationKey])
+  @@unique([operationId, sequence])
+  @@unique([id, operationId, sessionId, poolId], map: "PlanningAiAttempt_result_identity")
+  @@index([operationId, sessionId])
+  @@index([sessionId, poolId, state])
+  @@index([seatId, poolId, actorUserId], map: "PlanningAiAttempt_acting_seat")
+  // SQL-only one unresolved attempt per operation across all seats.
+}
+
+model PlanningAiResult {
+  id                   String @id
+  attemptId            String @unique
+  operationId          String
+  sessionId            String
+  poolId               String
+  disposition          String
+  outputHash           String
+  wireHash             String?
+  providerRequestId    String?
+  content              Json? @db.JsonB
+  contentHash          String?
+  reasonCode           String?
+  terminalEvidenceJson Json @db.JsonB
+  createdAt            DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([id, operationId, sessionId], map: "PlanningAiResult_operation_identity")
+  @@unique([id, sessionId, poolId], map: "PlanningAiResult_session_identity")
+  @@index([attemptId, operationId, sessionId, poolId], map: "PlanningAiResult_attempt_identity")
+  @@index([sessionId, poolId])
+  @@index([operationId])
+  // SQL-only one ATTACHED result per operation; all result rows immutable.
 }
