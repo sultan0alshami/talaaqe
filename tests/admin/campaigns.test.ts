@@ -190,8 +190,14 @@ it("uses native ascending IDs, thirty-row exclusive cursor pages, an actual maxi
   const f = await setup(), prefix = `admin-campaigns-page-${randomUUID()}-`, asOf = new Date();
   await prisma.campaign.createMany({ data: Array.from({ length: 35 }, (_, index) => ({ id: `${prefix}${String(index).padStart(2, "0")}`,
     brandId: f.company.saved.id, title: `${index} عنوان محفوظ أصلي`, input: json(savedInput({ budget: { amountMinor: "1", currencyCode: "JPY" } })) })) });
-  const query = await queryStartingAt(`${prefix}00`), expected = await prisma.campaign.findMany({
-    where: query.after ? { id: { gt: query.after } } : undefined, orderBy: { id: "asc" }, take: 31, select: { id: true } });
+  // The oracle uses the same earlier-workflow scope before ordering/LIMIT.
+  // Retained managed bindings remain present; they cannot crowd an eligible page.
+  const eligible = { planningBindings: { none: {} } } satisfies Prisma.CampaignWhereInput;
+  const protectedBefore = await prisma.campaignPlanningBinding.findMany({ orderBy: { campaignId: "asc" }, select: { campaignId: true } });
+  const predecessor = await prisma.campaign.findFirst({ where: { ...eligible, id: { lt: `${prefix}00` } }, orderBy: { id: "desc" }, select: { id: true } });
+  const query: { after?: string } = predecessor ? { after: predecessor.id } : {};
+  const expected = await prisma.campaign.findMany({
+    where: { ...eligible, ...(query.after ? { id: { gt: query.after } } : {}) }, orderBy: { id: "asc" }, take: 31, select: { id: true } });
   const first = await getAdminCampaigns(f.actor, query, { now: asOf });
   expect(first.campaigns.map(row => row.id)).toEqual(expected.slice(0, 30).map(row => row.id));
   expect(first.campaigns[0].id).toBe(`${prefix}00`); expect(first.campaigns.length).toBe(30);
@@ -201,11 +207,14 @@ it("uses native ascending IDs, thirty-row exclusive cursor pages, an actual maxi
   expect(audit.snapshot).toEqual({ asOf: asOf.toISOString(), after: query.after ?? null, returned: 30, nextCursor: first.nextCursor, scope: "ALL_STORED_RECORDS" });
   expect(Object.keys(audit.snapshot as object).sort()).toEqual(["after", "asOf", "nextCursor", "returned", "scope"]);
   for (const secret of [originalBrand, first.campaigns[0].title, f.actor.sessionId, f.token, '"budget":']) expect(JSON.stringify(audit.snapshot).includes(secret)).toBe(false);
-  const nextExpected = await prisma.campaign.findMany({ where: { id: { gt: first.nextCursor! } }, orderBy: { id: "asc" }, take: 31, select: { id: true } });
+  const nextExpected = await prisma.campaign.findMany({ where: { ...eligible, id: { gt: first.nextCursor! } }, orderBy: { id: "asc" }, take: 31, select: { id: true } });
   const second = await getAdminCampaigns(f.actor, { after: first.nextCursor! });
   expect(second.campaigns.map(row => row.id)).toEqual(nextExpected.slice(0, 30).map(row => row.id));
   expect(second.nextCursor).toBe(nextExpected.length > 30 ? nextExpected[29].id : null);
   expect(second.campaigns.some(row => first.campaigns.some(previous => previous.id === row.id))).toBe(false);
+  const protectedIds = new Set(protectedBefore.map(binding => binding.campaignId));
+  expect([...first.campaigns, ...second.campaigns].some(row => protectedIds.has(row.id))).toBe(false);
+  expect(await prisma.campaignPlanningBinding.findMany({ orderBy: { campaignId: "asc" }, select: { campaignId: true } })).toEqual(protectedBefore);
   const maximum = await prisma.campaign.findFirstOrThrow({ orderBy: { id: "desc" }, select: { id: true } });
   const empty = await getAdminCampaigns(f.actor, { after: maximum.id });
   expect(empty.campaigns.length).toBe(0); expect(empty.nextCursor).toBeNull();

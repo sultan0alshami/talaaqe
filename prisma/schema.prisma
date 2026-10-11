@@ -1357,6 +1357,7 @@ model PlanningWorkspace {
   campaignBindings CampaignPlanningBinding[]
 
   @@unique([id, brandId])
+  @@unique([id, scope, brandId, organizationId, clientId], map: "PlanningWorkspace_ai_scope_identity")
   @@index([clientId, organizationId, brandId], map: "PlanningWorkspace_client_scope")
   // SQL-only partial uniques: PlanningWorkspace_own_brand, PlanningWorkspace_client.
 }
@@ -2057,6 +2058,7 @@ model PlanningAiSeat {
   updatedAt      DateTime @db.Timestamp(3)
 
   @@unique([poolId, userId])
+  @@unique([id, poolId, userId], map: "PlanningAiSeat_creator_identity")
   @@index([userId, state])
   @@index([membershipId, organizationId, userId])
   @@index([poolId, organizationId])
@@ -2102,4 +2104,51 @@ model PlanningAiCycle {
   @@index([enrollmentId, poolId])
   @@index([poolId, state, startsAt, endsAt])
   // SQL-only merchant subscription-period uniqueness.
+}
+
+// v1 holds only: success pointers/states stay blocked until Attempt/Result storage.
+// SQL pins native parents and maintains exact cycle counters with deferred checks.
+model PlanningAiSession {
+  id                    String @id
+  poolId                String
+  cycleId               String
+  scope                 PlanningWorkspaceScope
+  brandId               String
+  organizationId        String?
+  clientId              String?
+  workspaceId           String
+  campaignId            String
+  agentId               String
+  createdByUserId       String
+  creationSeatId        String
+  creationKey           String @db.Uuid
+  allowanceState        String
+  firstAttachedResultId String?
+  revision              Int @default(1)
+  createdAt             DateTime @default(now()) @db.Timestamp(3)
+  updatedAt             DateTime @db.Timestamp(3)
+
+  @@unique([createdByUserId, creationKey])
+  @@unique([id, poolId])
+  @@index([cycleId, allowanceState])
+  @@index([poolId, id])
+  @@index([workspaceId, scope, brandId, organizationId, clientId], map: "PlanningAiSession_workspace_scope")
+  @@index([campaignId, workspaceId])
+  @@index([agentId, campaignId, workspaceId])
+  @@index([creationSeatId, poolId, createdByUserId], map: "PlanningAiSession_creator_seat")
+}
+
+model PlanningAiOperation {
+  id                 String @id
+  sessionId          String
+  kind               String
+  ordinal            Int
+  state              String
+  successfulResultId String?
+  revision           Int @default(1)
+  createdAt          DateTime @default(now()) @db.Timestamp(3)
+  updatedAt          DateTime @db.Timestamp(3)
+
+  @@unique([sessionId, kind, ordinal])
+  @@index([sessionId, id])
 }

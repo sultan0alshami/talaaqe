@@ -249,3 +249,13 @@ native composition and installed Anthropic APIs read-only. All work preserves
 other changes and the read-only Talaqee source. Plan09-planning-storage freezes
 immutable subjects/history, lifetime trial fences and concurrent exact cycles;
 no entitlement provisioning, provider, purchase or domain authority activation.
+
+Planning AI session/operation storage: prerequisite11a8077 saved all four gates.
+Root owns the next two models/native composites, strict declarations, additive
+session-hold migration, automatic counters/deferred coherence and all execution.
+campaign_agent_ui owns only tmp/planning-execution-storage-native.test.ts until
+adoption as tests/planning/session-storage.test.ts (two bounded native groups).
+schema_review independently reviews freeze/SQL/test/staged source without edits;
+planning_admission_seam supplies bounded existing-code scouts. No Attempt/Result,
+provider dispatch, native-authority bypass or trial/purchase activation in this
+sub-slice. Preserve others' work and all history; native baseline precedes edits.

@@ -1242,3 +1242,66 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   no route, purchase/trial provisioning, dispatcher/provider/voice or new domain
   authority is enabled. Full goal remains active; execution/session admission
   and genuine campaign-agent output follow through their reviewed slices.
+
+
+## Planning AI session and operation storage — 2026-10-11
+
+- Prerequisite11a8077 saved after all four gates and three native storage groups;
+  root continues the active full goal. Read-only source scouts froze exact ledger
+  request/pricing/context pins and existing canonical native hashes, and mapped
+  the retained Talaqee inline transcript/composer/agent review to existing Studio
+  research. Genuine output, billable recovery and media/voice adapters remain.
+- Root narrowed the next storage sub-slice to Session/Operation; Attempt/Result
+  fingerprint/output/resolution declarations need their own bounded freeze.
+  Independent reviewer clarified both Session/Cycle deferred checks, rejection of
+  preexisting nonzero counters, post-wait actual UTC eligibility and nonwaiting
+  ancestor locks for child UPDATE. No guessed trial duration or grace is added.
+- Independent first group was adopted from the saved draft; actual native RED
+  missingPlanningAiSession510ms preceded all Session/Operation product edits.
+  Root wrote two strict schemas/models and an un-applied migration: exact native
+  scope/agent/creator-seat composites, automatic AFTER-row held deltas, deferred
+  count equality,14 bounded inclusion slots, irreversible history and blocked
+  success/pointers until result storage. Independent SQL review/migration/native
+  GREEN are pending. No provider call, route, provisioning or new authority.
+- Independent review corrected the initial migration-write race with explicit
+  BEGIN/Cycle SHARE ROW EXCLUSIVE/COMMIT, and pinned exact visible domain parents
+  before entitlement waits. Missing/invisible parents reject immediately, so FK
+  waits cannot occur after the clock unnoticed. AFTER checks admission again
+  after unique/index waits and reconciles actual indexed HELD counts; valid
+  multi-row changes therefore work with immediate constraints. Native constraints
+  enforce final aggregate coherence without claiming every transient value fails.
+- Reviewed migration33 applied sequentially to all three isolated targets; every
+  applied checksum matches. No reset/seed or existing-row rewrite. Root regenerated
+  Prisma after verifying/restarting only its owned preview. Initial native runs
+  found fixture parameter42804 because enum/UUID columns need explicit raw casts;
+  independent author changed only Session.scope/creationKey casts, preserving
+  every assertion and expected native rejection. Two groups then passed12.85s.
+- Current previous-principal plus session union passed5/5 in13.56s: all fourteen
+  slots, scope/creator-seat immutability, immediate bulk hold1→3→1, direct counter
+  tampering, explicit rehold, exact native RC/RR last-slot races, nonwaiting55P03
+  reverse-ancestor rejection and actual UTC expiry after an observed Cycle wait.
+  Every retained successful session is RELEASED; held=consumed zero, and no
+  synthetic success/Attempt/Result/ledger/provider activity was added. Complete
+  source/test review and all four gates remain pending on frozen product source.
+- Independent final source/test and staged review are clear for8 owned paths.
+  The first complete gate passed TSC/lint and1149 tests but failed one existing
+  admin campaign paging oracle in359.40s; build did not run. The reader correctly
+  excluded three retained protected planning campaigns, while line206's expected
+  query included all rows. Independent source diagnosis matched the actual
+ 5-versus8 failure. A narrow test-oracle correction is assigned; retained protected
+  history and the production exclusion remain intact. No checkpoint commit yet.
+- Independent author corrected only the admin paging case's expected oracles:
+  native planningBindings.none before ordering/limit, explicit disjoint protected
+  IDs and exact before/after binding preservation. Global actual max-ID cursor,
+  all other assertions and the production reader remain unchanged. Current full
+  admin campaign file passed11/11 in5.32s. Root is rerunning all four gates; the
+  narrow regression correction joins this checkpoint's owned paths.
+- All four current gates passed: TypeScript, warning-free ESLint, guarded
+  Vitest1150/149files in364.14s and actual Next Webpack production build.
+  Deployment privacy passed196 manifests/38989 references with zero private
+  development paths. Independent source/test and updated staged review are clear
+  for9 owned paths, including only the witnessed admin oracle correction. All33
+  applied migrations/checksums match across the three isolated targets. The
+  preview remains HTTP200; original source/work/history are preserved. No success,
+  Attempt/Result, dispatcher, voice/provider or provisioning activation is claimed.
+  Full goal stays active and continues with source-bound planning output contracts.

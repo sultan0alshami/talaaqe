@@ -59,3 +59,19 @@ export type PlanningAiEnrollment = z.infer<typeof PlanningAiEnrollmentSchema>;
 export type PlanningAiSeat = z.infer<typeof PlanningAiSeatSchema>;
 export type PlanningAiTrialClaim = z.infer<typeof PlanningAiTrialClaimSchema>;
 export type PlanningAiCycle = z.infer<typeof PlanningAiCycleSchema>;
+
+// Storage v1 cannot declare successful output before the Attempt/Result contract.
+export const PlanningAiSessionSchema = z.object({ ...base, poolId: id, cycleId: id,
+  scope: z.enum(["OWN_BRAND", "CLIENT"]), brandId: id, organizationId: id.nullable(), clientId: id.nullable(),
+  workspaceId: id, campaignId: id, agentId: id, createdByUserId: id, creationSeatId: id,
+  creationKey: z.uuid(), allowanceState: z.enum(["HELD", "RELEASED"]), firstAttachedResultId: z.null(),
+}).strict().refine(chronology, "Updated time precedes creation")
+  .refine(value => value.scope === "OWN_BRAND" ? value.organizationId === null && value.clientId === null
+    : value.organizationId !== null && value.clientId !== null, "Complete native scope required");
+export const PlanningAiOperationKindSchema = z.enum(["REPLY", "BRIEF", "STRATEGY", "IDEAS_PACK", "COMBINED_REFINEMENT"]);
+export const PlanningAiOperationSchema = z.object({ ...base, sessionId: id, kind: PlanningAiOperationKindSchema,
+  ordinal: z.number().int().min(1).max(10), state: z.literal("OPEN"), successfulResultId: z.null(),
+}).strict().refine(chronology, "Updated time precedes creation")
+  .refine(value => value.kind === "REPLY" || value.ordinal === 1, "Artifacts have one inclusion slot");
+export type PlanningAiSession = z.infer<typeof PlanningAiSessionSchema>;
+export type PlanningAiOperation = z.infer<typeof PlanningAiOperationSchema>;

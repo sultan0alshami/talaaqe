@@ -398,6 +398,19 @@ session/view+plan/seat authority, actual merchant/provider evidence and atomic
 session/operation/attempt/result admission remain required. No default trial
 duration/grace, rollover or synthetic seed is added. See09-planning-storage.
 
+Planning session hold storage v1 adds exact workspace/scope/Brand/client/campaign/
+agent and creator-seat bindings, with automatic held counters and independent
+deferred Session/Cycle count equality. The migration rejects occupied prior
+counter history under an atomic table lock; it never rewrites data. Admission
+requires the actual post-wait UTC instant inside its original eligible cycle;
+domain parents are pinned first and child updates use nonwaiting ancestor locks.
+Fourteen inclusion slots are bounded by ten REPLY ordinals and one each BRIEF,
+STRATEGY, IDEAS_PACK and COMBINED_REFINEMENT. Until Attempt/Result storage, only
+HELD/RELEASED sessions and OPEN operations are representable; success and result
+pointers fail closed. All identities/history are retained. No route, dispatcher,
+purchase, trial provisioning or real native-authority grant follows from these
+rows. See09-planning-execution-storage for the remaining result/admission contract.
+
 Reach taxonomy `infame-reach-v2` is per dated platform/account observation: Nano1,000–<10,000, Micro10,000–<100,000, Mid100,000–<500,000, Macro500,000–<1,000,000, Mega>=1,000,000. Unknown/sub1,000 remain unclassified; no follower sums, fame/quality inference or A/B/C grading. Preserve v1 four-band historical classifications and matching strategy snapshots; integration requires a new version. Rate evidence retains original source follower bounds, platform/format/unit/rights/date/currency and source class; asking, vendor estimate, agreed and achieved prices are distinct, never an unexplained Saudi average.
 
 Implementation approval authorizes local reversible code, migrations on guarded Infame targets and tests. Merchant/recurring, tax/legal/licence, funded refund/liability, private storage/retention, email/phone, actual provider/voice and deployment evidence remain launch dependencies. Do not advertise gated features as usable, infer real publication/outreach/contracts/funds from fixtures or create source-era demo fallbacks.
