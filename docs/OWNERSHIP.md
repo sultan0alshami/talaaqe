@@ -329,3 +329,12 @@ schema/API/provider/publication change. Keep Talaqee cards and Infame identity.
 The browser author additionally owns only the existing onboarding-native-session
 currentRead helper to select mutually exclusive recovery/error/portfolio controls;
 root retains all execution and no existing privacy/replay assertion is changed.
+
+Native S2 planning sources: bf894fa preserves current all-four and browser gates;
+root owns new campaign-agent/planning-source.ts, shared docs/adoption/all runs.
+campaign_agent_ui owns only tmp/planning-source.ts.draft before actual native RED;
+schema_review independently owns tmp/planning-source-native.test.ts.draft before
+root adoption as tests/planning/native-sources.test.ts. planning_admission_seam
+reviews fixed native proof/source lineage/locking/final privacy and staged paths
+read-only. Preserve legacy wrappers/history/other work and OpenAI disablement.
+No schema, provider, entitlement, reservation or UI activation follows this seam.

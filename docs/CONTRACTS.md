@@ -866,3 +866,22 @@ no legacy transaction cache is reused. Final reads/rechecks query original held
 IDs without new locks and recheck scope and current reviewer inventory. Native
 frame/auth failures precede deferred malformed-input validation. Source hydration,
 entitlement/attempt/result admission and provider dispatch remain separate work.
+
+### Native campaign-agent original source proofs
+
+The fixed S2 internal bag consumes genuine active S0/S1 planning proofs and binds
+one existing scoped campaign. It selects only current canonical fields, original
+retained customer sources explicitly requested for exposure, actual current full
+confirmation and selected approved context. All retained source/batch lineage is
+validated internally; stale historical confirmations stay private and are not
+presented as current. No unapproved context draft words replace approved inputs.
+
+Original Agent metadata is checked after its lock before state hydration. Sorted
+scoped Source SHARE locks precede Batch SHARE; complete native scalar/body/hash/
+author/date/snapshot joins retain central bounds. Empty private proofs bind exact
+active frame, checked transaction, actor and scope. Final checks query original
+held identities without new locks, then recheck native scope and actual-clock
+authorization. Original words remain unchanged; material is deeply frozen and
+contains no session tokens or unrelated profile/contact/conversation data.
+No entitlement, provider invocation, approval or UI capability follows from this
+source-only seam. See plans/09-planning-native-sources for the exact contract.

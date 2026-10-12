@@ -1637,3 +1637,50 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   preserved exact approval retries and private denial behavior are established;
   authentic work CRUD/public Arabic media-kit export and genuinely enabled
   AI/media/voice remain later goal work. Root stages only the seven owned paths.
+
+
+## Native planning original sources — 2026-10-11
+
+- Saved complete portfolio editor as bf894fa after independent seven-path review;
+  the source Talaqee HEAD and its four preexisting changes are unchanged. Root
+  continues the full goal with S2 source hydration after genuine S0/S1 scope.
+- Independent source scout confirmed old agent getters own transactions and
+  reacquire Brand locks; they cannot be nested inside the ledger frame. The new
+  fixed internal source proof will read narrow current fields, exact retained
+  customer text and complete actual confirmation, and approved original context
+  without unrelated conversation/contact or unapproved parent draft words.
+- Independent freeze review is clear with explicit proof failure priority and
+  original-text privacy clarification. Scoped implementation and independent
+  three-group native witness drafts stay ignored until root observes actual RED.
+  No provider, trial/purchase, subscription permission or live voice is enabled.
+- Work continues2026-10-12 with the actual Windows/UTC clocks rechecked; existing
+  task identity/data remain unchanged. Independent native G1 constructed real
+  M03 campaign, agent/customer text, complete30-field confirmation and approved
+  original context, then reached the missing binder inside the genuine ledger
+  frame: expected RED1.72s before product adoption. The frozen source candidate
+  independently passed source/lock/lineage/privacy/proof review; test review and
+  native GREEN precede adoption acceptance. No provider call or reset occurred.
+- First native run passed two groups and found that Agent drift correctly denied
+  but state had been selected before comparing the post-wait metadata. Root added
+  only the original-ID thin comparison before body hydration; all existing full
+  schema/hash checks remain. Three native groups then passed10.70s, current
+  TypeScript and zero-warning scoped lint passed, and independent corrective
+  source review is clear. Independent test review additionally requests stored
+  Source/Batch corruption controls and a real Batch wait within the same groups;
+  these are being added before final integrated gates, without immutable updates
+  or bypassing native guards. Provider/entitlement/UI activation remain separate.
+- Existing compatibility union passed23/23 across eight native campaign,
+  interview and planning-frame/scope files59.00s. Augmented same-three-group
+  sources suite passed11.42s with real Source/Batch waits, adjacent valid/corrupt
+  structural inserts, missing lineage, current/foreign-client isolation, final
+  epoch rollback, closed proofs and actual-clock expiry. Original immutable
+  source/batch records remain unchanged and every corruption frame restores its
+  full owned image. Current TypeScript and zero-warning scoped lint passed.
+  Independent augmented-test review and all four final gates precede saving.
+- Final frozen source passed all four npm run check gates: TypeScript,
+  warning-free ESLint, guarded Vitest1169/156files399.27s and supported Next
+  Webpack production build. Deployment privacy passed196 manifests/39183
+  references with zero private development paths. Independent augmented native
+  test and corrective source reviews are clear; the main site remains actual
+  HTTP200. Root stages only six S2-owned paths, preserving unrelated research
+  and prior progress edits, then continues pooled admission and M12 planning.
