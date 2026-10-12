@@ -885,3 +885,17 @@ authorization. Original words remain unchanged; material is deeply frozen and
 contains no session tokens or unrelated profile/contact/conversation data.
 No entitlement, provider invocation, approval or UI capability follows from this
 source-only seam. See plans/09-planning-native-sources for the exact contract.
+
+### Owner-private external collaboration declarations
+
+M12 defines a separate manual organizer with original client/campaign text,
+nullable exact declared Money/DateRange, private notes/brief and ordered checklist.
+Five explicit statuses are self-reported; no fake marketplace party, signature,
+payment, rating or verified earning follows. Strict commands use exact UUID keys,
+native resource/revision and a separate actor-bound canonical hash domain.
+Receipts are scalar-only with action/archive/revision consistency; private ordered
+DTOs contain no owner sessions, contacts, storage keys or byte-readiness claim.
+File commands carry inspected metadata declarations only; actual binary custody
+requires the later dedicated owner/current-session boundary and purpose exclusion.
+These schemas grant no native access or file/payment capability. Native storage,
+services, attachment policy and retained screens follow09-m12-external-collaborations.

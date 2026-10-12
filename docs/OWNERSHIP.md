@@ -338,3 +338,12 @@ root adoption as tests/planning/native-sources.test.ts. planning_admission_seam
 reviews fixed native proof/source lineage/locking/final privacy and staged paths
 read-only. Preserve legacy wrappers/history/other work and OpenAI disablement.
 No schema, provider, entitlement, reservation or UI activation follows this seam.
+
+M12 private organizer declarations: prerequisite05d51d0 saved current four gates.
+Root owns new external-collaborations/contracts.ts, shared docs/adoption/runs.
+campaign_agent_ui drafts only tmp/external-collaboration-contracts.ts.draft;
+schema_review independently owns tmp/external-collaboration-contracts.test.ts.draft
+before root adoption. planning_admission_seam reviews exact pure contracts and
+later staged source read-only. Native storage/service/attachments/screens follow
+separately; no private-organizer data, fake party, payment or file flow is created
+by declarations. Keep Talaqee geometry, source history and all other work.

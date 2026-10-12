@@ -1684,3 +1684,33 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   test and corrective source reviews are clear; the main site remains actual
   HTTP200. Root stages only six S2-owned paths, preserving unrelated research
   and prior progress edits, then continues pooled admission and M12 planning.
+
+
+## Owner-private external collaboration declarations — 2026-10-12
+
+- Saved S2 as05d51d0 after six-path independent index review and all four gates.
+  Full goal continues; no provider/merchant/voice capability was activated.
+- M12 source reuse inventory found no dedicated private organizer. Root accepts
+  recommended owner-only manual fields/status/checklist/declared value/date and
+  explicit native session/version/replay, independent of marketplace parties and
+  verified earnings. Distinct attachment purpose must be excluded from generic
+  ADMIN evidence access; removal retains inaccessible bytes until genuine deletion
+  policy is ready. No destructive purge or legal default is invented.
+- The first bounded slice declares strict original-content/actions/DTOs only;
+  inspected binary bytes stay outside JSON commands, separately matched by the
+  future trusted transport. Independent pure witnesses precede product adoption;
+  native storage, services, private files and retained UI remain subsequent work.
+- Independent P0 G1 validated central money/date/original-text controls then
+  failed at the missing Details schema: expected RED392ms before product. Source
+  review identified impossible non-CREATE revision1/archived receipts; root froze
+  revision>=2 and non-ARCHIVE unarchived receipts, and worker corrected its draft.
+  Reviewed 112-line pure source was then adopted. Original first group passed571ms;
+  both final pure groups passed624ms, current TypeScript and zero-warning scoped
+  lint passed. Independent source review is clear; final assertion review and
+  all four gates precede saving. No native storage, access or file flow is claimed.
+- Independent final pure assertion review is clear. Frozen source passed all
+  four npm run check gates: TypeScript, zero-warning ESLint, guarded
+  Vitest1171/157files407.90s and supported Next Webpack production build. Privacy
+  passed196 manifests/39183 references with zero private development paths.
+  Root stages only the six pure M12-owned paths and continues native storage;
+  existing marketplace/portfolio/planning behavior and all private data remain.
