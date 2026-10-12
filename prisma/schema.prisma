@@ -2224,3 +2224,46 @@ model PlanningAiResult {
   @@index([operationId])
   // SQL-only one ATTACHED result per operation; all result rows immutable.
 }
+
+// Owner-private manual records; SQL owns restrictive composite FKs and guards.
+model ExternalCollaboration {
+  id          String   @id
+  ownerUserId String
+  revision    Int
+  status      String
+  archived    Boolean
+  detailsJson Json     @db.JsonB
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
+  updatedAt   DateTime @db.Timestamp(3)
+
+  @@unique([id, ownerUserId])
+  @@index([ownerUserId, id])
+}
+
+model ExternalCollaborationAttachment {
+  id              String    @id
+  collaborationId String
+  ownerUserId     String
+  assetId         String    @unique
+  assetPurpose    String    @default("EXTERNAL_COLLABORATION_ATTACHMENT")
+  label           Json      @db.JsonB
+  attachedAt      DateTime  @db.Timestamp(3)
+  removedAt       DateTime? @db.Timestamp(3)
+
+  @@index([collaborationId, id], map: "ExternalCollaborationAttachment_parent_id_idx")
+  // SQL-only active-parent partial index and owned-purpose asset FK.
+}
+
+model ExternalCollaborationCommand {
+  id              String   @id
+  actorUserId     String
+  operationKey    String   @db.Uuid
+  collaborationId String
+  action          String
+  payloadHash     String
+  resultJson      Json     @db.JsonB
+  createdAt       DateTime @default(now()) @db.Timestamp(3)
+
+  @@unique([actorUserId, operationKey])
+  @@index([collaborationId, id], map: "ExternalCollaborationCommand_parent_id_idx")
+}

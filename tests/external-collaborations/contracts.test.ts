@@ -69,6 +69,20 @@ it("preserves exact original declarations, all command/receipt variants, money/n
   expect(parsed.checklist.map(item => item.id)).toEqual([firstItem, secondItem]); expect(parsed.clientDisplay.language).toBe("ar-SA"); expect(parsed.campaignDisplay.language === null).toBe(true);
   const unknown = { ...fixture, declaredValue: null, period: null, notes: null, brief: null, checklist: [] };
   expect(canonicalHash(c.ExternalCollaborationDetailsSchema.parse(unknown))).toBe(canonicalHash(unknown));
+  for (const timeZone of ["UTC", "Asia/Riyadh", "asia/riyadh"]) {
+    const supported = { ...fixture, period: { startsAt: "0001-01-01T00:00:00Z", endsAt: "0001-01-02T00:00:00.000Z", timeZone } };
+    expect(canonicalHash(c.ExternalCollaborationDetailsSchema.parse(supported))).toBe(canonicalHash(supported));
+    const command = { operationKey, action: "CREATE", expectedRevision: 0, payload: { details: supported } };
+    expect(c.externalCollaborationCommandHash(actorId, command)).toBe(canonicalHash({ domain: "infame-external-collaboration-command-v1", actorUserId: actorId, command }));
+  }
+  const yearOne = "0001-01-01T00:00:00Z", yearOneMs = "0001-01-01T00:00:00.000Z";
+  const supportedHeader = { ...header(), createdAt: yearOne, updatedAt: yearOneMs };
+  const supportedAttachment = { ...attachment(), attachedAt: yearOne };
+  const supportedDetail = { ...detail(), asOf: yearOneMs, collaboration: { ...detail().collaboration, createdAt: yearOne, updatedAt: yearOneMs }, attachments: [supportedAttachment] };
+  expect(canonicalHash(c.ExternalCollaborationHeaderSchema.parse(supportedHeader))).toBe(canonicalHash(supportedHeader));
+  expect(canonicalHash(c.ExternalCollaborationAttachmentSchema.parse(supportedAttachment))).toBe(canonicalHash(supportedAttachment));
+  expect(canonicalHash(c.ExternalCollaborationDetailSchema.parse(supportedDetail))).toBe(canonicalHash(supportedDetail));
+  expect(c.ExternalCollaborationListSchema.safeParse({ ...list(), asOf: yearOneMs, collaborations: [supportedHeader], nextCursor: supportedHeader.id }).success).toBe(true);
   expect(Object.isFrozen(c.EXTERNAL_COLLABORATION_LIMITS)).toBe(true);
   expect(c.EXTERNAL_COLLABORATION_LIMITS).toEqual({ detailsBytes: 262144, commandBytes: 524288, dtoBytes: 524288, checklist: 30, attachments: 20, list: 30, attachmentBytes: 10485760 });
   expect(c.EXTERNAL_COLLABORATION_ATTACHMENT_PURPOSE).toBe("EXTERNAL_COLLABORATION_ATTACHMENT");
@@ -113,6 +127,20 @@ it("preserves exact original declarations, all command/receipt variants, money/n
 
 it("rejects unsafe JSON, unknown fields, exact scalar/cardinality/state/date violations and protects parsed-command hash capture without authority claims", async () => {
   const c = await load(), base = details();
+  // These valid civil year-zero values previously passed the central vocabulary.
+  // M12's supported native UTC range is independently narrower (year >=0001).
+  for (const period of [
+    { startsAt: "0000-01-01T00:00:00Z", endsAt: "0001-01-01T00:00:00Z", timeZone: "UTC" },
+    { startsAt: "0000-01-01T00:00:00Z", endsAt: "0000-01-02T00:00:00.000Z", timeZone: "Asia/Riyadh" },
+  ]) invalid(c.ExternalCollaborationDetailsSchema, { ...base, period });
+  for (const timeZone of ["utc", "Mars/Olympus"]) invalid(c.ExternalCollaborationDetailsSchema, { ...base, period: { ...base.period, timeZone } });
+  const zero = "0000-01-01T00:00:00Z", zeroMs = "0000-01-01T00:00:00.000Z";
+  invalid(c.ExternalCollaborationHeaderSchema, { ...header(), createdAt: zero, updatedAt: zeroMs });
+  invalid(c.ExternalCollaborationHeaderSchema, { ...header(), createdAt: zero });
+  invalid(c.ExternalCollaborationAttachmentSchema, { ...attachment(), attachedAt: zero });
+  invalid(c.ExternalCollaborationDetailSchema, { ...detail(), asOf: zeroMs,
+    collaboration: { ...detail().collaboration, createdAt: zero, updatedAt: zeroMs }, attachments: [{ ...attachment(), attachedAt: zero }] });
+  invalid(c.ExternalCollaborationListSchema, { scope: "OWN_CREATOR", asOf: zero, collaborations: [], nextCursor: null });
   for (const text of ["", " \t\n ", "bad\u0000control", "bad\u007fcontrol"]) {
     invalid(c.ExternalCollaborationDetailsSchema, { ...base, clientDisplay: { text, language: null } });
     invalid(c.ExternalCollaborationDetailsSchema, { ...base, notes: { text, language: null } });

@@ -1714,3 +1714,54 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   passed196 manifests/39183 references with zero private development paths.
   Root stages only the six pure M12-owned paths and continues native storage;
   existing marketplace/portfolio/planning behavior and all private data remain.
+
+
+## Owner-private collaboration native storage — 2026-10-12
+
+- Saved pure M12 declarations as9d8733b after six-path index review/current
+  all-four gates. Root freezes three native records for private owner details,
+  immutable scalar receipts and scoped asset bindings, without a service/UI or
+  permission from storage labels. Existing asset composite/helpers are reused.
+- Independent guard/scout review corrected attachment INSERT to require null
+  removedAt and child UPDATE to use original-parent NOWAIT, preserving service
+  parent-first ordering. Attachment changes advance parent once; unavailable or
+  deleted bytes cannot prevent removal. A shared checked next-revision function
+  supplies genuine exhaustion controls without unreachable fixture rows.
+- First independent P1 native group created an actual owned CREATOR User and
+  valid original P0 details, then failed at the missing parent table: expected
+  RED644ms before product migration. SQL/model and remaining native groups stay
+  ignored drafts until review/adoption. No fixture/trigger bypass or reset occurs.
+- Atomic draft DDL parsed successfully on the exact guarded test target and
+  intentionally rolled back; all three new tables remain absent afterward. No
+  migration ledger or stored data was changed by this diagnostic. Review found
+  local native-support differences: PostgreSQL AD timestamps exclude year0000,
+  and exact catalog casing could reject Node-valid asia/riyadh. Root freezes
+  local M12 date/period parity with independent paired controls, preserving
+  original timezone spelling and shared vocabulary/history. No universal ICU
+  equivalence or native actor/file authority is claimed from SQL validators.
+- Independent year0000 pure control exposed the local schema/native mismatch
+  (RED533ms). Root added only local supported-UTC/period endpoints and DTO date
+  refinements; both pure groups passed707ms. SQL's new local period helper accepts
+  ASCII case-insensitive valid IANA paths without rewriting original spelling.
+  Corrective pure/native source review is clear. The oversize asset fixture was
+  corrected to exercise its existing native bound, with a10MiB positive attachment;
+  inherited constraints and original immutable records remain intact.
+- Reviewed atomic migration35 applied successfully to test, then dev/e2e, with
+  generated Prisma client and preserved profile data. All three task targets have
+  35 matching applied checksums. The three native plus two pure group union passed
+  5/5 in2.43s, including real twentieth-slot contention/NOWAIT, one-way tombstones,
+  exact receipt/owner/purpose ties and full-image rollback. Zero-value/UTF16 paired
+  controls are being added within G1 before the final all-four gate. No API,
+  private bytes, native session authority or visible organizer flow is activated.
+- Final existing-five-group union passed2.41s with exact zero SAR,100emoji/200
+  UTF16 positive and101emoji negative controls. Current TypeScript and scoped
+  warning-free ESLint passed before the final gate. Root runs all four checks on
+  frozen native/schema/contracts/tests and requests independent active-source
+  review; all applied migration bytes are now immutable.
+- Final frozen P1 source passed all four npm run check gates: TypeScript,
+  warning-free ESLint, guarded Vitest1174/158files405.93s and supported Next
+  Webpack production build. Deployment privacy passed196 manifests/39183
+  references with zero private development paths. Independent active SQL/model/
+  native/pure parity reviews are clear; all targets retain35 matching migration
+  checksums. Root stages only nine P1-owned paths before commit, then continues
+  the genuine creator-owner service and retained customer screens.

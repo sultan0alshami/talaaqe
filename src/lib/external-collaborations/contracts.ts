@@ -31,10 +31,16 @@ const original = (maximum: number) => OriginalTextSchema.extend({ text: Original
   .min(1).max(maximum).regex(/^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+$/)
   .refine(text => text.trim().length > 0, "Nonblank original text required") }).strict();
 const display = original(200), checklistItem = z.object({ id: z.uuid(), label: original(500), done: z.boolean() }).strict();
+// PostgreSQL's AD timestamp storage has no civil year0000. Keep shared
+// vocabulary/history intact while matching this domain's native support.
+const supportedUtc = UtcDateTimeSchema.refine(value => new Date(value).getUTCFullYear() >= 1,
+  "Expected a supported AD UTC instant");
+const supportedPeriod = DateRangeSchema.refine(value => supportedUtc.safeParse(value.startsAt).success
+  && supportedUtc.safeParse(value.endsAt).success, "Unsupported period instant");
 const checklist = z.array(checklistItem).max(EXTERNAL_COLLABORATION_LIMITS.checklist)
   .refine(items => new Set(items.map(item => item.id.toLowerCase())).size === items.length, "Distinct stable UUIDs required");
 export const ExternalCollaborationDetailsSchema = planningPlainJsonSchema(z.object({ schemaVersion: z.literal(1),
-  clientDisplay: display, campaignDisplay: display, declaredValue: MoneySchema.nullable(), period: DateRangeSchema.nullable(),
+  clientDisplay: display, campaignDisplay: display, declaredValue: MoneySchema.nullable(), period: supportedPeriod.nullable(),
   notes: original(10000).nullable(), brief: original(20000).nullable(), checklist,
 }).strict(), EXTERNAL_COLLABORATION_LIMITS.detailsBytes);
 export type ExternalCollaborationDetails = z.infer<typeof ExternalCollaborationDetailsSchema>;
@@ -78,10 +84,10 @@ export const ExternalCollaborationReceiptSchema = planningPlainJsonSchema(receip
 export const ExternalCollaborationResultSchema = planningPlainJsonSchema(receipt.safeExtend({ replayed: z.boolean() }).strict(), EXTERNAL_COLLABORATION_LIMITS.dtoBytes);
 export type ExternalCollaborationReceipt = z.infer<typeof ExternalCollaborationReceiptSchema>;
 export type ExternalCollaborationResult = z.infer<typeof ExternalCollaborationResultSchema>;
-const timeline = { createdAt: UtcDateTimeSchema, updatedAt: UtcDateTimeSchema };
+const timeline = { createdAt: supportedUtc, updatedAt: supportedUtc };
 const chronology = (value: { createdAt: string; updatedAt: string }) => Date.parse(value.updatedAt) >= Date.parse(value.createdAt);
 const header = z.object({ id, revision, status: ExternalCollaborationStatusSchema, archived: z.boolean(),
-  clientDisplay: display, campaignDisplay: display, declaredValue: MoneySchema.nullable(), period: DateRangeSchema.nullable(),
+  clientDisplay: display, campaignDisplay: display, declaredValue: MoneySchema.nullable(), period: supportedPeriod.nullable(),
   checklist: z.object({ total: z.number().int().min(0).max(EXTERNAL_COLLABORATION_LIMITS.checklist),
     done: z.number().int().min(0).max(EXTERNAL_COLLABORATION_LIMITS.checklist) }).strict().refine(value => value.done <= value.total),
   attachmentCount: z.number().int().min(0).max(EXTERNAL_COLLABORATION_LIMITS.attachments), ...timeline,
@@ -89,12 +95,12 @@ const header = z.object({ id, revision, status: ExternalCollaborationStatusSchem
 export const ExternalCollaborationHeaderSchema = planningPlainJsonSchema(header, EXTERNAL_COLLABORATION_LIMITS.dtoBytes);
 export type ExternalCollaborationHeader = z.infer<typeof ExternalCollaborationHeaderSchema>;
 const attachment = z.object({ id, assetId: id, assetRevision: revision, label: display,
-  contentType: mime, size: fileSize, attachedAt: UtcDateTimeSchema }).strict();
+  contentType: mime, size: fileSize, attachedAt: supportedUtc }).strict();
 export const ExternalCollaborationAttachmentSchema = planningPlainJsonSchema(attachment, EXTERNAL_COLLABORATION_LIMITS.dtoBytes);
 export type ExternalCollaborationAttachment = z.infer<typeof ExternalCollaborationAttachmentSchema>;
 const collaboration = z.object({ id, revision, status: ExternalCollaborationStatusSchema, archived: z.boolean(),
   details: ExternalCollaborationDetailsSchema, ...timeline }).strict().refine(chronology, "Updated time precedes creation");
-export const ExternalCollaborationDetailSchema = planningPlainJsonSchema(z.object({ scope: z.literal("OWN_CREATOR"), asOf: UtcDateTimeSchema,
+export const ExternalCollaborationDetailSchema = planningPlainJsonSchema(z.object({ scope: z.literal("OWN_CREATOR"), asOf: supportedUtc,
   collaboration, attachments: z.array(attachment).max(EXTERNAL_COLLABORATION_LIMITS.attachments)
     .refine(rows => rows.every((row, index) => index === 0 || rows[index - 1]!.id < row.id)
       && new Set(rows.map(row => row.assetId)).size === rows.length, "Unique ordered binding and asset IDs required"),
@@ -102,7 +108,7 @@ export const ExternalCollaborationDetailSchema = planningPlainJsonSchema(z.objec
   && value.attachments.every(row => Date.parse(value.asOf) >= Date.parse(row.attachedAt)), "Snapshot time precedes retained data"),
 EXTERNAL_COLLABORATION_LIMITS.dtoBytes);
 export type ExternalCollaborationDetail = z.infer<typeof ExternalCollaborationDetailSchema>;
-export const ExternalCollaborationListSchema = planningPlainJsonSchema(z.object({ scope: z.literal("OWN_CREATOR"), asOf: UtcDateTimeSchema,
+export const ExternalCollaborationListSchema = planningPlainJsonSchema(z.object({ scope: z.literal("OWN_CREATOR"), asOf: supportedUtc,
   collaborations: z.array(header).max(EXTERNAL_COLLABORATION_LIMITS.list)
     .refine(rows => rows.every((row, index) => index === 0 || rows[index - 1]!.id < row.id), "Unique ascending collaboration IDs required"),
   nextCursor: id.nullable(),

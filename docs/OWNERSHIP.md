@@ -347,3 +347,12 @@ before root adoption. planning_admission_seam reviews exact pure contracts and
 later staged source read-only. Native storage/service/attachments/screens follow
 separately; no private-organizer data, fake party, payment or file flow is created
 by declarations. Keep Talaqee geometry, source history and all other work.
+
+M12 P1 native storage: prerequisite9d8733b saved all four gates. Root owns schema,
+new migration adoption/shared docs and all DB/tests/builds. campaign_agent_ui owns
+only tmp/external-collaboration-storage.sql.draft and optional model snippet;
+schema_review independently owns tmp/external-collaboration-storage.test.ts.draft
+before root adoption as tests/external-collaborations/storage.test.ts.
+planning_admission_seam independently reviews SQL/helper/fixture/staged boundaries.
+Parent/receipts/bindings and existing asset composite only; no app/service/UI/file
+or native role authority follows. Original migrations/data/other work stay intact.

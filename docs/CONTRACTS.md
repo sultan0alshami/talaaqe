@@ -899,3 +899,21 @@ File commands carry inspected metadata declarations only; actual binary custody
 requires the later dedicated owner/current-session boundary and purpose exclusion.
 These schemas grant no native access or file/payment capability. Native storage,
 services, attachment policy and retained screens follow09-m12-external-collaborations.
+
+### Native external collaboration records
+
+Migration35 retains private parent details, immutable scalar command receipts and
+owned-purpose asset bindings. Composite FKs reuse existing User/PrivateAsset
+identities without an added duplicate asset index. Sequential supported revisions,
+explicit self-reported transitions, archive-only restore, exact receipt metadata,
+one-way removal and20 active attachments are guarded natively. Each attachment
+insert/removal advances the parent exactly once; reverse child-to-parent updates
+use NOWAIT, while app services must hold parent first.
+
+Local M12 UTC contracts exclude unsupported AD year0000; approved timezone paths
+use case-insensitive native catalog checks while retaining original spelling.
+Central runtime Intl/schema validation remains mandatory; ICU/catalog parity and
+actual file custody are not inferred. No private API, session role, bytes, verified
+earnings or money movement is authorized by these tables. Removed bindings remain
+retained and inaccessible through future downloads; deletion/retention policy is
+separate. See09-m12-storage for exact native support and service prerequisites.
