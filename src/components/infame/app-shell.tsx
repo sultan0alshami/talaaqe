@@ -25,6 +25,7 @@ export function AppShell({
   const home = `/${dashboardRole}`;
   const nav: NavSpec[] = [
     { key: "home", label: { ar: "الرئيسية", en: "Overview" }, href: home },
+    ...(role === "CREATOR" ? [{ key: "collaborations", label: { ar: "تعاوناتي الخارجية", en: "External collaborations" }, href: "/creator/collaborations" }] : []),
     ...(role === "BRAND"
       ? [
           {

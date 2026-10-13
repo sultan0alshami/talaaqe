@@ -917,3 +917,20 @@ actual file custody are not inferred. No private API, session role, bytes, verif
 earnings or money movement is authorized by these tables. Removed bindings remain
 retained and inaccessible through future downloads; deletion/retention policy is
 separate. See09-m12-storage for exact native support and service prerequisites.
+
+### Creator-owner external collaboration service
+
+M12 P2 authenticates a current native CREATOR session for private manual records,
+without requiring a published profile. Owner and session locks precede parent,
+receipt and attachment locks. Commands preserve original content, enforce exact
+revisions and retain scalar receipts for safe retries. Replays create no extra
+record, audit or pending event. Removal tombstones the binding and advances its
+parent once; binary upload and download remain the next phase.
+
+Lists return at most30 headers in explicit ASCII order, with an existing owned
+cursor and no notes, brief or asset labels. Detail reads retain private original
+content and bounded attachment metadata. List audit resources are
+ExternalCollaborationList; single-record reads/writes use ExternalCollaboration.
+Native current-session checks after waits and before commit prevent expired
+sessions from returning private data or retaining tentative effects. See
+plans/09-m12-owner-service.md for the exact command and failure contract.

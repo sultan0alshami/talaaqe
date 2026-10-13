@@ -89,6 +89,14 @@
 Follow docs/plans/. Private evidence owner/admin screens, original deal pages, genuine original admin overview, reasoned Users controls and canonical Campaign table are reviewed and tested. Further audited admin operations, permitted provider acquisition, invitations/claiming, notifications, settings/contact verification, PWA/SEO and final journey acceptance require implementation. Actual reviewed market/agreement templates, live phone/provider delivery and a published fresh Codex Cloud task require external evidence. OpenAI stays disabled by the user's choice; no Arabic mobile voice quality claim is made. No MVP or production-readiness claim is made until the documented acceptance evidence exists.
 
 
+## Hypefy competitive research — founder review, 2026-10-04
+
+- Completed the full English research report at `docs/research/hypefy/report.md` and the 72-page PDF at `output/pdf/hypefy-infame-report-2026-10-04.pdf`. Companion files contain the public analysis/source register, authenticated account journeys, Infame baseline, 68-row/12-column capability CSV, 16 full-product integration cards, evidence register and 16 screenshots. These are founder review candidates before any V1/phase replanning.
+- Both Instagram and TikTok directly displayed VERIFIED after the user's separate authorizations. The resulting proposal list is empty. Company preparation is quota-blocked and the existing campaign is payment-gated; actual paid company execution, marketplace proposal acceptance, provider analytics and payouts remain unverified. One authorized clearly labeled private synthetic creator external collaboration is retained for inspection; its UI Active label does not mean published work. No outreach, client invitation, agreement, publication or money movement occurred.
+- The Infame comparison freezes reviewed implementation at `86c1da7dda84cc7a7f4ed668e6e87508a1ecbc0d` (22:39:10 +03:00), including the separately recorded 474/474 guarded Vitest and 29 browser checks with one intentional duplicate skip. This audit did not rerun product gates; subsequently appearing concurrent evidence-screen work is excluded from its reviewed acceptance. Other sessions' product edits were preserved.
+- Document integrity checks passed: all 68 CSV rows/12 columns populated, 16 cards, 27 public sources, 34 internal source anchors, 86 resolvable evidence IDs, 47 local links and 16 readable image files. Independent factual/source-budget/privacy review cleared the text. All 72 PDF pages were rendered and reviewed through contact sheets, with full-resolution checks of pricing, matrix, source tables, Arabic term, screenshots and corrected journey diagrams. PDF QA reports 21 tables/253 data rows, two vector journeys, embedded report fonts, zero missing English/numeric content tokens and no out-of-page text. Source/figure layout and misleading initial diagram labels were corrected before final acceptance.
+- `docs/research/hypefy/delivery-manifest.json` records final hashes and research verification; local QA is in `tmp/hypefy/research-qa.json` and `tmp/pdfs/hypefy/qa.json`. No Infame product code, schema, data, provider configuration, commercial policy or release phase was changed by this research task. Current direct-payment/free-V1, disabled OpenAI and original Talaqee composition decisions remain in force.
+
 ## Original Talaqee deal pages
 
 - Reused the immutable Talaqee project-detail/request composition for the deal room, offer composer and editor: original 1000px container, 18px panels, recorded stepper and 1.5:1 main/history columns. Arabic 360px stacks and English desktop preserve every current input, role/version command, private draft, compare control and replay key. Saved offer acceptance is labeled independently of the current deal state.
@@ -373,6 +381,7 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
 - The full unchanged-source browser regression completed179 passed/one existing intentional duplicate-account skip in9.1m across Arabic mobile and English desktop. It includes all retained journeys plus the six new native private-file journeys. Independent checkpoint review found one final P2 fresh-composer truthfulness seam: the new-offer page forwards dealId to a history-capable context loader while its component performs only fresh draft/create requests. Server writes remain blocked, so this is neither procurement nor private-data access. A bounded accepted-deal native browser witness is being authored before restricting only the page query; actual historical deal-detail/compose behavior remains preserved. Final correction/checks precede M03 commit; no full-goal/provider readiness is claimed.
 - The accepted/two-confirmation journey gained a bounded fresh-page query witness using its actual retained deal and frozen parties. Both locales meaningfully failed9.3s/5.2s when the crafted new page returned200 instead of404. A strict page-only query now permits campaignId/creatorId/optional matchRunId after native page authentication, rejecting dealId, unknown fields and arrays before invoking the compose loader. Domain HISTORY and actual deal-detail/counter behavior remain unchanged. The first subsequent run passed the rejection checks but exposed duplicate honest terms text in a new test selector; its author scoped to the actual named frozen-terms region without relaxing content/history assertions. Both complete journeys then passed32.9s, preserving actual history/compose200, parties/snapshots and later execution. Independent narrow source review cleared the page correction. Fresh all-four gates are running for the final checkpoint after this last source change; no external provider, publication or money action occurred.
 - Final post-correction npm run check passed all four gates:1036/1036 tests across112 files (221.01s), TypeScript, warning-free ESLint, supported Webpack build and183 deployment manifests/35878 references with zero private development paths. The preceding full browser regression passed179/one intentional skip9.1m; the only subsequent page/query change passed both complete affected native legacy offer/agreement journeys32.9s and independent narrow review. M03's retained optional context/full manual campaign/explicit selection/tone/targeted owner/private-reference customer flow is accepted as local code and browser functionality. Accepted legacy parties/history remain intact. The full goal continues through managed quotes/procurement/billing/delivery/reporting/AI/voice and original carryover; provider/legal/phone/Cloud readiness remains separately unproven. Root is saving this reviewed checkpoint with exact owned paths and selective PROGRESS content; unrelated Hypefy/Sanad research/output/tmp and future M04 preparation remain outside it.
+- Saved reviewed checkpoint91fce1d (`Add scoped campaign planning and private brand references`) oninfame/managed-platform:114 exact owned files, selective UTF8 PROGRESS and no private artifacts, credentials, research sections or fabricated author trailers. Independent staged-path/content review cleared it. Unrelated Hypefy/Sanad/output/tmp work remains preserved and unstaged; M04 prerequisite packet remains preparation. No push/deployment occurred. Local website and disposable databases remain running. The full goal stays active; next implementation is M04's exact customer/principal/quote authority and D067 campaign media/metered guided agent in documented dependency order, with OpenAI disabled and genuine external readiness still gated.
 
 ## M04 managed-order prerequisites — 2026-10-07
 
@@ -464,12 +473,22 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
 - The first mounted14-case browser run exposed real prehydration input/click loss. A separately authored genuine-script hold proved both locales still enabled SSR controls before their handlers were ready. A stable server-false/browser-true readiness boundary now keeps existing controls inert through handler installation and actual pending-journal restoration, without layout or business-policy changes. Enhanced14 passed1.8m, but recoverable console hydration mismatches showed native disclosures remained clickable before React initialization. The independent disclosure witness then failed in both locales at the actual held native-summary mouse activation (session4009); details gained open before React initialized and logged the mismatch. The minimal six-site inert fix passed all14 current deal browser cases in1.8m (session52222), including held native mouse activation followed by normal opening, original keyboard assertions and context-wide console/pageerror collection. No hydration mismatch remained and no warning was suppressed. Current full npm run check passed TypeScript, warning-free ESLint,1085/1085 guarded tests across126 files (262.84s), supported Webpack build and deployment privacy188 manifests/37228 references/zero private paths (session22678). Complete configured browser union50375 passed191 with the one unchanged intentional duplicate-account skip in10.1m across Arabic360 RTL and English desktop. All new/native deal, protected managed/admin, agency, campaign/context/assets/recovery, discovery/collections/evidence/public-profile/readiness and original lifecycle paths passed. Independent source/index review cleared exactly41 paths; no private artifacts or unrelated research were staged.
 - Read-only source Talaqee remains b001002526c7952da97268c75dbeb9ae21414d9b with its four original dirty paths; Infame task/database/21 migrations/preview/data and unrelated research are preserved. Dashboard aggregate authorization and exact legacy admission remain separate next prerequisites. The full managed/MVP goal continues; OpenAI remains disabled, and no external/provider/financial action was taken.
 
+## Sanad competitive research — founder review, 2026-10-06
+
+- Completed `docs/research/sanad/report.md` and the87-page `output/pdf/sanad-infame-report-2026-10-06.pdf`, with64 distinct capability comparisons/12 CSV columns,16 prioritized integration cards,26 first-party public sources,31 Infame source anchors,26 authenticated/5 visual observations and29 screenshots. The report covers public positioning/pricing/model/policies, every main exposed buyer navigation area, available customer journeys, current Infame reuse/gaps and concrete integration acceptance/dependencies.
+- One Saudi-location Instagram query and one populated public-creator report were exercised. A labeled empty research list was saved, reopened and read back with Private enabled; it is retained for review with zero creators/recipients. Required-image/category and media-plan-credit gates limit later execution. The supplied30-day account package/zero campaign-plan-request figures differ from the public annual offer; labels/counters are not settlement or verified quota-reset evidence. Creator-side dashboard, paid fulfillment, real item review, signatures, connected commerce, messages and payouts remain unverified. No customer/file upload, provider permission, registration, invitation, agreement, launch, purchase, publication or money movement occurred.
+- The comparison uses preserved shared source at `88affac545093dca81a64ba4b9e3ea37b7434f4f`, initial05:13 snapshot and05:45 recorded-progress refresh. The earlier1021/108 full gates and161 browser/one-skip record predates the latest M03 UI; later focused happy/recovery/seam results are scoped in the baseline addendum. This audit did not rerun product gates or change product/schema/data/provider/commercial/phase decisions. D048 principal managed services, D066 interface/identity and D067 gated multimodal planning remain the governing context.
+- Document QA passed64/12 rows/columns,16 cards,29 readable image files,26 P sources/31 I anchors and88 resolvable evidence IDs;219 ordinary local links plus29 image links resolve. Final PDF has14 tables/231 data rows,530 links and109 bookmarks, embedded report fonts, zero missing English/numeric content tokens and no out-of-page text. All87 pages/29 images and full-resolution risk pages were reviewed independently and by the coordinator; source repetition, two price frames and private-setting readback were corrected before acceptance. Temporary viewport overrides were reset, the original dashboard restored, and the empty private research list left open for review.
+- Final hashes/research evidence are in `docs/research/sanad/delivery-manifest.json`; local QA/renders are `tmp/sanad/research-qa.json` and `tmp/pdfs/sanad/qa.json`. The cards recommend action queues, item approval, source-aware evidence, defensible outcomes, commerce adapters and permission-safe planning/CRM within the retained foundations. They are review candidates, not new implementation commitments or live acceptance.
+
+
 ## Legacy direct admission declarations — 2026-10-08
 
 - Saved reviewed1a57180 with exactly41 owned native-session/API/SSR/fixture/UI/doc paths after current1085/126 all-four gates,191 browser passes/one unchanged intentional duplicate-account skip10.1m and independent source/index review. Both public previews remain200, taskPG5644/preview3000 and21 migrations/data are preserved; no external/provider/financial action occurred. This checkpoint does not complete the full managed/MVP goal.
 - The source-backed next fence requires exact controlled historical admissions, not binding absence, an invented date, ordinary ADMIN power or globally enabled fixtures. Independent review froze reconstructible original producer checks, acyclic manifest/content pins, single-consumption across a stable admission identity and exact first-offer/receipt links. It also identified pre-existing original Brand history denial after ownership transfer; the future historical lane must retain both actual parties without reading transferred live planning/context data. Current source is not widened by this pure prerequisite.
 - Independently authored four pure groups were adopted from the frozen80FFC543 draft after five typed inert exports existed. All4 produced genuine behavioral RED360ms (required fields/provenance/hash/strict envelope rejection), then strict bounded validation passed4 in443ms. Concrete unions corrected a generic Zod TypeScript inference error without casts or assertion changes; current4 passed440ms, TypeScript and zero-warning scoped ESLint pass. Before RED, two invalid literal-asterisk negative assumptions were corrected to positive exact-ID declarations because the central grammar permits it; no wildcard lookup or executed witness was weakened.
 - Content/version/state/manifest schemas preserve original parties, exact brief/native receipt pins and original references/order; content-only hashes are separate from retained metadata, bounds fail before canonical hashing and current validity/native authority remains unproved. No app/runtime imports, schema, native gate, controlled importer, source classification, fixture bypass or party/history behavior changed. Independent source review cleared the five-schema slice. Current all-four gate25565 passed TypeScript, warning-free ESLint,1089/1089 guarded tests across127 files, supported Webpack and188 manifests/37228 references/zero private paths. Existing full191-pass/one-skip browser evidence remains applicable to unchanged product routes; this new module has no product imports. The six-path declaration checkpoint precedes the actual native fence, principal/governance/quotes, complete guided multimodal agent and original MVP carryover, which remain required. OpenAI stays disabled.
+
 
 ## Both original parties: retained history — 2026-10-08
 
@@ -492,6 +511,7 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
 - Broad configured browser26620 completed190 passes/one unchanged intentional duplicate-account skip/one English discovery first-search response timeout in11.6m. Every deal/history/current/transfer/denial, campaign/context/agency/assets/managed-request/matching/public-profile/readiness case passed. The failing discovery file is outside this20-path change and was rerun unchanged:75304 passed all12 Arabic/English discovery cases in1.4m, including the previously timed-out search and genuine30-second timeout/cancellation checks. No assertion, timeout or product behavior was changed to obtain that result.
 - The original timeout remains undiagnosed: the coordinator began the rerun before preserving its trace, and Playwright reset test-results. Independent bounded artifact search found no retained trace/error-context; an older unrelated HTML report is not evidence. The preserved log establishes a waitForResponse timeout only, not its cause or a verified transient condition. Browser acceptance is therefore the documented broad190/skip/timeout result plus unchanged12-case discovery rerun and complete14-case current deal run; it is not relabelled a clean full-union pass. Independent source/corrective/index reviews and current1093/129 all-four gates are clear. Final20-path checkpoint preserves source Talaqee, existing22-migration task data/services and all unrelated research; native direct admission/managed principal/quotes/agent/original MVP carryover remain ongoing.
 
+
 ## Exact legacy-source receipt keys — 2026-10-08
 
 - Saved reviewed79871b3 exact20-path history checkpoint after current1093/129 all-four gates266.71s, focused14 browser1.9m, independent source/corrective/index review and documented broad190/skip/undetermined discovery-timeout11.6m plus unchanged12 discovery rerun1.4m. Original source, both websites,22-migration task data/services and unrelated research remain preserved; no clean-broad-run or transient-timeout cause is claimed. The full founder-authorized goal continues.
@@ -501,6 +521,7 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
 - The independent old four-group fixture correction changed only source-kind-specific Campaign positive/max/changed-key strings: create:+120 suffix accepted127, create:+121 suffix rejects128, while Deal120/121 bounds and all old actor/hash/date/strict cases remain. Current five-group union passed641ms plus TypeScript/scoped warning-free lint. A review suggestion claimed terminal line endings pass the new regex; actual Node24.19 probes and five added independent LF/CRLF/CR/U+2028/U+2029 content/version negatives disproved it. No unnecessary source change or false RED was introduced. Current complete five-group union passed645ms; source/corrective review and all-four gates follow before seven-path save. The declaration remains unused and grants no native authority.
 
 - Final current-source all-four gate42795 passed TypeScript, warning-free ESLint,1094/1094 guarded tests across130 files, supported Webpack and deployment privacy188 manifests/37228 references/zero private paths. Independent source/corrective review cleared the exact prefix/bounds/string/hash preservation and withdrew the runtime-disproved regex suggestion. Product code does not import this declaration module, so previous documented history/browser results remain applicable without another unrelated browser rerun. Root stages only seven declared contract/edge-test/doc paths with selective progress; controlled native admission storage/import/fence and full managed/MVP scope remain next work.
+
 
 ## Native legacy-admission aggregate storage — preparation, 2026-10-08
 
@@ -549,7 +570,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   excluding unrelated research/output/tmp and preserving task data. The complete
   managed/MVP and guided multimodal-agent goal remains active.
 
-
 ## Guided campaign interview declarations — 2026-10-08
 
 - Saved reviewed legacy finalization checkpoint1b19528 after current1102/132 all
@@ -585,7 +605,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   provider callers, so no browser rerun is claimed. Root stages six exact pure
   contract/test/shared-record paths; native orchestration preparation and unrelated
   research/output/tmp remain unstaged. Full goal remains active.
-
 
 ## Native campaign interview and API — 2026-10-08
 
@@ -650,7 +669,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Root stages15 exact native/schema/API/test/shared-record paths; unrelated research,
   output/tmp and future recovery preparation remain unstaged. Goal continues through
   mounted interview/provider/media/voice and remaining managed/original MVP phases.
-
 
 ## Campaign interview encrypted recovery and retained page — 2026-10-08
 
@@ -747,11 +765,10 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Webpack production build and deployment privacy194 manifests/38800 references/
   zero private development paths. Independent staged review cleared24 exact
   paths4503 additions/11 removals; unrelated research/output/tmp remain excluded.
-  Source Tataqee changes are preserved and three31-migration checksums match.
+  Source Talaqee changes are preserved and three31-migration checksums match.
   This checkpoint makes manual interviews/recovery/profile review available inside
   the retained page. It does not enable providers, billing, publication or newly
   qualified commercial authority; full managed/original MVP execution continues.
-
 
 ## Original admin analytics inventory — 2026-10-10
 
@@ -824,7 +841,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   correctly identifies schema_review as browser author. Root saves this phase;
   PWA/install and remaining managed/MVP scope continue, with no live traction,
   provider/billing/publication or complete-goal claim.
-
 
 ## Private-safe install and offline notice — 2026-10-10
 
@@ -914,7 +930,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   research/output/tmp and production runner remain excluded. Root saves this
   bounded install/offline phase; onboarding native-session correction and all
   remaining managed/MVP work continue. OpenAI remains disabled and goal active.
-
 
 ## Native interactive onboarding sessions — 2026-10-10
 
@@ -1030,7 +1045,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   migration checksums and dev3000/PG5644. No reset, provider activation, publication
   or new permission occurred. The larger implementation goal remains active.
 
-
 ## Remaining administrative briefs and taxonomy — 2026-10-10
 
 - Prerequisite1ad9d54 saved the native onboarding checkpoint after all four gates
@@ -1112,7 +1126,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   added. Source history and existing data/work are preserved; full goal remains
   active, with the AI-ledger native-session prerequisite next.
 
-
 ## AI spending native sessions — 2026-10-11
 
 - Prerequisite2eb14b7 saved after all four gates and12 mounted admin regressions;
@@ -1180,7 +1193,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   source/work, unrelated research and isolated task data remain preserved. Full
   goal stays active; pooled planning admission/provider work remains next.
 
-
 ## Planning AI principal and cycle storage — 2026-10-11
 
 - Native ledger679e59b is saved after all four gates; current task/source state
@@ -1242,7 +1254,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   no route, purchase/trial provisioning, dispatcher/provider/voice or new domain
   authority is enabled. Full goal remains active; execution/session admission
   and genuine campaign-agent output follow through their reviewed slices.
-
 
 ## Planning AI session and operation storage — 2026-10-11
 
@@ -1306,7 +1317,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   Attempt/Result, dispatcher, voice/provider or provisioning activation is claimed.
   Full goal stays active and continues with source-bound planning output contracts.
 
-
 ## Planning AI source-bound output contracts — 2026-10-11
 
 - Prerequisitea8e519a saved after all four gates,1150 tests and33 matching task
@@ -1348,7 +1358,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   preserved. These are pure source-bound declarations, not native successful
   result storage/provider acceptance. Full goal remains active; claimed attempt/
   result storage, atomic native admission and genuine dispatch are next.
-
 
 ## Planning AI claimed attempts and results — 2026-10-11
 
@@ -1423,7 +1432,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   branches, atomic concurrent admission and genuine provider/usage acceptance
   remain required before activation. Root saves this checkpoint and continues
   the full goal with exact native User identity and ledger-owned admission.
-
 
 ## AI ledger native User identity — 2026-10-11
 
@@ -1509,7 +1517,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   original Talaqee source remain preserved. The full goal continues with native
   OWN/CLIENT scope proofs and later permission-safe agent dispatch/UI features.
 
-
 ## Native planning OWN/CLIENT scope — 2026-10-11
 
 - Prerequisite15e2933 saved after1160 current all-four gates and independent
@@ -1545,7 +1552,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   match across preserved dev/test/e2e, and unrelated research/tmp/history remains
   unstaged. Root saves S1a and continues the full goal with S1b bound campaign/
   approved-context metadata proofs before source/entitlement/provider integration.
-
 
 ## Native bound campaign metadata proof — 2026-10-11
 
@@ -1585,7 +1591,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   source-body resolution, atomic entitlements/attempts and real provider/voice/
   billing readiness remain separate. Root saves S1b and continues the full goal
   through agent integration and the free portfolio editing customer journey.
-
 
 ## Full portfolio content editor — 2026-10-11
 
@@ -1638,7 +1643,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   authentic work CRUD/public Arabic media-kit export and genuinely enabled
   AI/media/voice remain later goal work. Root stages only the seven owned paths.
 
-
 ## Native planning original sources — 2026-10-11
 
 - Saved complete portfolio editor as bf894fa after independent seven-path review;
@@ -1685,7 +1689,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   HTTP200. Root stages only six S2-owned paths, preserving unrelated research
   and prior progress edits, then continues pooled admission and M12 planning.
 
-
 ## Owner-private external collaboration declarations — 2026-10-12
 
 - Saved S2 as05d51d0 after six-path independent index review and all four gates.
@@ -1714,7 +1717,6 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   passed196 manifests/39183 references with zero private development paths.
   Root stages only the six pure M12-owned paths and continues native storage;
   existing marketplace/portfolio/planning behavior and all private data remain.
-
 
 ## Owner-private collaboration native storage — 2026-10-12
 
@@ -1765,3 +1767,106 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
   native/pure parity reviews are clear; all targets retain35 matching migration
   checksums. Root stages only nine P1-owned paths before commit, then continues
   the genuine creator-owner service and retained customer screens.
+
+## Creator-owner external collaboration service — 2026-10-12
+
+- Saved P1 as544e00d after nine-path independent index review/current all-four
+  gates. Root freezes one DB-only service leaf for genuine CREATOR current-session
+  ownership, private reads, exact commands/replay and metadata-only removal.
+- Existing profile-session wrappers authenticate before fixed creator-role denial,
+  own one guarded transaction and recheck actual-clock authorization after waits.
+  Root accepts reviewed pre-await copied inputs with deferred validation, parent
+  before removal-binding UPDATE, historical receipt replay before fresh checks,
+  and metadata-only own CREATE-key location that cannot fallback from corruption.
+  No publication/profile/email proof is required to keep private manual notes.
+- Independent native witnesses precede the product. File upload/network, HTTP and
+  retained customer screens follow separately; current labels and metadata never
+  imply actual bytes, marketplace parties, verified earnings or provider access.
+- First independent P2 group created a real owned CREATOR User, opened/resolved
+  its native session without a Creator profile, then reached the missing service
+  method: expected RED865ms before product adoption. The finalized fixed metadata
+  event/audit contract retains no names/notes/brief/value, and historical replay
+  produces no extra event or audit. Remaining ownership/expiry/concurrency groups
+  and implementation stay ignored drafts pending independent source review.
+- Resumed2026-10-13: live task identity/connectivity and all35 migration checksums
+  matched on dev/test/e2e; setup preserved existing data and Prisma regenerated.
+  Original source checkout retains its previous four changes. Native service
+  tests passed3/3 in9.83s after correcting the empty-page cursor to an existing
+  owned record and adding nonexistent-cursor404 with no extra audit. List audit
+  assertions now identify the collection resource ExternalCollaborationList.
+  A test helper UUID inference error was corrected with an explicit string type.
+  Full four-gate verification is running; no UI or binary capability is claimed.
+- Prior independent review cleared the journal lock/reload and captured event key.
+  Final review retries encountered model capacity, so no new independent approval
+  is claimed. P3 inspection identified required generic evidence download/list
+  exclusions before private collaboration attachments become available.
+- Full P2 check completed successfully2026-10-13: TypeScript, zero-warning ESLint,
+  guarded1177 tests/159 files in428.57s, supported Webpack build and deployment
+  privacy196 manifests/39183 references with zero private development paths.
+  Final independent review remains unavailable from model capacity; P2 is not
+  committed. Continue P3 prerequisite tests without representing review as done.
+- P3 prerequisite: root authored a native-session/local-byte purpose regression.
+  After correcting the fixture to the strict four-field native actor, it exposed
+  generic download returning organizer bytes (RED147ms). Generic download now
+  denies organizer purpose for owner/admin, and creator/brand evidence lists
+  exclude it. Generic upload allowlists remain unchanged. The new regression plus
+  existing evidence loader/service tests passed15/3files in2.62s. This change is
+  after the full P2 gate and still requires its own full gate/review before commit.
+- P3 binary service: two native-session witnesses first failed on missing methods
+  (RED167ms). Added dedicated upload/download using existing immutable storage,
+  captured byte copies and descriptor equality, native owner/session/parent locks,
+  exact historical replay, single native parent touch and atomic scalar records.
+  Explicit authorization surrounds storage waits; removed bindings cannot download.
+  Initial2/2 passed3.07s using real task-local files. Added renewed-session retry
+  against the immutable object retained after expiry rollback; focused union and
+  TypeScript/lint are running. HTTP/UI, full gate and independent review remain.
+- P3 transport: native request test first failed on missing transport (RED196ms).
+  Added authenticated collection/command/detail and dedicated attachment routes.
+  JSON allows the domain512KiB bound; multipart enforces two parts, byte limits,
+  abort/timeout, MIME/route identity and existing service inspection. Duplicate
+  and unknown query parameters reject. Actual native session and local storage
+  request test passed1.23s, including >64KiB Arabic original content and PNG
+  upload/download with safe fixed filename. Corrected the RED-era dynamic import
+  typing; TypeScript and scoped warning-free lint pass. UI/browser/full gates
+  and independent review remain; no production storage/provider proof is claimed.
+- M12 customer screens now reuse the original dashboard shell, cards and controls:
+  creator navigation, private list/current/archive pagination, create, original
+  notes/brief/checklist editor, exact decimal Money input, optional UTC dates and
+  time-zone metadata, status/archive/restore, binding downloads/removal and actual
+  XHR upload progress/cancel/retry. Captured request keys survive uncertain results;
+  unsaved navigation warns and native denial hides the private editor.
+- React review skill applied; TypeScript and scoped warning-free lint pass.
+  Native browser journey passed both Arabic360 RTL and English desktop in21.0s:
+  real cookie/create/save, exact125050 SAR minor units and original notes retained,
+  task creation, actual local PNG upload, archive/restore control and no horizontal
+  overflow. No fixture is described as production acceptance. Full gate and
+  independent P3/UI review follow before commit.
+- Latest integrated result:1181 tests/162files passed419.80s; TypeScript and
+  warning-free lint passed. Production build FAILED: browser organizer imports
+  contracts.ts -> onboarding/drafts.ts -> node:crypto. Privacy gate was not reached.
+  Prior service-only green does not certify the new UI. Independent P3/UI review
+  requires denial clearing/body avoidance, confirmed-write recovery barrier,
+  UNKNOWN packet retention, cancel/unmount before hashing dispatch, timestamp
+  precision preservation, bounded identity/revision-bound responses and44px targets.
+  No commit or readiness approval was made. Founder requested a full fortnight
+  status report; saved docs/STATUS_REPORT_2026-10-13.md with actual remaining scope.
+
+## Founder authorized main handoff — 2026-10-14
+
+- Founder explicitly requested pushing current work to main. Remote is the public
+  sultan0alshami/talaaqe repository; fetched main remains originalb001002 and the
+  conversion branch is59 commits ahead, without competing remote commits.
+- Included application/tests/plans/status and visual reports. Authenticated
+  competitor-account research, private PDF artifacts, local databases/credentials
+  and scratch work remain local. No source checkout reset or force push is needed.
+- Fixed the organizer production import failure: browser-safe schemas and shared
+  descriptor-safe UTF8 JSON guard are separate from server hashing. Independent
+  refactor review found no blocker. It does not resolve the documented UI findings.
+- This is a source handoff of work in progress, not a launch approval. Full current
+  checks are running before commit/push; README now states managed-campaign policy,
+  unavailable payment/AI activation and the remaining organizer review issues.
+- Final handoff check passed2026-10-14: TypeScript, warning-free ESLint,
+ 1181 tests/162files410.20s, production Webpack build and privacy202 manifests/
+ 40781 references with zero private development paths. Originalb001002 saved on
+ remote archive/talaqee-before-infame-2026-10-14. Known UI review findings remain
+ documented; pushing source does not claim feature or launch acceptance.

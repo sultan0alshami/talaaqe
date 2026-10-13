@@ -356,3 +356,25 @@ before root adoption as tests/external-collaborations/storage.test.ts.
 planning_admission_seam independently reviews SQL/helper/fixture/staged boundaries.
 Parent/receipts/bindings and existing asset composite only; no app/service/UI/file
 or native role authority follows. Original migrations/data/other work stay intact.
+
+M12 P2 creator-owner service: prerequisite544e00d saved native storage/four gates.
+Root owns native session facade/shared records/adoption/all runs; product leaf is
+new external-collaborations/service.ts only. campaign_agent_ui owns only temporary
+service draft; schema_review independently owns temporary native service tests
+before root adoption. planning_admission_seam reviews source/authority/locking/
+replay/current-clock/privacy/index read-only. No API/UI/storage-network/provider
+effects in this DB-only phase. Preserve other work and original source/history.
+
+M12 P3 preparation: root owns evidence/assets.ts and evidence/loaders.ts purpose
+exclusions plus tests/external-collaborations/purpose.test.ts. Dedicated binary
+transport/service and UI follow tmp/m12-p3-preparation.md. Preserve all other
+work; native sessions and actual local bytes are required for purpose regression.
+Root additionally owns M12 service.ts binary exports and attachments.test.ts;
+prerequisite native RED executed before product methods. Exact scope and pending
+HTTP/UI acceptance are recorded in plans/09-m12-attachments.md. No schema changes.
+Root owns external-collaborations/transport.ts, its four API route files and
+transport.test.ts. Installed Next route guide read before framework edits.
+Transport uses existing native cookie/session and domain response boundaries.
+Root owns M12 creator/collaborations pages, external-collaboration list/editor/upload
+components and leave guard, creator nav entry and e2e/external-collaborations.spec.mts.
+P3/UI independent review assigned to campaign_agent_ui (not its originalP2 source).
