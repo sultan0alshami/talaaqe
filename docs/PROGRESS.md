@@ -1870,3 +1870,21 @@ Follow docs/plans/. Private evidence owner/admin screens, original deal pages, g
  40781 references with zero private development paths. Originalb001002 saved on
  remote archive/talaqee-before-infame-2026-10-14. Known UI review findings remain
  documented; pushing source does not claim feature or launch acceptance.
+
+## Portable session handoff — 2026-10-14
+
+- Added docs/RESUME_HERE.md as the tracked new-session entry point and linked it
+  from README, AGENTS and infame-start. Includes current main/archive, founder
+  decisions, fresh/resume commands, exact unresolved organizer findings and
+  witnesses, verification commands, full remaining scope and a new-session prompt.
+- Corrected stale branch/unpushed-destination wording in DEVELOPMENT, CLOUD_SETUP
+  and FOUNDER_DEPENDENCIES. Git source handoff is complete; Cloud/Linux publication
+  and fresh-task proof remain unverified. Private research, credentials/data and
+  personal integrations remain outside the public repository, explicitly listed.
+- Every handoff link resolves; native dev identity check passes. No product code
+  changed. Required full checks are running before the documentation push.
+- Independent handoff review confirmed refs/commands/findings and no dependency
+  on private scratch files. Added explicit manual local-storage opt-in and updated
+  partial Studio/Figma evidence. Final four gates passed:1181 tests/162files404.05s,
+  TypeScript, warning-free lint, Webpack production build and privacy202 manifests/
+ 40781 references with zero private development paths. Documentation-only handoff.

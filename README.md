@@ -1,5 +1,7 @@
 # Infame / إنفيم
 
+**New session or computer: start with [docs/RESUME_HERE.md](docs/RESUME_HERE.md).**
+
 Arabic-first influencer collaboration platform being adapted from Talaqee, with worldwide Arab creator/brand onboarding and deeper Saudi موثوق support. The approved direction is Infame-managed campaigns with separate creator procurement and optional limited AI subscriptions. Manual planning remains free. Accepted legacy direct agreements retain their original parties and terms. Payments and paid AI activation remain unavailable pending implementation and genuine readiness.
 
 Creator portfolio → brand-approved campaign brief → deterministic explained shortlist → offer/counter → two-party agreement → delivery → sealed mutual ratings.

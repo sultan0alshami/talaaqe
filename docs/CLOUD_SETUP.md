@@ -1,8 +1,19 @@
 # Prepared Codex Cloud setup
 
-Status 2026-10-01: repository/lockfile, portable commands and startup skill prepared locally. Actual environment creation, publication and fresh-task validation are pending. The Windows results in DEVELOPMENT.md do not prove Linux/Cloud support.
+Status2026-10-14: implementation and handoff are pushed to the public repository
+https://github.com/sultan0alshami/talaaqe on `main` (implementation checkpoint007117b).
+Read [RESUME_HERE.md](RESUME_HERE.md) first. The original Talaqee revision is
+preserved on `archive/talaqee-before-infame-2026-10-14`. Older instructions to
+select an unpushed infame/mvp branch or avoid the now-authorized remote main are
+superseded.
 
-Verified current UI/capabilities against [official Cloud environments documentation](https://learn.chatgpt.com/docs/environments/cloud-environments). Create from Work in > Cloud > Select environment > Create environment. Select the repository with inherited Talaqee history and the isolated infame/mvp coding base. If GitHub cannot see this unpushed local branch, first review/authorize pushing the conversion branch or selecting a private destination; never substitute Talaqee main. Keep Privacy > Who can use as Only me initially. This task has not pushed or published externally.
+Install commands and the tracked start skill are prepared and Windows-tested.
+Actual Codex Cloud environment creation/publication and fresh Linux-task
+validation remain unproven. No saved local setup proves Cloud readiness.
+Use the current product's environment interface to select this repository/main;
+recheck official documentation for its current UI when performing setup. Keep
+access private initially. Publishing an environment/deployment is a separate
+external action from the already-authorized Git source push.
 
 Prepared Install script:
 

@@ -1,5 +1,8 @@
 # Infame / إنفيم engineering instructions
 
+On a new session, read docs/RESUME_HERE.md for the current shared branch, setup,
+known review findings and local-only exclusions before choosing implementation.
+
 This isolated Talaqee-derived checkout implements the handoffs in docs/handoff/. Read those specifications and docs/CONTRACTS.md before domain changes. User instructions override historical specs. The original source checkout is read-only.
 
 Current founder direction (2026-10-04, D019a): reuse Talaqee's full platform interface and page composition with Infame name/colors, then add Infame features within that structure. Do not replace it with a new dashboard design. Keep the approved public site at `/` and a second Talaqee-derived Infame website at `/classic`.

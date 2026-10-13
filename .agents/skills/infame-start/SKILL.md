@@ -3,7 +3,7 @@ name: infame-start
 description: Reconcile the current Infame checkout and start its isolated disposable development services.
 ---
 
-Read AGENTS.md, docs/DEVELOPMENT.md and current progress. Recheck checkout/revision/task ownership. Personal Windows skills/processes/configuration are not Cloud inputs.
+Read AGENTS.md, docs/RESUME_HERE.md, docs/DEVELOPMENT.md and current progress. Recheck checkout/revision/task ownership. Personal Windows skills/processes/configuration are not Cloud inputs.
 
 Verify Node24/npm12 and lockfile changes. Generate Prisma for the current schema. Never copy a source or another task's .env/.infame files. A new task needs a fresh task identity; the published environment must not contain validation secrets/database artifacts. If inherited artifacts are present, stop and review task isolation before using them. Resume the same task with npm run setup:local, which preserves rows/configuration and reconciles missing files without overwriting.
 

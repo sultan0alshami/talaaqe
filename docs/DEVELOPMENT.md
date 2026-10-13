@@ -1,6 +1,6 @@
 # Infame development
 
-Use this isolated Talaqee-derived checkout and npm lockfile. Source revision b001002526c7952da97268c75dbeb9ae21414d9b; conversion branch infame/mvp. Never use the original checkout's configuration or database.
+Use this Talaqee-derived checkout and npm lockfile. Source revision b001002526c7952da97268c75dbeb9ae21414d9b; the founder authorized the Infame handoff to main on2026-10-14. Start new work from current origin/main on an isolated feature branch. Read RESUME_HERE.md. Never use the original checkout's configuration or database.
 
 Tested locally on Windows x64: Node24.19.0, npm12.1.0, Next16.3.8, React19.2.4, Prisma/client6.19.3, PostgreSQL18 embedded package18.4.0-beta.17, TypeScript5.9.3, Vitest5.0.3, Playwright1.63.0. Exact resolutions are in package-lock.json. Required Node24 follows Vitest's supported engine and installed runtime. No source runtime declaration existed.
 
